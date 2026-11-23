@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <title>LabTrack — Quick Lab Log</title>
+  <meta name="description" content="LabTrack — a free, offline-friendly lab notebook for logging Qubit readings and bench results with dates, units and notes, with CSV and text export." />
+  <meta name="theme-color" content="#0b0f14" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="LabTrack" />
+  <meta property="og:title" content="LabTrack" />
+  <meta property="og:description" content="Log lab results and notes from any device. Export to CSV or text." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
+  <link rel="apple-touch-icon" href="../assets/icon-192.png" />
+  <link rel="manifest" href="../manifest.webmanifest" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --bg-2: #0f141b;
+      --panel: #121821;
+      --panel-2: #18202b;
+      --border: #222c39;
+      --border-2: #2e3a4a;
+      --text: #dce3ec;
+      --muted: #8492a3;
+      --dim: #56637a;
+      --green: #7ee787;
+      --cyan: #56d4dd;
+      --blue: #79c0ff;
+      --amber: #f2cc60;
+      --violet: #c4a7ff;
+      --red: #ff7b72;
+      --radius: 12px;
+      --font: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text);
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(900px 380px at 15% -80px, rgba(86, 212, 221, 0.10), transparent 70%),
+        radial-gradient(700px 320px at 95% -60px, rgba(196, 167, 255, 0.08), transparent 70%),
+        radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+      background-size: auto, auto, 22px 22px;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+    ::selection { background: rgba(126, 231, 135, 0.28); }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; background: none; border: 0; padding: 0; }
+    a { color: var(--cyan); }
+    .hidden { display: none !important; }
+    .invisible { visibility: hidden; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .c-green { color: var(--green); } .c-cyan { color: var(--cyan); } .c-amber { color: var(--amber); }
+    .c-muted { color: var(--muted); } .c-dim { color: var(--dim); } .c-violet { color: var(--violet); }
+
+    .wrap { width: 100%; max-width: 760px; margin: 0 auto; padding: 0 16px; }
+
+    /* ---------- Top bar ---------- */
+    .topbar {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(11, 15, 20, 0.82);
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding-top: env(safe-area-inset-top);
+    }
+    .topbar-in { height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .brand { display: flex; align-items: baseline; gap: 6px; font-weight: 700; font-size: 15px; white-space: nowrap; }
+    .brand .path { color: var(--cyan); font-weight: 500; }
+    .brand .name { color: var(--text); letter-spacing: -0.01em; }
+    .cursor { display: inline-block; color: var(--green); animation: blink 1.1s steps(1) infinite; margin-left: 1px; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .top-actions { display: flex; align-items: center; gap: 6px; }
+
+    /* ---------- Buttons ---------- */
+    .btn {
+      height: 36px; padding: 0 12px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      border: 1px solid var(--border-2); border-radius: 9px;
+      background: var(--panel-2); color: var(--text);
+      font-size: 12.5px; font-weight: 600; white-space: nowrap;
+      transition: border-color .15s, background .15s, color .15s, transform .05s;
+    }
+    .btn:hover { border-color: var(--dim); background: #1d2632; }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--green); border-color: var(--green); color: #07210c; }
+    .btn-primary:hover { background: #95f09d; border-color: #95f09d; }
+    .btn-accent { background: rgba(86, 212, 221, 0.08); border-color: rgba(86, 212, 221, 0.45); color: var(--cyan); }
+    .btn-accent:hover { background: rgba(86, 212, 221, 0.15); border-color: var(--cyan); }
+    .btn-danger { background: rgba(255, 123, 114, 0.1); border-color: rgba(255, 123, 114, 0.5); color: var(--red); }
+    .btn-danger:hover { background: rgba(255, 123, 114, 0.18); border-color: var(--red); }
+    .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
+    .btn-ghost:hover { background: var(--panel-2); color: var(--text); border-color: var(--border); }
+    .btn-block { width: 100%; height: 48px; font-size: 14px; font-weight: 800; letter-spacing: 0.02em; border-radius: 10px; }
+    .btn .k { opacity: .85; }
+    @media (max-width: 399px) { .hide-xs { display: none; } }
+    @media (max-width: 639px) { .hide-sm { display: none; } }
+
+    /* ---------- Run header ---------- */
+    .run { padding: 22px 0 4px; }
+    .run-title { display: flex; align-items: center; gap: 10px; }
+    .run-title .hash { color: var(--green); font-size: 24px; font-weight: 800; }
+    .run-title input {
+      flex: 1; min-width: 0; background: transparent; border: 0; outline: none;
+      font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--text);
+      border-radius: 8px; padding: 2px 6px; margin-left: -6px;
+    }
+    .run-title input:focus { background: var(--panel); box-shadow: 0 0 0 1px var(--border-2); }
+    .run-title input::placeholder { color: var(--dim); }
+    .run-meta { margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; color: var(--muted); }
+    .run-meta .op { display: inline-flex; align-items: center; gap: 2px; color: var(--violet); }
+    .run-meta .op input { background: transparent; border: 0; outline: none; width: 150px; color: var(--violet); font-size: 12px; padding: 2px 4px; border-radius: 6px; }
+    .run-meta .op input::placeholder { color: var(--dim); }
+    .run-meta .op input:focus { background: var(--panel); }
+
+    /* ---------- Panels ---------- */
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.015), transparent 40%), var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.8);
+    }
+    .panel-bar {
+      height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 12px;
+      border-bottom: 1px solid var(--border); background: var(--bg-2);
+      border-radius: var(--radius) var(--radius) 0 0;
+      font-size: 11.5px; color: var(--muted);
+    }
+    .dots { display: inline-flex; gap: 6px; }
+    .dots i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+    .dots i:nth-child(1) { background: #ff7b72; } .dots i:nth-child(2) { background: #f2cc60; } .dots i:nth-child(3) { background: #7ee787; }
+    .panel-bar .title { flex: 1; text-align: center; margin-right: 46px; }
+
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border); }
+    .tab {
+      height: 42px; color: var(--muted); font-weight: 700; font-size: 13px;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .tab:hover { color: var(--text); background: rgba(255,255,255,0.02); }
+    .tab.active { color: var(--green); border-bottom-color: var(--green); background: rgba(126, 231, 135, 0.05); }
+    .tab .g { opacity: .7; margin-right: 6px; }
+
+    /* ---------- Form ---------- */
+    .form { padding: 16px; display: grid; gap: 14px; }
+    .stack { display: grid; gap: 14px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-2-sm { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 640px) { .grid-2-sm { grid-template-columns: 1fr 1fr; } }
+    .lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+    .lbl::before { content: '--'; color: var(--dim); margin-right: 2px; }
+    .lbl .req { color: var(--green); }
+    .field {
+      width: 100%; padding: 10px 12px; font-size: 16px; line-height: 1.4;
+      background: var(--bg); color: var(--text);
+      border: 1px solid var(--border-2); border-radius: 9px; outline: none;
+      caret-color: var(--green);
+      transition: border-color .15s, box-shadow .15s;
+      -webkit-appearance: none; appearance: none;
+    }
+    @media (min-width: 640px) { .field { font-size: 14px; } }
+    .field::placeholder { color: var(--dim); }
+    .field:focus, .field-group:focus-within { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(86, 212, 221, 0.15); }
+    textarea.field { resize: vertical; min-height: 44px; }
+    select.field {
+      padding-right: 30px; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%238492a3'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center; background-size: 16px;
+    }
+    .field-group { display: flex; border: 1px solid var(--border-2); border-radius: 9px; background: var(--bg); overflow: hidden; transition: border-color .15s, box-shadow .15s; }
+    .field-group .field { border: 0; border-radius: 0; box-shadow: none; }
+    .field-group input.field { flex: 1; min-width: 0; color: var(--green); font-weight: 700; }
+    .field-group select.field { width: auto; max-width: 50%; flex-shrink: 0; background-color: var(--panel-2); border-left: 1px solid var(--border-2); color: var(--cyan); font-weight: 700; }
+    .form-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+    .date-pick { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+    .date-pick input { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 5px 8px; font-size: 12.5px; font-weight: 600; color: var(--text); outline: none; }
+    .date-pick input:focus { border-color: var(--cyan); }
+    .linkish { display: inline-flex; align-items: center; gap: 6px; padding: 6px 2px; color: var(--cyan); font-size: 12px; font-weight: 600; }
+    .linkish:hover { color: #8be6ec; }
+    .chev { display: inline-block; transition: transform .15s; }
+    .rotate-90 { transform: rotate(90deg); }
+
+    /* ---------- Log ---------- */
+    .log-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 2px 0; }
+    .log-head h2 { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+    .stack-lg { display: grid; gap: 14px; }
+
+    .sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 4px; border-bottom: 1px solid var(--border); background: var(--bg-2); border-radius: var(--radius) var(--radius) 0 0; }
+    .sec-collapsed .sec-head { border-bottom: 0; border-radius: var(--radius); }
+    .sec-toggle { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px; border-radius: 8px; text-align: left; }
+    .sec-toggle:hover { background: var(--panel-2); }
+    .sec-toggle[disabled] { cursor: default; background: none; }
+    .caret { color: var(--green); width: 10px; display: inline-block; }
+    .sec-name { font-weight: 800; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .count { font-size: 11px; font-weight: 700; color: var(--cyan); background: rgba(86, 212, 221, 0.1); border: 1px solid rgba(86, 212, 221, 0.25); border-radius: 6px; padding: 0 6px; }
+    .sec-actions { display: flex; align-items: center; flex-shrink: 0; }
+    .sec-empty { padding: 14px 16px; color: var(--dim); font-size: 12px; }
+
+    .day { display: flex; align-items: center; gap: 8px; padding: 12px 16px 4px; font-size: 11px; font-weight: 700; color: var(--dim); text-transform: lowercase; }
+    .day::after { content: ''; flex: 1; border-top: 1px dashed var(--border-2); }
+    .day b { color: var(--violet); font-weight: 700; }
+
+    .entry { padding: 10px 16px 8px; border-top: 1px solid rgba(34, 44, 57, 0.6); }
+    .day + .entry { border-top: 0; }
+    .entry-main { display: flex; align-items: flex-start; gap: 12px; }
+    .time { flex-shrink: 0; width: 42px; padding-top: 2px; font-size: 11.5px; color: var(--dim); }
+    .entry-body { flex: 1; min-width: 0; }
+    .rec-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+    .rec { font-weight: 700; color: var(--text); word-break: break-word; }
+    .details { margin-top: 2px; font-size: 11.5px; color: var(--muted); }
+    .details b { color: var(--text); font-weight: 600; }
+    .result { flex-shrink: 0; max-width: 46%; text-align: right; color: var(--green); font-weight: 800; line-height: 1.25; word-break: break-word; }
+    .result.num { font-size: 18px; text-shadow: 0 0 18px rgba(126, 231, 135, 0.25); }
+    .result.txt { font-size: 13px; }
+    .unit { margin-left: 5px; font-size: 11.5px; font-weight: 600; color: var(--cyan); text-shadow: none; }
+    .annot { margin: 6px 0 0 54px; display: flex; gap: 8px; font-size: 12.5px; color: #eadba6; white-space: pre-wrap; word-break: break-word; }
+    .annot .branch { color: var(--amber); flex-shrink: 0; }
+    .entry-actions { margin: 4px 0 0 46px; display: flex; flex-wrap: wrap; gap: 2px; }
+    .act { height: 30px; padding: 0 8px; border-radius: 7px; font-size: 11.5px; font-weight: 600; color: var(--dim); transition: color .15s, background .15s; }
+    .act:hover { color: var(--text); background: var(--panel-2); }
+    .act.danger:hover { color: var(--red); background: rgba(255, 123, 114, 0.1); }
+    .act.amber:hover { color: var(--amber); background: rgba(242, 204, 96, 0.08); }
+
+    .entry-note .note-label { font-size: 11px; font-weight: 800; color: var(--amber); letter-spacing: 0.04em; }
+    .entry-note .note-text { margin: 1px 0 0; color: #eadba6; white-space: pre-wrap; word-break: break-word; }
+    .entry-note { background: linear-gradient(90deg, rgba(242, 204, 96, 0.06), transparent 60%); box-shadow: inset 2px 0 0 var(--amber); }
+
+    .tag {
+      --c: var(--muted);
+      display: inline-flex; align-items: center; height: 19px; padding: 0 6px; border-radius: 5px;
+      font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; text-transform: lowercase;
+      color: var(--c);
+      border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+      background: color-mix(in srgb, var(--c) 12%, transparent);
+    }
+
+    .editor { margin: 10px 0 4px; padding: 12px; display: grid; gap: 12px; background: var(--bg-2); border: 1px solid var(--border-2); border-radius: 10px; }
+    .editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+    .empty { padding: 22px 20px; }
+    .term-line { font-size: 13px; }
+    .empty p { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+    .empty .btn { margin-top: 16px; }
+    .empty .tiny { font-size: 11px; color: var(--dim); }
+
+    footer { padding: 26px 16px calc(24px + env(safe-area-inset-bottom)); text-align: center; font-size: 11px; color: var(--dim); }
+    footer a { color: var(--muted); }
+
+    /* ---------- Modals ---------- */
+    .modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; background: rgba(3, 6, 10, 0.72); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+    @media (min-width: 640px) { .modal { align-items: center; padding: 16px; } }
+    .sheet {
+      width: 100%; max-width: 460px; max-height: 92vh; display: flex; flex-direction: column;
+      background: var(--panel); border: 1px solid var(--border-2);
+      border-radius: 16px 16px 0 0; box-shadow: 0 -10px 50px rgba(0, 0, 0, 0.6);
+      padding-bottom: env(safe-area-inset-bottom);
+      animation: up .2s ease-out;
+    }
+    @media (min-width: 640px) { .sheet { border-radius: 16px; } }
+    @keyframes up { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+    .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 16px 16px 10px; }
+    .sheet-head h3 { margin: 0; font-size: 15px; font-weight: 800; }
+    .sheet-head h3::before { content: '> '; color: var(--green); }
+    .sheet-head p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+    .close { width: 34px; height: 34px; border-radius: 8px; color: var(--muted); font-size: 18px; flex-shrink: 0; }
+    .close:hover { background: var(--panel-2); color: var(--text); }
+    .sheet-body { padding: 6px 16px 16px; display: grid; gap: 10px; overflow-y: auto; }
+    .opt { display: flex; align-items: center; gap: 12px; padding: 12px; text-align: left; border: 1px solid var(--border); border-radius: 11px; background: var(--bg-2); transition: border-color .15s, background .15s; }
+    .opt:hover { border-color: var(--cyan); background: rgba(86, 212, 221, 0.05); }
+    .opt .badge { width: 42px; height: 42px; flex-shrink: 0; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
+    .opt strong { display: block; font-size: 13px; }
+    .opt small { display: block; font-size: 11.5px; color: var(--muted); }
+    .b-green { color: var(--green); background: rgba(126, 231, 135, 0.1); border: 1px solid rgba(126, 231, 135, 0.3); }
+    .b-cyan { color: var(--cyan); background: rgba(86, 212, 221, 0.1); border: 1px solid rgba(86, 212, 221, 0.3); }
+    .b-violet { color: var(--violet); background: rgba(196, 167, 255, 0.1); border: 1px solid rgba(196, 167, 255, 0.3); }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .type-list { padding: 0 16px; overflow-y: auto; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .type-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+    .type-row:last-child { border-bottom: 0; }
+    .type-row .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 10px currentColor; }
+    .type-row .grow { flex: 1; min-width: 0; }
+    .type-row .nm { font-weight: 700; font-size: 13px; }
+    .type-row .un { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .builtin { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; }
+    .runcard { padding: 12px; border: 1px solid var(--border-2); border-radius: 11px; background: var(--bg-2); }
+    .runcard .nm { font-weight: 800; word-break: break-word; }
+    .runcard .info { margin-top: 3px; font-size: 12px; color: var(--muted); }
+    .warn-head h3::before { content: '! '; color: var(--amber); }
+
+    .toast {
+      position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60;
+      display: flex; align-items: center; gap: 8px; max-width: calc(100% - 32px);
+      padding: 10px 14px; border-radius: 10px;
+      background: #0f1a14; border: 1px solid rgba(126, 231, 135, 0.45); color: var(--green);
+      font-size: 12.5px; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    }
+    .fade-in { animation: fadeIn .2s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } .sheet, .fade-in { animation: none; } }
+    @media print { .no-print { display: none !important; } body { background: #fff; color: #000; } }
+  </style>
+</head>
+<body>
+
+  <header class="topbar no-print">
+    <div class="wrap topbar-in">
+      <div class="brand" aria-label="LabTrack">
+        <span class="path hide-xs">~/lab</span><span class="c-green">$</span><span class="name">labtrack</span><span class="cursor" aria-hidden="true">▊</span>
+      </div>
+      <div class="top-actions">
+        <button type="button" data-continue class="btn" title="Continue a previous run from its export file"><span class="k c-cyan">↑</span> open</button>
+        <button id="btnNewRun" type="button" class="btn" title="Start a new run"><span class="k c-green">+</span> new</button>
+        <button id="btnOpenExport" type="button" class="btn btn-primary" title="Export results" aria-label="Export results">↓<span class="hide-xs"> export</span></button>
+        <input id="inputContinue" type="file" accept=".csv,.txt,.json,text/csv,text/plain,application/json" class="hidden" />
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap" style="flex:1">
+
+    <section class="run">
+      <div class="run-title">
+        <span class="hash" aria-hidden="true">#</span>
+        <label for="runName" class="sr-only">Run name</label>
+        <input id="runName" type="text" placeholder="untitled run" autocomplete="off" />
+      </div>
+      <div class="run-meta">
+        <span><span class="c-dim">//</span> <span id="runStats">no entries yet</span></span>
+        <label class="op"><span>@</span><span class="sr-only">Operator</span><input id="runOperator" type="text" placeholder="operator" autocomplete="off" /></label>
+      </div>
+    </section>
+
+    <div class="panel" style="margin-top:14px">
+      <div class="panel-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="title">new-entry</span></div>
+      <div class="tabs" role="tablist" aria-label="Entry type">
+        <button type="button" data-kind="result" class="kind-btn tab"><span class="g">▸</span>result</button>
+        <button type="button" data-kind="note" class="kind-btn tab"><span class="g">#</span>note</button>
+      </div>
+
+      <form id="entryForm" class="form" novalidate autocomplete="off">
+        <div id="resultFields" class="stack">
+          <div class="grid-2">
+            <div>
+              <label for="entryType" class="lbl">type</label>
+              <select id="entryType" class="field"></select>
+            </div>
+            <div>
+              <label for="entrySection" class="lbl">section</label>
+              <select id="entrySection" class="field section-select"></select>
+            </div>
+          </div>
+          <div class="grid-2-sm">
+            <div>
+              <label for="entryName" class="lbl">record <span class="req">*</span></label>
+              <input id="entryName" type="text" enterkeyhint="next" class="field" placeholder="Sample 1" />
+            </div>
+            <div>
+              <label for="entryResult" class="lbl">result <span class="req">*</span></label>
+              <div class="field-group">
+                <input id="entryResult" type="text" enterkeyhint="done" class="field" placeholder="45.6" />
+                <select id="entryUnit" class="field" aria-label="Unit"></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="noteFields" class="stack hidden">
+          <div>
+            <label for="noteSection" class="lbl">section</label>
+            <select id="noteSection" class="field section-select"></select>
+          </div>
+          <div>
+            <label for="noteText" class="lbl">note <span class="req">*</span></label>
+            <textarea id="noteText" rows="3" class="field" placeholder="Recalibrated Qubit with fresh standards"></textarea>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="date-pick"><span>date</span><input id="entryDate" type="date" /></label>
+          <button id="btnToggleExtra" type="button" class="linkish"><span id="extraChevron" class="chev">▸</span> volume, dilution &amp; note</button>
+        </div>
+
+        <div id="extraFields" class="stack hidden fade-in">
+          <div class="grid-2">
+            <div>
+              <label for="entryVolume" class="lbl">volume</label>
+              <input id="entryVolume" type="text" class="field" placeholder="20 µL" />
+            </div>
+            <div>
+              <label for="entryDilution" class="lbl">dilution</label>
+              <input id="entryDilution" type="text" class="field" placeholder="1:2" />
+            </div>
+          </div>
+          <div>
+            <label for="entryNote" class="lbl">note</label>
+            <textarea id="entryNote" rows="2" class="field" placeholder="anything worth remembering"></textarea>
+          </div>
+        </div>
+
+        <button id="btnSubmitEntry" type="submit" class="btn btn-primary btn-block">↵ add result</button>
+      </form>
+    </div>
+
+    <div class="log-head">
+      <h2><span class="c-green">##</span> log</h2>
+      <button id="btnAddSection" type="button" class="btn btn-ghost"><span class="c-green">+</span> section</button>
+    </div>
+
+    <div id="emptyState" class="panel empty hidden" style="margin-top:10px">
+      <div class="term-line"><span class="c-green">$</span> cat log.txt</div>
+      <div class="term-line c-muted">nothing logged yet<span class="cursor" aria-hidden="true">▊</span></div>
+      <p>pick a type, enter a record and a result above, then hit <span class="c-green">add result</span>.</p>
+      <button type="button" data-continue class="btn btn-accent">↑ continue a previous run</button>
+      <p class="tiny">upload a labtrack .csv or .txt export to pick up where you left off.</p>
+    </div>
+    <div id="sectionsContainer" class="stack-lg" style="margin-top:10px"></div>
+  </main>
+
+  <footer class="no-print">
+    <span class="c-dim">//</span> saved on this device only · <a href="https://github.com/AKMARTIAN/labtrack" target="_blank" rel="noopener">about labtrack</a>
+  </footer>
+
+  <!-- Record types -->
+  <div id="typesModal" class="modal hidden no-print">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h3>record types</h3><p>a type sets the units offered next to result, so you only type the number.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
+      </div>
+      <div id="typesList" class="type-list"></div>
+      <form id="typeForm" class="sheet-body" style="padding-top:14px">
+        <div class="lbl" style="color:var(--green)">add your own type</div>
+        <div>
+          <label for="typeName" class="lbl">name <span class="req">*</span></label>
+          <input id="typeName" type="text" class="field" placeholder="Qubit RNA HS" />
+        </div>
+        <div>
+          <label for="typeUnits" class="lbl">units (comma separated, first is default)</label>
+          <input id="typeUnits" type="text" class="field" placeholder="ng/µL, ng/mL" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" style="height:44px">+ add type</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Section -->
+  <div id="sectionModal" class="modal hidden no-print">
+    <form id="sectionModalForm" class="sheet">
+      <div class="sheet-head">
+        <div><h3 id="sectionModalTitle">add section</h3><p>group your entries into stages or sections.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div>
+          <label for="sectionNameInput" class="lbl">section name</label>
+          <input id="sectionNameInput" type="text" required class="field" placeholder="Library prep" />
+        </div>
+        <div class="row-2">
+          <button type="button" data-close class="btn">cancel</button>
+          <button type="submit" class="btn btn-primary">save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Export -->
+  <div id="exportModal" class="modal hidden no-print">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h3>export</h3><p>keep the file: you can upload it later to continue this run.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <button id="btnDownloadCsv" type="button" class="opt"><span class="badge b-green">.csv</span><span><strong>download spreadsheet</strong><small>one row per entry · excel / sheets</small></span></button>
+        <button id="btnDownloadTxt" type="button" class="opt"><span class="badge b-cyan">.txt</span><span><strong>download text report</strong><small>readable lab notebook summary</small></span></button>
+        <button id="btnCopyTxt" type="button" class="opt"><span class="badge b-violet">cp</span><span><strong>copy summary</strong><small>paste into an eln, doc or email</small></span></button>
+        <div class="row-2" style="margin-top:6px">
+          <button id="btnDownloadJson" type="button" class="btn">save backup</button>
+          <label class="btn">import backup<input id="inputImportJson" type="file" accept=".json,.csv,.txt,application/json,text/csv,text/plain" class="hidden" /></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New run -->
+  <div id="newRunModal" class="modal hidden no-print">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h3>start a new run?</h3><p>this clears all current entries. export or back up first if you need them. your record types are kept.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <button id="btnConfirmBlank" type="button" class="btn btn-danger btn-block" style="height:44px">clear &amp; start new run</button>
+        <button type="button" data-continue class="btn btn-accent btn-block" style="height:44px">↑ continue a previous run instead</button>
+        <button type="button" data-close class="btn btn-ghost btn-block" style="height:40px">cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shared-device safeguard -->
+  <div id="welcomeModal" class="modal hidden no-print">
+    <div class="sheet">
+      <div class="sheet-head warn-head">
+        <div><h3>run in progress on this device</h3><p>if this isn't your run, start a new one so results don't get mixed.</p></div>
+      </div>
+      <div class="sheet-body">
+        <div class="runcard">
+          <div id="welcomeRunName" class="nm"></div>
+          <div id="welcomeRunInfo" class="info"></div>
+        </div>
+        <button id="btnWelcomeContinue" type="button" class="btn btn-primary btn-block" style="height:44px">continue this run</button>
+        <button id="btnWelcomeNew" type="button" class="btn btn-block" style="height:44px">start a new run</button>
+        <button id="btnWelcomeExport" type="button" class="btn btn-ghost btn-block" style="height:38px;color:var(--cyan)">export this run first</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden no-print"><span aria-hidden="true">✓</span><span id="toastText"></span></div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = 'labtrack_v1_state';
+      const PREFS_KEY = 'labtrack_prefs';
+      const $ = (id) => document.getElementById(id);
+      const pad = (n) => String(n).padStart(2, '0');
+
+      /* ---------- Record types ---------- */
+
+      // Terminal palette for type tags.
+      const TYPE_HEX = {
+        slate: '#8492a3', violet: '#c4a7ff', teal: '#3fd7b5', amber: '#f2cc60', rose: '#ff7b72',
+        sky: '#79c0ff', orange: '#ffa657', emerald: '#7ee787', pink: '#ff9bce', indigo: '#a5b4fc',
+        cyan: '#56d4dd', lime: '#b5e853', fuchsia: '#f0abfc'
+      };
+      const hexOf = (t) => TYPE_HEX[(t && t.color) || 'slate'] || TYPE_HEX.slate;
+      const CUSTOM_COLORS = ['indigo', 'cyan', 'lime', 'fuchsia', 'teal', 'orange'];
+      const GENERAL_UNITS = ['ng/µL', 'µL', 'mL', 'bp', 'nM', '°C'];
+      const BUILTIN_TYPES = [
+        { id: 'general',  name: 'General',       units: [], color: 'slate' },
+        { id: 'qubit',    name: 'Qubit',         units: ['ng/µL', 'ng/mL', 'µg/mL', 'pg/µL'], color: 'violet' },
+        { id: 'nanodrop', name: 'NanoDrop',      units: ['ng/µL', 'A260/280', 'A260/230'], color: 'teal' },
+        { id: 'size',     name: 'Fragment size', units: ['bp', 'kb'], color: 'amber' },
+        { id: 'molarity', name: 'Molarity',      units: ['nM', 'pM', 'µM', 'mM'], color: 'rose' },
+        { id: 'volume',   name: 'Volume',        units: ['µL', 'mL'], color: 'sky' },
+        { id: 'temp',     name: 'Temperature',   units: ['°C'], color: 'orange' },
+        { id: 'ph',       name: 'pH',            units: [], color: 'emerald' },
+        { id: 'cells',    name: 'Cell count',    units: ['cells/mL', 'cells/µL'], color: 'pink' }
+      ];
+
+      function loadPrefs() {
+        let p = {};
+        try { p = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') || {}; } catch (e) {}
+        return {
+          customTypes: Array.isArray(p.customTypes) ? p.customTypes : [],
+          lastType: p.lastType || 'general',
+          lastUnit: p.lastUnit && typeof p.lastUnit === 'object' ? p.lastUnit : {},
+          extraUnits: p.extraUnits && typeof p.extraUnits === 'object' ? p.extraUnits : {}
+        };
+      }
+      function savePrefs() {
+        try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) {}
+      }
+      let prefs = loadPrefs();
+
+      const allTypes = () => [...BUILTIN_TYPES, ...prefs.customTypes];
+      function typeById(id) {
+        return allTypes().find((t) => t.id === id) || null;
+      }
+      function unitsFor(type) {
+        const base = type ? (type.id === 'general' ? GENERAL_UNITS : type.units) : [];
+        const extra = (type && prefs.extraUnits[type.id]) || [];
+        return [...new Set([...base, ...extra])];
+      }
+      function defaultUnit(type) {
+        if (!type) return '';
+        if (Object.prototype.hasOwnProperty.call(prefs.lastUnit, type.id)) return prefs.lastUnit[type.id];
+        return type.id === 'general' ? '' : (type.units[0] || '');
+      }
+
+      /* ---------- Dates ---------- */
+
+      function todayISO(offsetDays = 0) {
+        const d = new Date();
+        d.setDate(d.getDate() + offsetDays);
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      }
+      function nowTime() {
+        const d = new Date();
+        return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      }
+      function fmtDate(iso) {
+        if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso || '';
+        const [y, m, d] = iso.split('-').map(Number);
+        return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+      function friendlyDate(iso) {
+        if (iso === todayISO()) return 'Today';
+        if (iso === todayISO(-1)) return 'Yesterday';
+        return fmtDate(iso);
+      }
+
+      /* ---------- Helpers ---------- */
+
+      function escapeHtml(str) {
+        return String(str ?? '')
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+      function newId(prefix) {
+        return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      }
+      // "Sample 1" -> "Sample 2", "S09" -> "S10"; no trailing number -> ''
+      function nextRecordName(name) {
+        const m = String(name).match(/^(.*?)(\d+)$/);
+        if (!m) return '';
+        return m[1] + String(Number(m[2]) + 1).padStart(m[2].length, '0');
+      }
+      const resultText = (i) => `${i.result}${i.unit ? ' ' + i.unit : ''}`;
+
+      /* ---------- State ---------- */
+
+      function defaultSections() {
+        return [
+          { id: 'qsec_start', name: 'Start', collapsed: false },
+          { id: 'qsec_1', name: 'First Section', collapsed: false },
+          { id: 'qsec_2', name: '2nd Section', collapsed: false }
+        ];
+      }
+      function createBlankState() {
+        return {
+          version: 3,
+          meta: { id: `New Record ${todayISO()}`, operator: '', date: todayISO() },
+          quickSections: defaultSections(),
+          quickItems: []
+        };
+      }
+      // Earlier versions opened with an example run. If a browser still has that
+      // example saved and nothing else was added, start blank instead.
+      function isUntouchedExampleRun(s) {
+        const only = (arr, ids) => (arr || []).every((x) => ids.includes(x.id));
+        return s.meta && s.meta.id === 'QV-2026-01'
+          && only(s.stocks, ['stk_1'])
+          && only(s.steps, ['stp_1', 'stp_2', 'stp_3'])
+          && only(s.quickItems, ['qi_1']);
+      }
+      // Bring saved data from any version up to the current shape.
+      function normalize(s) {
+        s.meta = Object.assign({ id: '', operator: '', date: todayISO() }, s.meta || {});
+        if (!Array.isArray(s.quickSections) || s.quickSections.length === 0) s.quickSections = defaultSections();
+        if (!Array.isArray(s.quickItems)) s.quickItems = [];
+        s.quickItems.forEach((i) => {
+          if (i.kind !== 'note') i.kind = 'result';
+          if (!i.date) i.date = s.meta.date || todayISO();
+          if (i.timestamp && /^\d{1,2}:\d{2}/.test(i.timestamp)) i.timestamp = i.timestamp.slice(0, 5);
+          ['name', 'result', 'unit', 'volume', 'dilution', 'notes', 'text', 'sectionId'].forEach((k) => { if (i[k] == null) i[k] = ''; });
+          if (!i.typeId) { i.typeId = 'general'; i.typeName = 'General'; }
+        });
+        s.version = 3;
+        return s;
+      }
+      function isValidState(p) {
+        return p && typeof p === 'object' && p.meta && (Array.isArray(p.quickItems) || Array.isArray(p.steps));
+      }
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('labquant_v1_state');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (isValidState(parsed) && !isUntouchedExampleRun(parsed)) return normalize(parsed);
+          }
+        } catch (e) {}
+        return createBlankState();
+      }
+      function saveState() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+      }
+
+      let state = loadState();
+      let entryKind = 'result';
+      let openEditor = null; // { id, mode: 'edit' | 'note' }
+      let editingSectionId = null;
+
+      function showToast(msg) {
+        $('toastText').textContent = msg;
+        $('toast').classList.remove('hidden');
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => $('toast').classList.add('hidden'), 2200);
+      }
+      function openModal(id) { $(id).classList.remove('hidden'); }
+      function closeModals() { document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); }
+
+      const sectionName = (id) => {
+        const s = state.quickSections.find((x) => x.id === id);
+        return s ? s.name : 'General';
+      };
+      const isOrphan = (i) => !i.sectionId || !state.quickSections.some((s) => s.id === i.sectionId);
+
+      function sectionOptions(selectedId) {
+        return '<option value="">General</option>' + state.quickSections.map((s) =>
+          `<option value="${escapeHtml(s.id)}" ${s.id === selectedId ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
+        ).join('');
+      }
+      function typeOptions(selectedId, withManage) {
+        const opt = (t) => `<option value="${escapeHtml(t.id)}" ${t.id === selectedId ? 'selected' : ''}>${escapeHtml(t.name)}</option>`;
+        let html = BUILTIN_TYPES.map(opt).join('');
+        if (prefs.customTypes.length) html += `<optgroup label="Your types">${prefs.customTypes.map(opt).join('')}</optgroup>`;
+        if (withManage) html += '<option value="__manage__">+ add / edit types…</option>';
+        return html;
+      }
+      function chip(item) {
+        if (!item.typeId || item.typeId === 'general') return '';
+        const t = typeById(item.typeId);
+        return `<span class="tag" style="--c:${hexOf(t)}">${escapeHtml(t ? t.name : item.typeName)}</span>`;
+      }
+
+      /* ---------- Entry form ---------- */
+
+      function renderMeta() {
+        $('runName').value = state.meta.id || '';
+        $('runOperator').value = state.meta.operator || '';
+      }
+      function renderKind() {
+        document.querySelectorAll('.kind-btn').forEach((b) => {
+          const on = b.dataset.kind === entryKind;
+          b.classList.toggle('active', on);
+          b.setAttribute('aria-selected', on);
+        });
+        $('resultFields').classList.toggle('hidden', entryKind !== 'result');
+        $('noteFields').classList.toggle('hidden', entryKind !== 'note');
+        $('btnToggleExtra').classList.toggle('invisible', entryKind !== 'result');
+        if (entryKind !== 'result') $('extraFields').classList.add('hidden');
+        $('btnSubmitEntry').textContent = entryKind === 'note' ? '↵ add note' : '↵ add result';
+      }
+      let currentSection = null; // shared by the Result and Note forms
+      function renderSectionSelects() {
+        if (currentSection === null || (currentSection !== '' && !state.quickSections.some((s) => s.id === currentSection))) {
+          currentSection = state.quickSections.length ? state.quickSections[0].id : '';
+        }
+        document.querySelectorAll('.section-select').forEach((sel) => {
+          sel.innerHTML = sectionOptions(currentSection);
+          sel.value = currentSection;
+        });
+      }
+      function renderTypeSelect() {
+        if (!typeById(prefs.lastType)) prefs.lastType = 'general';
+        $('entryType').innerHTML = typeOptions(prefs.lastType, true);
+        $('entryType').value = prefs.lastType;
+        renderUnitSelect();
+      }
+      function renderUnitSelect(selected) {
+        const type = typeById(prefs.lastType);
+        const units = unitsFor(type);
+        const want = selected !== undefined ? selected : defaultUnit(type);
+        const list = want && !units.includes(want) ? [want, ...units] : units;
+        $('entryUnit').innerHTML =
+          list.map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('') +
+          '<option value="">no unit</option><option value="__custom__">custom…</option>';
+        $('entryUnit').value = want;
+        // Numeric keypad for typed measurements; full keyboard for General.
+        $('entryResult').setAttribute('inputmode', type && type.id !== 'general' ? 'decimal' : 'text');
+        $('entryResult').placeholder = type && type.id !== 'general' ? '45.6' : '45.6 or text';
+      }
+
+      /* ---------- Log rendering ---------- */
+
+      function editorActions(id) {
+        return `
+          <div class="editor-actions">
+            <button type="button" data-act="cancel" data-id="${escapeHtml(id)}" class="btn btn-ghost">cancel</button>
+            <button type="button" data-act="save" data-id="${escapeHtml(id)}" class="btn btn-primary">save</button>
+          </div>`;
+      }
+      function renderEditor(item, mode) {
+        const wrap = (inner) => `<div class="editor fade-in" data-editor="${escapeHtml(item.id)}">${inner}${editorActions(item.id)}</div>`;
+        if (mode === 'note') {
+          return wrap(`
+            <div>
+              <label class="lbl">note for ${escapeHtml(item.name)}</label>
+              <textarea data-f="notes" rows="2" class="field" placeholder="add a note to this result">${escapeHtml(item.notes)}</textarea>
+            </div>`);
+        }
+        const common = `
+          <div class="grid-2">
+            <div><label class="lbl">section</label><select data-f="sectionId" class="field">${sectionOptions(item.sectionId)}</select></div>
+            <div><label class="lbl">date</label><input type="date" data-f="date" value="${escapeHtml(item.date)}" class="field" /></div>
+          </div>`;
+        if (item.kind === 'note') {
+          return wrap(`${common}
+            <div><label class="lbl">note</label><textarea data-f="text" rows="3" class="field">${escapeHtml(item.text)}</textarea></div>`);
+        }
+        const units = unitsFor(typeById(item.typeId));
+        const listId = 'units_' + escapeHtml(item.id);
+        return wrap(`
+          <div class="grid-2">
+            <div><label class="lbl">type</label><select data-f="typeId" class="field">${typeOptions(item.typeId, false)}</select></div>
+            <div><label class="lbl">record</label><input type="text" data-f="name" value="${escapeHtml(item.name)}" class="field" /></div>
+            <div><label class="lbl">result</label><input type="text" data-f="result" value="${escapeHtml(item.result)}" inputmode="decimal" class="field" /></div>
+            <div><label class="lbl">unit</label><input type="text" data-f="unit" value="${escapeHtml(item.unit)}" list="${listId}" class="field" placeholder="none" />
+              <datalist id="${listId}">${units.map((u) => `<option value="${escapeHtml(u)}"></option>`).join('')}</datalist></div>
+          </div>
+          ${common}
+          <div class="grid-2">
+            <div><label class="lbl">volume</label><input type="text" data-f="volume" value="${escapeHtml(item.volume)}" class="field" /></div>
+            <div><label class="lbl">dilution</label><input type="text" data-f="dilution" value="${escapeHtml(item.dilution)}" class="field" /></div>
+          </div>
+          <div><label class="lbl">note</label><textarea data-f="notes" rows="2" class="field">${escapeHtml(item.notes)}</textarea></div>`);
+      }
+
+      const isNumeric = (v) => /^[<>~≈]?\s*-?[\d.,]+(e-?\d+)?$/i.test(String(v).trim());
+
+      function renderItem(item) {
+        const id = escapeHtml(item.id);
+        const editing = openEditor && openEditor.id === item.id ? openEditor.mode : null;
+        const time = `<span class="time">${escapeHtml(item.timestamp || '--:--')}</span>`;
+        const editBtn = `<button type="button" data-act="edit" data-id="${id}" class="act">edit</button>`;
+        const delBtn = `<button type="button" data-act="delete" data-id="${id}" class="act danger">del</button>`;
+
+        if (item.kind === 'note') {
+          return `
+            <div class="entry entry-note">
+              <div class="entry-main">
+                ${time}
+                <div class="entry-body">
+                  <div class="note-label"># note</div>
+                  <p class="note-text">${escapeHtml(item.text)}</p>
+                </div>
+              </div>
+              ${editing ? renderEditor(item, 'edit') : `<div class="entry-actions">${editBtn}${delBtn}</div>`}
+            </div>`;
+        }
+
+        const details = [
+          item.volume ? `vol <b>${escapeHtml(item.volume)}</b>` : '',
+          item.dilution ? `from <b>${escapeHtml(item.dilution)}</b>` : ''
+        ].filter(Boolean).join(' · ');
+
+        return `
+          <div class="entry">
+            <div class="entry-main">
+              ${time}
+              <div class="entry-body">
+                <div class="rec-line"><span class="rec">${escapeHtml(item.name)}</span>${chip(item)}</div>
+                ${details ? `<div class="details">${details}</div>` : ''}
+              </div>
+              <div class="result ${isNumeric(item.result) ? 'num' : 'txt'}">${escapeHtml(item.result)}${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}</div>
+            </div>
+            ${item.notes && !editing ? `<div class="annot"><span class="branch">└─</span><span>${escapeHtml(item.notes)}</span></div>` : ''}
+            ${editing ? renderEditor(item, editing) : `
+              <div class="entry-actions">
+                <button type="button" data-act="note" data-id="${id}" class="act amber">${item.notes ? 'edit note' : '+ note'}</button>
+                ${editBtn}${delBtn}
+              </div>`}
+          </div>`;
+      }
+
+      function dayLabel(iso) {
+        const tag = iso === todayISO() ? 'today' : iso === todayISO(-1) ? 'yesterday' : '';
+        return tag ? `<b>${tag}</b> · ${escapeHtml(iso)}` : escapeHtml(iso);
+      }
+
+      function renderLog() {
+        const results = state.quickItems.filter((i) => i.kind === 'result').length;
+        const notes = state.quickItems.length - results;
+        $('runStats').textContent = state.quickItems.length
+          ? [`${results} ${results === 1 ? 'result' : 'results'}`, notes ? `${notes} ${notes === 1 ? 'note' : 'notes'}` : ''].filter(Boolean).join(' · ')
+          : 'no entries yet';
+        $('emptyState').classList.toggle('hidden', state.quickItems.length > 0);
+        renderSectionSelects();
+
+        const sections = [...state.quickSections];
+        if (state.quickItems.some(isOrphan)) sections.push({ id: '__general__', name: 'General', collapsed: false, isVirtual: true });
+
+        $('sectionsContainer').innerHTML = sections.map((sec) => {
+          const items = sec.isVirtual ? state.quickItems.filter(isOrphan) : state.quickItems.filter((i) => i.sectionId === sec.id);
+          // Hide empty default sections until something is logged, to keep a fresh run tidy.
+          if (!items.length && !state.quickItems.length) return '';
+          const sid = escapeHtml(sec.id);
+          let lastDate = null;
+          const body = items.length === 0
+            ? '<div class="sec-empty">// nothing logged here yet</div>'
+            : items.map((i) => {
+                const divider = i.date !== lastDate ? `<div class="day">${dayLabel(i.date)}</div>` : '';
+                lastDate = i.date;
+                return divider + renderItem(i);
+              }).join('');
+          return `
+            <section class="panel ${sec.collapsed ? 'sec-collapsed' : ''}">
+              <div class="sec-head">
+                <button type="button" ${sec.isVirtual ? 'disabled' : `data-act="collapse" data-sec="${sid}"`} class="sec-toggle" aria-expanded="${!sec.collapsed}">
+                  <span class="caret ${sec.isVirtual ? 'invisible' : ''}">${sec.collapsed ? '▸' : '▾'}</span>
+                  <span class="sec-name">${escapeHtml(sec.name)}</span>
+                  <span class="count">${items.length}</span>
+                </button>
+                ${sec.isVirtual ? '' : `
+                <div class="sec-actions">
+                  <button type="button" data-act="rename" data-sec="${sid}" class="act">rename</button>
+                  <button type="button" data-act="remove-sec" data-sec="${sid}" class="act danger">rm</button>
+                </div>`}
+              </div>
+              <div class="${sec.collapsed ? 'hidden' : ''}">${body}</div>
+            </section>`;
+        }).join('');
+      }
+
+      /* ---------- Exports ---------- */
+
+      function csvCell(v) {
+        const s = String(v ?? '');
+        return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }
+      function orderedItems() {
+        const out = [];
+        state.quickSections.forEach((sec) => out.push(...state.quickItems.filter((i) => i.sectionId === sec.id)));
+        out.push(...state.quickItems.filter(isOrphan));
+        return out;
+      }
+      function typeLabel(i) {
+        const t = typeById(i.typeId);
+        return t ? t.name : (i.typeName || 'General');
+      }
+      function buildCsv() {
+        const row = (arr) => arr.map(csvCell).join(',');
+        const lines = [
+          row(['Run', state.meta.id]),
+          row(['Operator', state.meta.operator]),
+          row(['Exported', `${todayISO()} ${nowTime()}`]),
+          '',
+          row(['#', 'Date', 'Time', 'Section', 'Entry', 'Type', 'Record', 'Result', 'Unit', 'Volume / Quantity', 'Dilution / Source', 'Note'])
+        ];
+        orderedItems().forEach((i, idx) => {
+          const isNote = i.kind === 'note';
+          lines.push(row([idx + 1, i.date, i.timestamp, sectionName(i.sectionId), isNote ? 'Note' : 'Result',
+            isNote ? '' : typeLabel(i), isNote ? '' : i.name, isNote ? '' : i.result, isNote ? '' : i.unit,
+            i.volume, i.dilution, isNote ? i.text : i.notes]));
+        });
+        return '﻿' + lines.join('\r\n');
+      }
+      function buildTextReport() {
+        const lines = [];
+        const indent = (t) => String(t).split('\n').join('\n' + ' '.repeat(10));
+        lines.push('============================================================');
+        lines.push(`LABTRACK LOG: ${state.meta.id || 'Untitled run'}`);
+        lines.push('============================================================');
+        if (state.meta.operator) lines.push(`Operator: ${state.meta.operator}`);
+        lines.push(`Exported: ${fmtDate(todayISO())} ${nowTime()}`);
+        lines.push(`Entries:  ${state.quickItems.length}`);
+        lines.push('');
+        const groups = state.quickSections.map((s) => ({ name: s.name, items: state.quickItems.filter((i) => i.sectionId === s.id) }));
+        groups.push({ name: 'General', items: state.quickItems.filter(isOrphan) });
+        groups.filter((g) => g.items.length).forEach((g) => {
+          lines.push(`--- ${g.name} ---`);
+          g.items.forEach((i) => {
+            const when = `[${i.date}${i.timestamp ? ' ' + i.timestamp : ''}]`;
+            if (i.kind === 'note') {
+              lines.push(`${when} NOTE: ${indent(i.text)}`);
+            } else {
+              const extras = [i.typeId !== 'general' ? typeLabel(i) : '', i.volume ? `Vol: ${i.volume}` : '', i.dilution ? `Dilution: ${i.dilution}` : ''].filter(Boolean).join(' | ');
+              lines.push(`${when} ${i.name} — ${resultText(i)}${extras ? ` (${extras})` : ''}`);
+              if (i.notes) lines.push(`          Note: ${indent(i.notes)}`);
+            }
+          });
+          lines.push('');
+        });
+        if (!state.quickItems.length) lines.push('(No entries)');
+        return lines.join('\n');
+      }
+      const fileBase = () => (state.meta.id || 'labtrack_run').replace(/[^a-zA-Z0-9_-]+/g, '_');
+      function downloadFile(filename, content, mimeType) {
+        const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      function copyText(text) {
+        const fallback = () => {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand('copy'); showToast('Copied to clipboard'); }
+          catch (e) { showToast('Copy failed — use Download'); }
+          document.body.removeChild(ta);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard')).catch(fallback);
+        } else fallback();
+      }
+
+      /* ---------- Types modal ---------- */
+
+      function renderTypesList() {
+        $('typesList').innerHTML = allTypes().map((t) => {
+          const units = t.id === 'general' ? 'any unit' : (t.units.length ? t.units.join(', ') : 'no unit');
+          const custom = !BUILTIN_TYPES.includes(t);
+          const hex = hexOf(t);
+          return `
+            <div class="type-row">
+              <span class="dot" style="background:${hex};color:${hex}"></span>
+              <div class="grow">
+                <div class="nm" style="color:${hex}">${escapeHtml(t.name)}</div>
+                <div class="un">${escapeHtml(units)}</div>
+              </div>
+              ${custom
+                ? `<button type="button" data-del-type="${escapeHtml(t.id)}" class="act danger" aria-label="Delete ${escapeHtml(t.name)}">del</button>`
+                : '<span class="builtin">built-in</span>'}
+            </div>`;
+        }).join('');
+      }
+      function openTypesModal() {
+        renderTypesList();
+        openModal('typesModal');
+      }
+
+      /* ---------- Events ---------- */
+
+      $('runName').addEventListener('input', (e) => { state.meta.id = e.target.value; saveState(); });
+      $('runOperator').addEventListener('input', (e) => { state.meta.operator = e.target.value; saveState(); });
+
+      document.querySelectorAll('.kind-btn').forEach((b) => b.addEventListener('click', () => {
+        entryKind = b.dataset.kind;
+        renderKind();
+        (entryKind === 'note' ? $('noteText') : $('entryName')).focus();
+      }));
+
+      $('btnToggleExtra').addEventListener('click', () => {
+        const hidden = $('extraFields').classList.toggle('hidden');
+        $('extraChevron').classList.toggle('rotate-90', !hidden);
+      });
+      document.querySelectorAll('.section-select').forEach((sel) => sel.addEventListener('change', (e) => {
+        currentSection = e.target.value;
+        document.querySelectorAll('.section-select').forEach((s) => { s.value = currentSection; });
+      }));
+
+      $('entryType').addEventListener('change', (e) => {
+        if (e.target.value === '__manage__') {
+          e.target.value = prefs.lastType;
+          openTypesModal();
+          return;
+        }
+        prefs.lastType = e.target.value;
+        savePrefs();
+        renderUnitSelect();
+        $('entryName').value ? $('entryResult').focus() : $('entryName').focus();
+      });
+      $('entryUnit').addEventListener('change', (e) => {
+        const type = typeById(prefs.lastType);
+        if (e.target.value === '__custom__') {
+          const u = (prompt('Enter a unit (e.g. ng/mL):') || '').trim();
+          if (!u) { renderUnitSelect(); return; }
+          if (!unitsFor(type).includes(u)) {
+            prefs.extraUnits[type.id] = [...(prefs.extraUnits[type.id] || []), u];
+          }
+          prefs.lastUnit[type.id] = u;
+          savePrefs();
+          renderUnitSelect(u);
+          return;
+        }
+        prefs.lastUnit[type.id] = e.target.value;
+        savePrefs();
+      });
+      $('entryName').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); $('entryResult').focus(); }
+      });
+
+      $('entryForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const base = {
+          id: newId('qi_'),
+          sectionId: currentSection || '',
+          date: $('entryDate').value || todayISO(),
+          timestamp: nowTime(),
+          typeId: 'general', typeName: 'General',
+          name: '', result: '', unit: '', volume: '', dilution: '', notes: '', text: ''
+        };
+        if (entryKind === 'note') {
+          const text = $('noteText').value.trim();
+          if (!text) { $('noteText').focus(); showToast('Write a note first'); return; }
+          state.quickItems.push(Object.assign(base, { kind: 'note', text }));
+          $('noteText').value = '';
+          $('noteText').focus();
+          showToast('Note added');
+        } else {
+          const name = $('entryName').value.trim();
+          const result = $('entryResult').value.trim();
+          if (!name) { $('entryName').focus(); showToast('Enter a record name'); return; }
+          if (!result) { $('entryResult').focus(); showToast('Enter a result'); return; }
+          const type = typeById(prefs.lastType) || BUILTIN_TYPES[0];
+          const unit = $('entryUnit').value === '__custom__' ? '' : $('entryUnit').value;
+          state.quickItems.push(Object.assign(base, {
+            kind: 'result', typeId: type.id, typeName: type.name, name, result, unit,
+            volume: $('entryVolume').value.trim(),
+            dilution: $('entryDilution').value.trim(),
+            notes: $('entryNote').value.trim()
+          }));
+          ['entryResult', 'entryVolume', 'entryDilution', 'entryNote'].forEach((id) => { $(id).value = ''; });
+          // Get the next record ready: "Sample 1" -> "Sample 2", cursor straight to Result.
+          const next = nextRecordName(name);
+          $('entryName').value = next;
+          (next ? $('entryResult') : $('entryName')).focus();
+          showToast(`Logged ${name}: ${result}${unit ? ' ' + unit : ''}`);
+        }
+        saveState();
+        renderLog();
+      });
+
+      $('sectionsContainer').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        const act = btn.dataset.act;
+        const item = btn.dataset.id ? state.quickItems.find((i) => i.id === btn.dataset.id) : null;
+        const sec = btn.dataset.sec ? state.quickSections.find((s) => s.id === btn.dataset.sec) : null;
+
+        if (act === 'collapse' && sec) {
+          sec.collapsed = !sec.collapsed;
+        } else if (act === 'rename' && sec) {
+          openSectionModal(sec);
+          return;
+        } else if (act === 'remove-sec' && sec) {
+          const n = state.quickItems.filter((i) => i.sectionId === sec.id).length;
+          if (!confirm(`Remove section "${sec.name}"?${n ? ` Its ${n} ${n === 1 ? 'entry' : 'entries'} will move to General.` : ''}`)) return;
+          state.quickSections = state.quickSections.filter((s) => s.id !== sec.id);
+          state.quickItems.forEach((i) => { if (i.sectionId === sec.id) i.sectionId = ''; });
+          showToast('Section removed');
+        } else if ((act === 'edit' || act === 'note') && item) {
+          openEditor = { id: item.id, mode: act };
+          renderLog();
+          const ed = document.querySelector(`[data-editor="${CSS.escape(item.id)}"] ${act === 'note' ? '[data-f="notes"]' : (item.kind === 'note' ? 'textarea' : '[data-f="result"]')}`);
+          if (ed) { ed.focus(); if (ed.setSelectionRange) ed.setSelectionRange(ed.value.length, ed.value.length); }
+          return;
+        } else if (act === 'cancel') {
+          openEditor = null;
+          renderLog();
+          return;
+        } else if (act === 'save' && item) {
+          const ed = document.querySelector(`[data-editor="${CSS.escape(item.id)}"]`);
+          ed.querySelectorAll('[data-f]').forEach((f) => {
+            const k = f.dataset.f;
+            const v = k === 'sectionId' ? f.value : f.value.trim();
+            if ((k === 'name' || k === 'result' || k === 'text' || k === 'date') && !v) return; // keep required fields
+            item[k] = v;
+          });
+          const t = typeById(item.typeId);
+          if (t) item.typeName = t.name;
+          openEditor = null;
+          showToast('Saved');
+        } else if (act === 'delete' && item) {
+          const label = item.kind === 'note' ? 'this note' : `"${item.name}"`;
+          if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+          state.quickItems = state.quickItems.filter((i) => i.id !== item.id);
+          if (openEditor && openEditor.id === item.id) openEditor = null;
+          showToast('Entry deleted');
+        } else return;
+        saveState();
+        renderLog();
+      });
+
+      // Types modal
+      $('typeForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = $('typeName').value.trim();
+        if (!name) { $('typeName').focus(); return; }
+        if (allTypes().some((t) => t.name.toLowerCase() === name.toLowerCase())) { showToast('That type already exists'); return; }
+        const units = [...new Set($('typeUnits').value.split(',').map((u) => u.trim()).filter(Boolean))];
+        const t = { id: newId('type_'), name, units, color: CUSTOM_COLORS[prefs.customTypes.length % CUSTOM_COLORS.length] };
+        prefs.customTypes.push(t);
+        prefs.lastType = t.id;
+        savePrefs();
+        $('typeName').value = '';
+        $('typeUnits').value = '';
+        renderTypeSelect();
+        closeModals();
+        $('entryName').focus();
+        showToast(`Added type "${name}"`);
+      });
+      $('typesList').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-del-type]');
+        if (!btn) return;
+        const t = typeById(btn.dataset.delType);
+        if (!t || !confirm(`Delete type "${t.name}"? Entries already logged keep their label.`)) return;
+        prefs.customTypes = prefs.customTypes.filter((x) => x.id !== t.id);
+        delete prefs.lastUnit[t.id];
+        delete prefs.extraUnits[t.id];
+        if (prefs.lastType === t.id) prefs.lastType = 'general';
+        savePrefs();
+        renderTypesList();
+        renderTypeSelect();
+        renderLog();
+      });
+
+      // Sections modal
+      function openSectionModal(sec) {
+        editingSectionId = sec ? sec.id : null;
+        $('sectionModalTitle').textContent = sec ? 'rename section' : 'add section';
+        $('sectionNameInput').value = sec ? sec.name : '';
+        openModal('sectionModal');
+        $('sectionNameInput').focus();
+      }
+      $('btnAddSection').addEventListener('click', () => openSectionModal(null));
+      $('sectionModalForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = $('sectionNameInput').value.trim();
+        if (!name) return;
+        if (editingSectionId) {
+          const sec = state.quickSections.find((s) => s.id === editingSectionId);
+          if (sec) sec.name = name;
+          showToast('Section renamed');
+        } else {
+          const id = newId('qsec_');
+          state.quickSections.push({ id, name, collapsed: false });
+          currentSection = id;
+          showToast(`Added section "${name}"`);
+        }
+        closeModals();
+        saveState();
+        renderLog();
+      });
+
+      // Modals: close buttons, backdrop tap, Escape
+      document.querySelectorAll('.modal').forEach((m) => {
+        m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('[data-close]')) closeModals(); });
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModals(); });
+
+      $('btnOpenExport').addEventListener('click', () => openModal('exportModal'));
+      $('btnNewRun').addEventListener('click', () => openModal('newRunModal'));
+      function startNewRun() {
+        state = createBlankState();
+        openEditor = null;
+        currentSection = null;
+        $('entryName').value = '';
+        saveState();
+        renderAll();
+        closeModals();
+        showToast('Started a new run');
+      }
+      $('btnConfirmBlank').addEventListener('click', startNewRun);
+
+      // Shared-device safeguard: when the app opens (or is come back to after a
+      // while) with a run already in it, ask whether to continue it or start fresh.
+      function showWelcomeIfNeeded() {
+        if (!state.quickItems.length) return;
+        if (document.querySelector('.modal:not(.hidden)')) return;
+        const last = state.quickItems[state.quickItems.length - 1];
+        const results = state.quickItems.filter((i) => i.kind === 'result').length;
+        const notes = state.quickItems.length - results;
+        $('welcomeRunName').textContent = state.meta.id || 'Untitled run';
+        $('welcomeRunInfo').textContent = [
+          `${results} ${results === 1 ? 'result' : 'results'}`,
+          notes ? `${notes} ${notes === 1 ? 'note' : 'notes'}` : '',
+          state.meta.operator ? `by ${state.meta.operator}` : '',
+          `last entry ${friendlyDate(last.date).replace(/^(Today|Yesterday)$/, (d) => d.toLowerCase())}${last.timestamp ? ' at ' + last.timestamp : ''}`
+        ].filter(Boolean).join(' · ');
+        openModal('welcomeModal');
+      }
+      $('btnWelcomeContinue').addEventListener('click', closeModals);
+      $('btnWelcomeNew').addEventListener('click', () => {
+        if (!confirm(`Clear "${state.meta.id || 'Untitled run'}" from this device and start a new run?\n\nChoose Cancel and "Export this run first" if it still needs saving.`)) return;
+        startNewRun();
+      });
+      $('btnWelcomeExport').addEventListener('click', () => { closeModals(); openModal('exportModal'); });
+
+      $('btnDownloadCsv').addEventListener('click', () => {
+        downloadFile(`${fileBase()}.csv`, buildCsv(), 'text/csv;charset=utf-8');
+        closeModals();
+        showToast('Downloaded spreadsheet');
+      });
+      $('btnDownloadTxt').addEventListener('click', () => {
+        downloadFile(`${fileBase()}_report.txt`, buildTextReport(), 'text/plain;charset=utf-8');
+        closeModals();
+        showToast('Downloaded text report');
+      });
+      $('btnCopyTxt').addEventListener('click', () => {
+        copyText(buildTextReport());
+        closeModals();
+      });
+      $('btnDownloadJson').addEventListener('click', () => {
+        const backup = Object.assign({}, state, { recordTypes: prefs.customTypes });
+        downloadFile(`${fileBase()}_backup.json`, JSON.stringify(backup, null, 2), 'application/json');
+        closeModals();
+        showToast('Saved backup');
+      });
+      /* ---------- Continue a previous run (CSV / TXT / JSON) ---------- */
+
+      function parseCsv(text) {
+        const rows = [];
+        let row = [], cell = '', q = false;
+        for (let i = 0; i < text.length; i++) {
+          const c = text[i];
+          if (q) {
+            if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+            else cell += c;
+          } else if (c === '"') q = true;
+          else if (c === ',') { row.push(cell); cell = ''; }
+          else if (c === '\n' || c === '\r') {
+            if (c === '\r' && text[i + 1] === '\n') i++;
+            row.push(cell); rows.push(row); row = []; cell = '';
+          } else cell += c;
+        }
+        if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+        return rows;
+      }
+
+      // Builds a run from plain entry objects: { kind, date, time, section, typeName, name, result, unit, volume, dilution, note }
+      function buildRun(meta, entries) {
+        const run = createBlankState();
+        run.meta.id = meta.id || run.meta.id;
+        run.meta.operator = meta.operator || '';
+        run.meta.date = (entries[0] && entries[0].date) || todayISO();
+        run.quickSections = [];
+        const secId = (name) => {
+          if (!name || name.toLowerCase() === 'general') return '';
+          let sec = run.quickSections.find((s) => s.name.toLowerCase() === name.toLowerCase());
+          if (!sec) { sec = { id: newId('qsec_'), name, collapsed: false }; run.quickSections.push(sec); }
+          return sec.id;
+        };
+        let createdTypes = 0;
+        const typeFor = (name, unit) => {
+          if (!name || name.toLowerCase() === 'general') return BUILTIN_TYPES[0];
+          let t = allTypes().find((x) => x.name.toLowerCase() === name.toLowerCase());
+          if (!t) {
+            t = { id: newId('type_'), name, units: [], color: CUSTOM_COLORS[prefs.customTypes.length % CUSTOM_COLORS.length] };
+            prefs.customTypes.push(t);
+            createdTypes++;
+          }
+          if (unit && t.id !== 'general' && !BUILTIN_TYPES.includes(t) && !t.units.includes(unit)) t.units.push(unit);
+          return t;
+        };
+        entries.forEach((e) => {
+          const base = {
+            id: newId('qi_'), sectionId: secId(e.section), date: e.date || run.meta.date, timestamp: e.time || '',
+            typeId: 'general', typeName: 'General', name: '', result: '', unit: '',
+            volume: e.volume || '', dilution: e.dilution || '', notes: '', text: ''
+          };
+          if (e.kind === 'note') {
+            run.quickItems.push(Object.assign(base, { kind: 'note', text: e.note || '' }));
+          } else {
+            const t = typeFor(e.typeName, e.unit);
+            run.quickItems.push(Object.assign(base, {
+              kind: 'result', typeId: t.id, typeName: t.name, name: e.name || '', result: e.result || '', unit: e.unit || '', notes: e.note || ''
+            }));
+          }
+        });
+        if (!run.quickSections.length) run.quickSections = defaultSections();
+        if (createdTypes) savePrefs();
+        return run;
+      }
+
+      function runFromCsv(text) {
+        const rows = parseCsv(text.replace(/^﻿/, ''));
+        const meta = {};
+        const hIdx = rows.findIndex((r) => r[0] === '#' && r.includes('Date'));
+        if (hIdx === -1) throw new Error('csv');
+        rows.slice(0, hIdx).forEach((r) => {
+          if (r[0] === 'Run') meta.id = r[1];
+          if (r[0] === 'Operator') meta.operator = r[1];
+        });
+        const h = rows[hIdx];
+        const col = (...names) => { for (const n of names) { const i = h.indexOf(n); if (i !== -1) return i; } return -1; };
+        const hasEntry = col('Entry') !== -1; // v2.1+ has Entry (Result/Note) and Type (record type)
+        const c = {
+          date: col('Date'), time: col('Time'), section: col('Section'),
+          kind: hasEntry ? col('Entry') : col('Type'), type: hasEntry ? col('Type') : -1,
+          name: col('Record', 'Name / Tube'), result: col('Result'), unit: col('Unit'),
+          volume: col('Volume / Quantity'), dilution: col('Dilution / Source'), note: col('Note')
+        };
+        const get = (r, i) => (i >= 0 && r[i] !== undefined ? r[i] : '');
+        const entries = rows.slice(hIdx + 1).filter((r) => r.some((x) => x !== '')).map((r) => ({
+          kind: get(r, c.kind).toLowerCase() === 'note' ? 'note' : 'result',
+          date: get(r, c.date), time: get(r, c.time), section: get(r, c.section), typeName: get(r, c.type),
+          name: get(r, c.name), result: get(r, c.result), unit: get(r, c.unit),
+          volume: get(r, c.volume), dilution: get(r, c.dilution), note: get(r, c.note)
+        }));
+        return buildRun(meta, entries);
+      }
+
+      function splitResultUnit(text, typeName) {
+        const t = typeName ? allTypes().find((x) => x.name.toLowerCase() === typeName.toLowerCase()) : null;
+        const candidates = [...new Set([...(t ? unitsFor(t) : []), ...allTypes().flatMap((x) => unitsFor(x))])]
+          .sort((a, b) => b.length - a.length);
+        for (const u of candidates) {
+          if (text.endsWith(' ' + u)) return { result: text.slice(0, -u.length - 1), unit: u };
+        }
+        return { result: text, unit: '' };
+      }
+
+      function runFromText(text) {
+        const lines = text.replace(/\r\n?/g, '\n').split('\n');
+        if (!lines.some((l) => l.startsWith('LABTRACK LOG:'))) throw new Error('txt');
+        const meta = {};
+        const entries = [];
+        let section = 'General';
+        let last = null, lastField = null;
+        lines.forEach((line) => {
+          let m;
+          if ((m = line.match(/^LABTRACK LOG: (.*)$/))) { meta.id = m[1] === 'Untitled run' ? '' : m[1]; return; }
+          if ((m = line.match(/^Operator: (.*)$/))) { meta.operator = m[1]; return; }
+          if ((m = line.match(/^--- (.*) ---$/))) { section = m[1]; last = null; return; }
+          if ((m = line.match(/^\[(\d{4}-\d{2}-\d{2})(?: (\d{1,2}:\d{2}))?\] (.*)$/))) {
+            const rest = m[3];
+            if (rest.startsWith('NOTE: ')) {
+              last = { kind: 'note', date: m[1], time: m[2] || '', section, note: rest.slice(6) };
+              lastField = 'note';
+            } else {
+              const sep = rest.indexOf(' — ');
+              let name = sep === -1 ? rest : rest.slice(0, sep);
+              let res = sep === -1 ? '' : rest.slice(sep + 3);
+              let typeName = '', volume = '', dilution = '';
+              const ex = res.match(/^(.*) \(([^()]*)\)$/);
+              if (ex) {
+                const parts = ex[2].split(' | ');
+                const ok = parts.every((p) => p.startsWith('Vol: ') || p.startsWith('Dilution: ') || (parts.indexOf(p) === 0 && allTypes().some((t) => t.name === p)));
+                if (ok) {
+                  res = ex[1];
+                  parts.forEach((p) => {
+                    if (p.startsWith('Vol: ')) volume = p.slice(5);
+                    else if (p.startsWith('Dilution: ')) dilution = p.slice(10);
+                    else typeName = p;
+                  });
+                }
+              }
+              const ru = splitResultUnit(res, typeName);
+              last = { kind: 'result', date: m[1], time: m[2] || '', section, typeName, name, result: ru.result, unit: ru.unit, volume, dilution, note: '' };
+              lastField = null;
+            }
+            entries.push(last);
+            return;
+          }
+          if (last && (m = line.match(/^ {10}Note: (.*)$/))) { last.note = m[1]; lastField = 'note'; return; }
+          if (last && lastField === 'note' && line.startsWith(' '.repeat(10))) { last.note += '\n' + line.slice(10); }
+        });
+        return buildRun(meta, entries);
+      }
+
+      function runFromJson(text) {
+        const parsed = JSON.parse(text);
+        if (!isValidState(parsed)) throw new Error('json');
+        if (Array.isArray(parsed.recordTypes)) {
+          parsed.recordTypes.forEach((t) => {
+            if (t && t.id && t.name && !typeById(t.id)) prefs.customTypes.push({ id: t.id, name: t.name, units: Array.isArray(t.units) ? t.units : [], color: t.color || 'indigo' });
+          });
+          savePrefs();
+        }
+        delete parsed.recordTypes;
+        return normalize(parsed);
+      }
+
+      function continueFromFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const text = String(ev.target.result || '');
+          let run;
+          try {
+            const name = file.name.toLowerCase();
+            if (name.endsWith('.json') || text.trim().startsWith('{')) run = runFromJson(text);
+            else if (text.includes('LABTRACK LOG:')) run = runFromText(text);
+            else run = runFromCsv(text);
+          } catch (err) {
+            showToast('That isn’t a LabTrack export file');
+            return;
+          }
+          if (state.quickItems.length && !confirm(`Replace the current run "${state.meta.id || 'Untitled run'}" (${state.quickItems.length} entries) with "${run.meta.id || 'Untitled run'}"?\n\nExport the current run first if you still need it.`)) return;
+          state = run;
+          openEditor = null;
+          currentSection = null;
+          // Continue in the section used last, and get the next record name ready.
+          const lastItem = [...state.quickItems].reverse().find((i) => i.kind === 'result');
+          const lastAny = state.quickItems[state.quickItems.length - 1];
+          if (lastAny) currentSection = lastAny.sectionId || '';
+          if (lastItem) {
+            if (typeById(lastItem.typeId)) { prefs.lastType = lastItem.typeId; if (lastItem.unit) prefs.lastUnit[lastItem.typeId] = lastItem.unit; savePrefs(); }
+            $('entryName').value = nextRecordName(lastItem.name);
+          }
+          entryKind = 'result';
+          saveState();
+          renderAll();
+          closeModals();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          showToast(`Continuing "${state.meta.id || 'Untitled run'}": ${state.quickItems.length} entries loaded`);
+        };
+        reader.readAsText(file);
+      }
+
+      document.querySelectorAll('[data-continue]').forEach((b) => b.addEventListener('click', () => $('inputContinue').click()));
+      $('inputContinue').addEventListener('change', (e) => { continueFromFile(e.target.files[0]); e.target.value = ''; });
+      $('inputImportJson').addEventListener('change', (e) => { continueFromFile(e.target.files[0]); e.target.value = ''; });
+
+      function renderAll() {
+        renderMeta();
+        renderKind();
+        renderTypeSelect();
+        renderLog();
+      }
+
+      // Date defaults to today; if the app is left open past midnight, roll it
+      // forward unless the user picked a date themselves.
+      $('entryDate').value = todayISO();
+      $('entryDate').addEventListener('change', (e) => {
+        if (!e.target.value) e.target.value = todayISO();
+        e.target.dataset.touched = e.target.value !== todayISO() ? '1' : '';
+      });
+      // Shared-device safeguard timing: only ask after the app has been idle for
+      // 30+ minutes (closed, in the background, or untouched) — never on a quick reload.
+      const ACTIVE_KEY = 'labtrack_last_active';
+      const AWAY_MS = 30 * 60 * 1000;
+      const readActive = () => { try { return Number(localStorage.getItem(ACTIVE_KEY)) || 0; } catch (e) { return 0; } };
+      const markActive = () => { try { localStorage.setItem(ACTIVE_KEY, String(Date.now())); } catch (e) {} };
+      const awayTooLong = () => { const t = readActive(); return t > 0 && Date.now() - t > AWAY_MS; };
+      let lastMark = 0;
+      ['pointerdown', 'keydown', 'input'].forEach((ev) => document.addEventListener(ev, () => {
+        if (Date.now() - lastMark > 15000) { lastMark = Date.now(); markActive(); }
+      }, { passive: true }));
+      window.addEventListener('pagehide', markActive);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) { markActive(); return; }
+        if (awayTooLong()) showWelcomeIfNeeded();
+        markActive();
+        if (!$('entryDate').dataset.touched) $('entryDate').value = todayISO();
+        renderLog(); // refresh "Today"/"Yesterday" labels
+      });
+
+      renderAll();
+      saveState();
+      if (awayTooLong()) showWelcomeIfNeeded();
+      markActive();
+
+      if ('serviceWorker' in navigator && location.protocol === 'https:') {
+        window.addEventListener('load', () => navigator.serviceWorker.register('../sw.js').catch(() => {}));
+      }
+    })();
+  </script>
+</body>
+</html>
