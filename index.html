@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <title>LabTrack — Quick Lab Log</title>
-  <meta name="description" content="LabTrack — a free, offline-friendly lab notebook for logging Qubit readings and bench results with dates and notes, with CSV and text export." />
+  <meta name="description" content="LabTrack — a free, offline-friendly lab notebook for logging Qubit readings and bench results with dates, units and notes, with CSV and text export." />
   <meta name="theme-color" content="#0284c7" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -18,7 +18,7 @@
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <script>
     tailwind.config = {
       theme: {
@@ -32,6 +32,7 @@
               50: '#f0f7ff',
               100: '#e0effe',
               200: '#bae0fd',
+              300: '#7cc8fb',
               500: '#0ea5e9',
               600: '#0284c7',
               700: '#0369a1',
@@ -47,160 +48,254 @@
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       -webkit-tap-highlight-color: transparent;
+      background:
+        radial-gradient(1200px 400px at 50% -120px, rgba(14, 165, 233, 0.10), transparent 70%),
+        #f6f8fb;
     }
-    .font-mono-num {
-      font-family: 'JetBrains Mono', ui-monospace, monospace;
-      font-variant-numeric: tabular-nums;
+    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+    .card {
+      background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.07);
+      border-radius: 1rem;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px -8px rgba(15, 23, 42, 0.08);
     }
     .field {
       width: 100%;
       padding: 0.625rem 0.75rem;
       font-size: 1rem;
-      border: 1px solid #cbd5e1;
-      border-radius: 0.5rem;
+      line-height: 1.4;
+      border: 1px solid #d5dde7;
+      border-radius: 0.625rem;
       background: #fff;
+      color: #0f172a;
       outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      -webkit-appearance: none;
+      appearance: none;
     }
+    select.field {
+      padding-right: 2rem;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.55rem center;
+      background-size: 1.1rem;
+    }
+    input[type="date"].field { min-height: 2.75rem; }
     @media (min-width: 640px) { .field { font-size: 0.875rem; } }
-    .field:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2); }
-    .lbl { display: block; font-size: 0.75rem; font-weight: 500; color: #475569; margin-bottom: 0.25rem; }
+    .field:focus, .field-group:focus-within { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.18); }
+    .field-group { display: flex; border: 1px solid #d5dde7; border-radius: 0.625rem; background: #fff; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
+    .field-group .field { border: 0; border-radius: 0; box-shadow: none; }
+    .field-group select.field { width: auto; max-width: 48%; flex-shrink: 0; background-color: #f1f5f9; border-left: 1px solid #e2e8f0; font-weight: 600; color: #334155; }
+    .lbl { display: block; font-size: 0.72rem; font-weight: 600; color: #64748b; margin-bottom: 0.3rem; letter-spacing: 0.01em; }
+    .icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; min-width: 2.25rem; height: 2.25rem; padding: 0 0.5rem; border-radius: 0.6rem; color: #64748b; font-size: 0.75rem; font-weight: 600; transition: background .15s, color .15s; }
+    .icon-btn:hover { background: #f1f5f9; color: #0f172a; }
+    .icon-btn.danger:hover { background: #fff1f2; color: #e11d48; }
+    .fade-in { animation: fadeIn .25s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
     @media print {
       .no-print { display: none !important; }
       body { background: #fff !important; }
     }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+<body class="text-slate-900 min-h-screen flex flex-col">
 
   <!-- Header -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 no-print">
+  <header class="sticky top-0 z-30 no-print bg-white/75 backdrop-blur-md border-b border-slate-200/70">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2.5 min-w-0">
-        <div class="w-8 h-8 rounded-lg bg-lab-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-lab-500 to-lab-700 text-white flex items-center justify-center shrink-0 shadow-sm shadow-lab-600/30">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 3h6m-5 0v5.5L5.2 17.4A2 2 0 007 20h10a2 2 0 001.8-2.6L14 8.5V3" />
           </svg>
         </div>
-        <div class="min-w-0">
-          <h1 class="text-base font-bold text-slate-900 leading-tight">LabTrack</h1>
-          <p class="text-[11px] text-slate-500 truncate hidden sm:block">Quick lab results log</p>
-        </div>
-        <span id="entryCountBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">0 entries</span>
+        <span class="text-[15px] font-extrabold tracking-tight text-slate-900">LabTrack</span>
       </div>
       <div class="flex items-center gap-2 shrink-0">
-        <button id="btnNewRun" type="button" title="Start a new run" class="px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 active:bg-slate-100 transition min-h-[38px]">
-          New<span class="hidden sm:inline"> Run</span>
+        <button type="button" data-continue title="Continue a previous run from its export file" aria-label="Continue a previous run" class="h-9 px-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 active:bg-slate-100 transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M17 8l-5-5-5 5M12 3v12" /></svg>
+          <span class="sm:hidden">Open</span><span class="hidden sm:inline">Continue run</span>
         </button>
-        <button id="btnOpenExport" type="button" title="Export results" aria-label="Export results" class="px-3 py-2 text-xs font-semibold text-white bg-lab-600 rounded-lg hover:bg-lab-700 active:bg-lab-800 transition shadow-sm flex items-center gap-1.5 min-h-[38px]">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" />
-          </svg>
-          <span class="hidden sm:inline">Export</span>
+        <button id="btnNewRun" type="button" title="Start a new run" class="h-9 px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 active:bg-slate-100 transition flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+          New<span class="hidden sm:inline"> run</span>
         </button>
+        <button id="btnOpenExport" type="button" title="Export results" class="h-9 px-3 text-xs font-semibold text-white bg-lab-600 rounded-xl hover:bg-lab-700 active:bg-lab-800 transition shadow-sm shadow-lab-600/30 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" /></svg>
+          <span class="hidden min-[400px]:inline">Export</span>
+        </button>
+        <input id="inputContinue" type="file" accept=".csv,.txt,.json,text/csv,text/plain,application/json" class="hidden" />
       </div>
     </div>
   </header>
 
-  <main class="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4">
+  <main class="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 pt-5 pb-8 space-y-4">
 
-    <!-- Run details -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div>
-        <label for="runName" class="lbl">Run name</label>
-        <input id="runName" type="text" class="field" placeholder="e.g. Qubit check 23 Nov" />
-      </div>
-      <div>
-        <label for="runOperator" class="lbl">Operator (optional)</label>
-        <input id="runOperator" type="text" class="field" placeholder="Your name or initials" />
+    <!-- Run title -->
+    <div class="px-1">
+      <label for="runName" class="sr-only">Run name</label>
+      <input id="runName" type="text" class="w-full bg-transparent text-2xl sm:text-[28px] font-extrabold tracking-tight text-slate-900 placeholder-slate-300 outline-none rounded-lg -mx-1 px-1 focus:bg-white focus:ring-2 focus:ring-lab-200" placeholder="Untitled run" />
+      <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+        <span id="runStats">No entries yet</span>
+        <span class="text-slate-300">•</span>
+        <label class="flex items-center gap-1">
+          <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+          <span class="sr-only">Operator</span>
+          <input id="runOperator" type="text" class="bg-transparent outline-none w-36 placeholder-slate-400 focus:text-slate-800" placeholder="Add operator" />
+        </label>
       </div>
     </div>
 
     <!-- Entry form -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center bg-slate-200/70 p-1 rounded-lg" role="tablist" aria-label="Entry type">
-          <button type="button" data-kind="result" class="kind-btn px-3.5 py-1.5 text-xs font-semibold rounded-md transition">Result</button>
-          <button type="button" data-kind="note" class="kind-btn px-3.5 py-1.5 text-xs font-semibold rounded-md transition">Note</button>
+    <div class="card overflow-hidden">
+      <div class="p-3 border-b border-slate-100">
+        <div class="grid grid-cols-2 bg-slate-100 p-1 rounded-xl" role="tablist" aria-label="Entry type">
+          <button type="button" data-kind="result" class="kind-btn py-2 text-sm font-semibold rounded-lg transition flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3h6m-5 0v5.5L5.2 17.4A2 2 0 007 20h10a2 2 0 001.8-2.6L14 8.5V3" /></svg>
+            Result
+          </button>
+          <button type="button" data-kind="note" class="kind-btn py-2 text-sm font-semibold rounded-lg transition flex items-center justify-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5M5 4h14a1 1 0 011 1v11l-4 4H5a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>
+            Note
+          </button>
         </div>
-        <button id="btnAddSection" type="button" class="px-3 py-1.5 text-xs font-semibold text-lab-700 bg-lab-50 border border-lab-200 rounded-lg hover:bg-lab-100 transition flex items-center gap-1">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-          Add Section
-        </button>
       </div>
 
-      <form id="entryForm" class="p-4 space-y-3" novalidate>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label for="entrySection" class="lbl">Section</label>
-            <select id="entrySection" class="field"></select>
-          </div>
-          <div>
-            <label for="entryDate" class="lbl">Date</label>
-            <input id="entryDate" type="date" class="field" />
-          </div>
-        </div>
-
+      <form id="entryForm" class="p-4 space-y-3.5" novalidate autocomplete="off">
         <!-- Result fields -->
-        <div id="resultFields" class="space-y-3">
+        <div id="resultFields" class="space-y-3.5">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="entryType" class="lbl">Type</label>
+              <select id="entryType" class="field"></select>
+            </div>
+            <div>
+              <label for="entrySection" class="lbl">Section</label>
+              <select id="entrySection" class="field section-select"></select>
+            </div>
+          </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label for="entryName" class="lbl">Name / Tube *</label>
-              <input id="entryName" type="text" class="field font-mono-num" placeholder="e.g. Tube 1" autocomplete="off" />
+              <label for="entryName" class="lbl">Record *</label>
+              <input id="entryName" type="text" enterkeyhint="next" class="field mono" placeholder="e.g. Sample 1" />
             </div>
             <div>
               <label for="entryResult" class="lbl">Result *</label>
-              <input id="entryResult" type="text" class="field font-mono-num" placeholder="e.g. 45.6 ng/µL" autocomplete="off" />
-            </div>
-          </div>
-          <div>
-            <button id="btnToggleExtra" type="button" class="text-xs font-medium text-lab-600 hover:text-lab-800 flex items-center gap-1">
-              <svg id="extraChevron" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-              <span>More details (volume, dilution, note)</span>
-            </button>
-            <div id="extraFields" class="hidden mt-3 pt-3 border-t border-slate-100 space-y-3">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label for="entryVolume" class="lbl">Volume / Quantity</label>
-                  <input id="entryVolume" type="text" class="field font-mono-num" placeholder="e.g. 20 µL" />
-                </div>
-                <div>
-                  <label for="entryDilution" class="lbl">Dilution / Source</label>
-                  <input id="entryDilution" type="text" class="field" placeholder="e.g. 1:2 from Stock A" />
-                </div>
-              </div>
-              <div>
-                <label for="entryNote" class="lbl">Note</label>
-                <textarea id="entryNote" rows="2" class="field" placeholder="Anything worth remembering about this result"></textarea>
+              <div class="field-group">
+                <input id="entryResult" type="text" enterkeyhint="done" class="field mono min-w-0 flex-1" placeholder="e.g. 45.6" />
+                <select id="entryUnit" class="field" aria-label="Unit"></select>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Note fields -->
-        <div id="noteFields" class="hidden">
-          <label for="noteText" class="lbl">Note *</label>
-          <textarea id="noteText" rows="3" class="field" placeholder="e.g. Recalibrated Qubit with fresh standards; switched to new TE batch"></textarea>
+        <div id="noteFields" class="hidden space-y-3.5">
+          <div>
+            <label for="noteSection" class="lbl">Section</label>
+            <select id="noteSection" class="field section-select"></select>
+          </div>
+          <div>
+            <label for="noteText" class="lbl">Note *</label>
+            <textarea id="noteText" rows="3" class="field" placeholder="e.g. Recalibrated Qubit with fresh standards"></textarea>
+          </div>
         </div>
 
-        <button id="btnSubmitEntry" type="submit" class="w-full py-3 px-4 text-sm font-semibold text-white bg-lab-600 rounded-lg hover:bg-lab-700 active:bg-lab-800 transition shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <label class="flex items-center gap-1.5 text-xs text-slate-500">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            <span class="sr-only">Date</span>
+            <input id="entryDate" type="date" class="bg-transparent text-xs font-semibold text-slate-700 outline-none rounded px-1 py-1 hover:bg-slate-100 focus:bg-slate-100" />
+          </label>
+          <button id="btnToggleExtra" type="button" class="text-xs font-semibold text-lab-600 hover:text-lab-800 flex items-center gap-1 py-1">
+            <svg id="extraChevron" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+            Volume, dilution &amp; note
+          </button>
+        </div>
+
+        <div id="extraFields" class="hidden space-y-3 fade-in">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="entryVolume" class="lbl">Volume / Quantity</label>
+              <input id="entryVolume" type="text" class="field mono" placeholder="e.g. 20 µL" />
+            </div>
+            <div>
+              <label for="entryDilution" class="lbl">Dilution / Source</label>
+              <input id="entryDilution" type="text" class="field" placeholder="e.g. 1:2" />
+            </div>
+          </div>
+          <div>
+            <label for="entryNote" class="lbl">Note</label>
+            <textarea id="entryNote" rows="2" class="field" placeholder="Anything worth remembering about this result"></textarea>
+          </div>
+        </div>
+
+        <button id="btnSubmitEntry" type="submit" class="w-full h-12 px-4 text-[15px] font-semibold text-white bg-lab-600 rounded-xl hover:bg-lab-700 active:scale-[.99] active:bg-lab-800 transition shadow-sm shadow-lab-600/30">
           Add Result
         </button>
       </form>
     </div>
 
     <!-- Log -->
+    <div class="flex items-center justify-between px-1 pt-2">
+      <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Log</h2>
+      <button id="btnAddSection" type="button" class="text-xs font-semibold text-lab-700 hover:text-lab-900 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-lab-50">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+        Section
+      </button>
+    </div>
+    <div id="emptyState" class="hidden card px-6 py-10 text-center">
+      <div class="mx-auto w-12 h-12 rounded-2xl bg-lab-50 text-lab-600 flex items-center justify-center">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3h6m-5 0v5.5L5.2 17.4A2 2 0 007 20h10a2 2 0 001.8-2.6L14 8.5V3" /></svg>
+      </div>
+      <p class="mt-3 text-sm font-semibold text-slate-800">Nothing logged yet</p>
+      <p class="mt-1 text-xs text-slate-500">Pick a type, enter a record and result above, and tap <strong>Add Result</strong>.</p>
+      <button type="button" data-continue class="mt-4 inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-lab-700 bg-lab-50 ring-1 ring-lab-200 rounded-xl hover:bg-lab-100">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M17 8l-5-5-5 5M12 3v12" /></svg>
+        Continue a previous run
+      </button>
+      <p class="mt-2 text-[11px] text-slate-400">Upload a LabTrack .csv or .txt export to pick up where you left off.</p>
+    </div>
     <div id="sectionsContainer" class="space-y-4"></div>
   </main>
 
-  <footer class="text-center text-[11px] text-slate-400 py-4 no-print">
+  <footer class="text-center text-[11px] text-slate-400 pb-6 no-print">
     Saved on this device only · <a class="underline hover:text-slate-600" href="https://github.com/AKMARTIAN/labtrack" target="_blank" rel="noopener">About LabTrack</a>
   </footer>
 
+  <!-- Record Types Modal -->
+  <div id="typesModal" class="modal hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4 no-print">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col">
+      <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Record types</h3>
+          <p class="text-xs text-slate-500 mt-0.5">A type sets the units offered next to Result, so you only type the number.</p>
+        </div>
+        <button type="button" data-close class="icon-btn" aria-label="Close">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <div id="typesList" class="px-5 overflow-y-auto divide-y divide-slate-100 border-y border-slate-100"></div>
+      <form id="typeForm" class="p-5 space-y-3">
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Add your own type</div>
+        <div>
+          <label for="typeName" class="lbl">Name *</label>
+          <input id="typeName" type="text" class="field" placeholder="e.g. Qubit RNA HS" />
+        </div>
+        <div>
+          <label for="typeUnits" class="lbl">Units (comma separated, first is the default)</label>
+          <input id="typeUnits" type="text" class="field mono" placeholder="e.g. ng/µL, ng/mL" />
+        </div>
+        <button type="submit" class="w-full h-11 text-sm font-semibold text-white bg-lab-600 hover:bg-lab-700 rounded-xl">Add type</button>
+      </form>
+    </div>
+  </div>
+
   <!-- Add / Rename Section Modal -->
-  <div id="sectionModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4 no-print">
-    <form id="sectionModalForm" class="bg-white w-full max-w-sm rounded-2xl shadow-xl border border-slate-200 p-5 space-y-4">
+  <div id="sectionModal" class="modal hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center p-4 no-print">
+    <form id="sectionModalForm" class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
       <div>
-        <h3 id="sectionModalTitle" class="text-base font-bold text-slate-900">Add New Section</h3>
+        <h3 id="sectionModalTitle" class="text-base font-bold text-slate-900">Add section</h3>
         <p class="text-xs text-slate-500 mt-0.5">Group your entries into stages or sections.</p>
       </div>
       <div>
@@ -208,51 +303,44 @@
         <input id="sectionNameInput" type="text" required class="field" placeholder="e.g. Library prep" />
       </div>
       <div class="flex items-center justify-end gap-2">
-        <button id="btnCancelSectionModal" type="button" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-        <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-lab-600 hover:bg-lab-700 rounded-lg">Save Section</button>
+        <button type="button" data-close class="px-4 h-10 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+        <button type="submit" class="px-4 h-10 text-sm font-semibold text-white bg-lab-600 hover:bg-lab-700 rounded-xl">Save</button>
       </div>
     </form>
   </div>
 
   <!-- Export Modal -->
-  <div id="exportModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 flex items-end sm:items-center justify-center p-0 sm:p-4 no-print">
-    <div class="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+  <div id="exportModal" class="modal hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4 no-print">
+    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden">
+      <div class="px-5 pt-5 pb-3 flex items-start justify-between">
         <div>
-          <h3 class="text-base font-bold text-slate-900">Export Results</h3>
-          <p class="text-xs text-slate-500">Download files for reports, Excel, or another device</p>
+          <h3 class="text-base font-bold text-slate-900">Export results</h3>
+          <p class="text-xs text-slate-500">Keep the file: you can upload it later to continue this run</p>
         </div>
-        <button id="btnCloseExport" type="button" aria-label="Close" class="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100">
+        <button type="button" data-close class="icon-btn" aria-label="Close">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
-      <div class="p-5 space-y-3">
-        <button id="btnDownloadCsv" type="button" class="w-full p-3.5 rounded-xl border border-slate-200 hover:border-lab-400 hover:bg-lab-50/50 transition flex items-center justify-between text-left">
-          <div>
-            <div class="text-sm font-semibold text-slate-900">Download CSV (.csv)</div>
-            <div class="text-xs text-slate-500">One row per entry, for Excel or Google Sheets</div>
-          </div>
-          <span class="text-xs font-bold text-lab-700 bg-lab-100 px-2.5 py-1 rounded-md">CSV</span>
+      <div class="p-5 pt-2 space-y-2.5">
+        <button id="btnDownloadCsv" type="button" class="w-full p-3.5 rounded-2xl border border-slate-200 hover:border-lab-300 hover:bg-lab-50/50 transition flex items-center gap-3 text-left">
+          <span class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 text-[11px] font-bold flex items-center justify-center shrink-0">CSV</span>
+          <span><span class="block text-sm font-semibold text-slate-900">Download spreadsheet</span><span class="block text-xs text-slate-500">One row per entry, opens in Excel or Sheets</span></span>
         </button>
-        <button id="btnDownloadTxt" type="button" class="w-full p-3.5 rounded-xl border border-slate-200 hover:border-lab-400 hover:bg-lab-50/50 transition flex items-center justify-between text-left">
-          <div>
-            <div class="text-sm font-semibold text-slate-900">Download Text Report (.txt)</div>
-            <div class="text-xs text-slate-500">Readable lab notebook summary</div>
-          </div>
-          <span class="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md">TXT</span>
+        <button id="btnDownloadTxt" type="button" class="w-full p-3.5 rounded-2xl border border-slate-200 hover:border-lab-300 hover:bg-lab-50/50 transition flex items-center gap-3 text-left">
+          <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 text-[11px] font-bold flex items-center justify-center shrink-0">TXT</span>
+          <span><span class="block text-sm font-semibold text-slate-900">Download text report</span><span class="block text-xs text-slate-500">Readable lab notebook summary</span></span>
         </button>
-        <button id="btnCopyTxt" type="button" class="w-full p-3.5 rounded-xl border border-slate-200 hover:border-lab-400 hover:bg-lab-50/50 transition flex items-center justify-between text-left">
-          <div>
-            <div class="text-sm font-semibold text-slate-900">Copy Summary to Clipboard</div>
-            <div class="text-xs text-slate-500">Paste into an ELN, document or email</div>
-          </div>
-          <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md">COPY</span>
+        <button id="btnCopyTxt" type="button" class="w-full p-3.5 rounded-2xl border border-slate-200 hover:border-lab-300 hover:bg-lab-50/50 transition flex items-center gap-3 text-left">
+          <span class="w-10 h-10 rounded-xl bg-lab-50 text-lab-700 flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+          </span>
+          <span><span class="block text-sm font-semibold text-slate-900">Copy summary</span><span class="block text-xs text-slate-500">Paste into an ELN, document or email</span></span>
         </button>
-        <div class="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2.5">
-          <button id="btnDownloadJson" type="button" class="py-2.5 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Save Backup (.json)</button>
-          <label class="py-2.5 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition text-center cursor-pointer">
-            Import Backup (.json)
-            <input id="inputImportJson" type="file" accept=".json,application/json" class="hidden" />
+        <div class="pt-3 grid grid-cols-2 gap-2.5">
+          <button id="btnDownloadJson" type="button" class="h-10 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Save backup</button>
+          <label class="h-10 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center justify-center cursor-pointer">
+            Import backup
+            <input id="inputImportJson" type="file" accept=".json,.csv,.txt,application/json,text/csv,text/plain" class="hidden" />
           </label>
         </div>
       </div>
@@ -260,29 +348,104 @@
   </div>
 
   <!-- New Run Modal -->
-  <div id="newRunModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4 no-print">
-    <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl border border-slate-200 p-5 space-y-4">
+  <div id="newRunModal" class="modal hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center p-4 no-print">
+    <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
       <div>
         <h3 class="text-base font-bold text-slate-900">Start a new run?</h3>
-        <p class="text-xs text-slate-500 mt-1">This clears all current entries. Export or back up your results first if you need them.</p>
+        <p class="text-xs text-slate-500 mt-1">This clears all current entries. Export or back up your results first if you need them. Your record types are kept.</p>
       </div>
       <div class="space-y-2">
-        <button id="btnConfirmBlank" type="button" class="w-full py-2.5 px-4 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition">Clear Everything &amp; Start Blank</button>
-        <button id="btnCancelNewRun" type="button" class="w-full py-2.5 px-4 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">Cancel</button>
+        <button id="btnConfirmBlank" type="button" class="w-full h-11 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition">Clear &amp; start new run</button>
+        <button type="button" data-continue class="w-full h-11 text-sm font-semibold text-lab-700 bg-lab-50 hover:bg-lab-100 ring-1 ring-lab-200 rounded-xl transition">Continue a previous run instead…</button>
+        <button type="button" data-close class="w-full h-11 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
       </div>
     </div>
   </div>
 
-  <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-lg no-print"></div>
+  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900/95 text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-lg no-print flex items-center gap-2">
+    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+    <span id="toastText"></span>
+  </div>
 
   <script>
     (function () {
       const STORAGE_KEY = 'labtrack_v1_state';
+      const PREFS_KEY = 'labtrack_prefs';
       const $ = (id) => document.getElementById(id);
       const pad = (n) => String(n).padStart(2, '0');
 
-      function todayISO() {
+      /* ---------- Record types ---------- */
+
+      // Tailwind class sets for type chips (full class names so the CDN generates them).
+      const COLORS = {
+        slate:   'bg-slate-100 text-slate-600 ring-slate-200',
+        violet:  'bg-violet-50 text-violet-700 ring-violet-200',
+        teal:    'bg-teal-50 text-teal-700 ring-teal-200',
+        amber:   'bg-amber-50 text-amber-700 ring-amber-200',
+        rose:    'bg-rose-50 text-rose-700 ring-rose-200',
+        sky:     'bg-sky-50 text-sky-700 ring-sky-200',
+        orange:  'bg-orange-50 text-orange-700 ring-orange-200',
+        emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+        pink:    'bg-pink-50 text-pink-700 ring-pink-200',
+        indigo:  'bg-indigo-50 text-indigo-700 ring-indigo-200',
+        cyan:    'bg-cyan-50 text-cyan-700 ring-cyan-200',
+        lime:    'bg-lime-50 text-lime-700 ring-lime-200',
+        fuchsia: 'bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200'
+      };
+      const DOTS = {
+        slate: 'bg-slate-300', violet: 'bg-violet-500', teal: 'bg-teal-500', amber: 'bg-amber-500', rose: 'bg-rose-500',
+        sky: 'bg-sky-500', orange: 'bg-orange-500', emerald: 'bg-emerald-500', pink: 'bg-pink-500', indigo: 'bg-indigo-500',
+        cyan: 'bg-cyan-500', lime: 'bg-lime-500', fuchsia: 'bg-fuchsia-500'
+      };
+      const CUSTOM_COLORS = ['indigo', 'cyan', 'lime', 'fuchsia', 'teal', 'orange'];
+      const GENERAL_UNITS = ['ng/µL', 'µL', 'mL', 'bp', 'nM', '°C'];
+      const BUILTIN_TYPES = [
+        { id: 'general',  name: 'General',       units: [], color: 'slate' },
+        { id: 'qubit',    name: 'Qubit',         units: ['ng/µL', 'ng/mL', 'µg/mL', 'pg/µL'], color: 'violet' },
+        { id: 'nanodrop', name: 'NanoDrop',      units: ['ng/µL', 'A260/280', 'A260/230'], color: 'teal' },
+        { id: 'size',     name: 'Fragment size', units: ['bp', 'kb'], color: 'amber' },
+        { id: 'molarity', name: 'Molarity',      units: ['nM', 'pM', 'µM', 'mM'], color: 'rose' },
+        { id: 'volume',   name: 'Volume',        units: ['µL', 'mL'], color: 'sky' },
+        { id: 'temp',     name: 'Temperature',   units: ['°C'], color: 'orange' },
+        { id: 'ph',       name: 'pH',            units: [], color: 'emerald' },
+        { id: 'cells',    name: 'Cell count',    units: ['cells/mL', 'cells/µL'], color: 'pink' }
+      ];
+
+      function loadPrefs() {
+        let p = {};
+        try { p = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') || {}; } catch (e) {}
+        return {
+          customTypes: Array.isArray(p.customTypes) ? p.customTypes : [],
+          lastType: p.lastType || 'general',
+          lastUnit: p.lastUnit && typeof p.lastUnit === 'object' ? p.lastUnit : {},
+          extraUnits: p.extraUnits && typeof p.extraUnits === 'object' ? p.extraUnits : {}
+        };
+      }
+      function savePrefs() {
+        try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) {}
+      }
+      let prefs = loadPrefs();
+
+      const allTypes = () => [...BUILTIN_TYPES, ...prefs.customTypes];
+      function typeById(id) {
+        return allTypes().find((t) => t.id === id) || null;
+      }
+      function unitsFor(type) {
+        const base = type ? (type.id === 'general' ? GENERAL_UNITS : type.units) : [];
+        const extra = (type && prefs.extraUnits[type.id]) || [];
+        return [...new Set([...base, ...extra])];
+      }
+      function defaultUnit(type) {
+        if (!type) return '';
+        if (Object.prototype.hasOwnProperty.call(prefs.lastUnit, type.id)) return prefs.lastUnit[type.id];
+        return type.id === 'general' ? '' : (type.units[0] || '');
+      }
+
+      /* ---------- Dates ---------- */
+
+      function todayISO(offsetDays = 0) {
         const d = new Date();
+        d.setDate(d.getDate() + offsetDays);
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
       }
       function nowTime() {
@@ -294,6 +457,14 @@
         const [y, m, d] = iso.split('-').map(Number);
         return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
       }
+      function friendlyDate(iso) {
+        if (iso === todayISO()) return 'Today';
+        if (iso === todayISO(-1)) return 'Yesterday';
+        return fmtDate(iso);
+      }
+
+      /* ---------- Helpers ---------- */
+
       function escapeHtml(str) {
         return String(str ?? '')
           .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -302,6 +473,15 @@
       function newId(prefix) {
         return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       }
+      // "Sample 1" -> "Sample 2", "S09" -> "S10"; no trailing number -> ''
+      function nextRecordName(name) {
+        const m = String(name).match(/^(.*?)(\d+)$/);
+        if (!m) return '';
+        return m[1] + String(Number(m[2]) + 1).padStart(m[2].length, '0');
+      }
+      const resultText = (i) => `${i.result}${i.unit ? ' ' + i.unit : ''}`;
+
+      /* ---------- State ---------- */
 
       function defaultSections() {
         return [
@@ -312,13 +492,12 @@
       }
       function createBlankState() {
         return {
-          version: 2,
+          version: 3,
           meta: { id: `Run ${todayISO()}`, operator: '', date: todayISO() },
           quickSections: defaultSections(),
           quickItems: []
         };
       }
-
       // Earlier versions opened with an example run. If a browser still has that
       // example saved and nothing else was added, start blank instead.
       function isUntouchedExampleRun(s) {
@@ -328,7 +507,6 @@
           && only(s.steps, ['stp_1', 'stp_2', 'stp_3'])
           && only(s.quickItems, ['qi_1']);
       }
-
       // Bring saved data from any version up to the current shape.
       function normalize(s) {
         s.meta = Object.assign({ id: '', operator: '', date: todayISO() }, s.meta || {});
@@ -338,9 +516,10 @@
           if (i.kind !== 'note') i.kind = 'result';
           if (!i.date) i.date = s.meta.date || todayISO();
           if (i.timestamp && /^\d{1,2}:\d{2}/.test(i.timestamp)) i.timestamp = i.timestamp.slice(0, 5);
-          ['name', 'result', 'volume', 'dilution', 'notes', 'text', 'sectionId'].forEach((k) => { if (i[k] == null) i[k] = ''; });
+          ['name', 'result', 'unit', 'volume', 'dilution', 'notes', 'text', 'sectionId'].forEach((k) => { if (i[k] == null) i[k] = ''; });
+          if (!i.typeId) { i.typeId = 'general'; i.typeName = 'General'; }
         });
-        s.version = 2;
+        s.version = 3;
         return s;
       }
       function isValidState(p) {
@@ -366,12 +545,13 @@
       let editingSectionId = null;
 
       function showToast(msg) {
-        const el = $('toast');
-        el.textContent = msg;
-        el.classList.remove('hidden');
+        $('toastText').textContent = msg;
+        $('toast').classList.remove('hidden');
         clearTimeout(showToast._t);
-        showToast._t = setTimeout(() => el.classList.add('hidden'), 2600);
+        showToast._t = setTimeout(() => $('toast').classList.add('hidden'), 2200);
       }
+      function openModal(id) { $(id).classList.remove('hidden'); }
+      function closeModals() { document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); }
 
       const sectionName = (id) => {
         const s = state.quickSections.find((x) => x.id === id);
@@ -384,54 +564,86 @@
           `<option value="${escapeHtml(s.id)}" ${s.id === selectedId ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
         ).join('');
       }
+      function typeOptions(selectedId, withManage) {
+        const opt = (t) => `<option value="${escapeHtml(t.id)}" ${t.id === selectedId ? 'selected' : ''}>${escapeHtml(t.name)}</option>`;
+        let html = BUILTIN_TYPES.map(opt).join('');
+        if (prefs.customTypes.length) html += `<optgroup label="Your types">${prefs.customTypes.map(opt).join('')}</optgroup>`;
+        if (withManage) html += '<option value="__manage__">＋ Add or edit types…</option>';
+        return html;
+      }
+      function chip(item) {
+        if (!item.typeId || item.typeId === 'general') return '';
+        const t = typeById(item.typeId);
+        const cls = COLORS[(t && t.color) || 'slate'];
+        return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset ${cls}">${escapeHtml(t ? t.name : item.typeName)}</span>`;
+      }
 
-      /* ---------- Rendering ---------- */
+      /* ---------- Entry form ---------- */
 
       function renderMeta() {
         $('runName').value = state.meta.id || '';
         $('runOperator').value = state.meta.operator || '';
       }
-
       function renderKind() {
         document.querySelectorAll('.kind-btn').forEach((b) => {
           const on = b.dataset.kind === entryKind;
           b.classList.toggle('bg-white', on);
-          b.classList.toggle('text-lab-700', on);
+          b.classList.toggle('text-slate-900', on);
           b.classList.toggle('shadow-sm', on);
-          b.classList.toggle('text-slate-600', !on);
+          b.classList.toggle('text-slate-500', !on);
           b.setAttribute('aria-selected', on);
         });
         $('resultFields').classList.toggle('hidden', entryKind !== 'result');
         $('noteFields').classList.toggle('hidden', entryKind !== 'note');
+        $('btnToggleExtra').classList.toggle('invisible', entryKind !== 'result');
+        if (entryKind !== 'result') $('extraFields').classList.add('hidden');
         $('btnSubmitEntry').textContent = entryKind === 'note' ? 'Add Note' : 'Add Result';
       }
-
-      function renderSectionSelect() {
-        const sel = $('entrySection');
-        const prev = sel.value;
-        sel.innerHTML = sectionOptions(null);
-        if (prev === '' || state.quickSections.some((s) => s.id === prev)) sel.value = prev;
-        if (!sel.dataset.touched && !prev && state.quickSections.length) sel.value = state.quickSections[0].id;
+      let currentSection = null; // shared by the Result and Note forms
+      function renderSectionSelects() {
+        if (currentSection === null || (currentSection !== '' && !state.quickSections.some((s) => s.id === currentSection))) {
+          currentSection = state.quickSections.length ? state.quickSections[0].id : '';
+        }
+        document.querySelectorAll('.section-select').forEach((sel) => {
+          sel.innerHTML = sectionOptions(currentSection);
+          sel.value = currentSection;
+        });
+      }
+      function renderTypeSelect() {
+        if (!typeById(prefs.lastType)) prefs.lastType = 'general';
+        $('entryType').innerHTML = typeOptions(prefs.lastType, true);
+        $('entryType').value = prefs.lastType;
+        renderUnitSelect();
+      }
+      function renderUnitSelect(selected) {
+        const type = typeById(prefs.lastType);
+        const units = unitsFor(type);
+        const want = selected !== undefined ? selected : defaultUnit(type);
+        const list = want && !units.includes(want) ? [want, ...units] : units;
+        $('entryUnit').innerHTML =
+          list.map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('') +
+          '<option value="">No unit</option><option value="__custom__">Custom…</option>';
+        $('entryUnit').value = want;
+        // Numeric keypad for typed measurements; full keyboard for General.
+        $('entryResult').setAttribute('inputmode', type && type.id !== 'general' ? 'decimal' : 'text');
+        $('entryResult').placeholder = type && type.id !== 'general' ? 'e.g. 45.6' : 'e.g. 45.6 or text';
       }
 
-      const ICON_NOTE = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5M5 4h14a1 1 0 011 1v11l-4 4H5a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>';
+      /* ---------- Log rendering ---------- */
+
+      const ICON_NOTE = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5M5 4h14a1 1 0 011 1v11l-4 4H5a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>';
+      const ICON_EDIT = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M4 20h4l10.5-10.5a2.5 2.5 0 00-3.536-3.536L4.5 16.5 4 20z"/></svg>';
       const ICON_TRASH = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
-      const btnCls = 'text-xs font-medium px-2.5 py-1.5 rounded-lg border bg-white border-slate-200 text-slate-600 hover:bg-slate-100';
-
-      function stamp(item) {
-        return `${escapeHtml(fmtDate(item.date))}${item.timestamp ? ` · ${escapeHtml(item.timestamp)}` : ''}`;
-      }
 
       function editorActions(id) {
         return `
           <div class="flex justify-end gap-2">
-            <button type="button" data-act="cancel" data-id="${escapeHtml(id)}" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200/60 rounded-lg">Cancel</button>
-            <button type="button" data-act="save" data-id="${escapeHtml(id)}" class="px-4 py-1.5 text-xs font-semibold text-white bg-lab-600 hover:bg-lab-700 rounded-lg">Save</button>
+            <button type="button" data-act="cancel" data-id="${escapeHtml(id)}" class="px-3 h-9 text-xs font-semibold text-slate-600 hover:bg-slate-200/60 rounded-lg">Cancel</button>
+            <button type="button" data-act="save" data-id="${escapeHtml(id)}" class="px-4 h-9 text-xs font-semibold text-white bg-lab-600 hover:bg-lab-700 rounded-lg">Save</button>
           </div>`;
       }
-
       function renderEditor(item, mode) {
-        const wrap = (inner) => `<div class="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3" data-editor="${escapeHtml(item.id)}">${inner}${editorActions(item.id)}</div>`;
+        const wrap = (inner) => `<div class="mt-3 p-3 bg-slate-50 rounded-2xl ring-1 ring-slate-200 space-y-3 fade-in" data-editor="${escapeHtml(item.id)}">${inner}${editorActions(item.id)}</div>`;
         if (mode === 'note') {
           return wrap(`
             <div>
@@ -448,12 +660,20 @@
           return wrap(`${common}
             <div><label class="lbl">Note</label><textarea data-f="text" rows="3" class="field">${escapeHtml(item.text)}</textarea></div>`);
         }
-        return wrap(`${common}
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <div><label class="lbl">Name / Tube</label><input type="text" data-f="name" value="${escapeHtml(item.name)}" class="field font-mono-num" /></div>
-            <div><label class="lbl">Result</label><input type="text" data-f="result" value="${escapeHtml(item.result)}" class="field font-mono-num" /></div>
-            <div><label class="lbl">Volume / Quantity</label><input type="text" data-f="volume" value="${escapeHtml(item.volume)}" placeholder="e.g. 20 µL" class="field font-mono-num" /></div>
-            <div><label class="lbl">Dilution / Source</label><input type="text" data-f="dilution" value="${escapeHtml(item.dilution)}" placeholder="e.g. 1:2 from Stock A" class="field" /></div>
+        const units = unitsFor(typeById(item.typeId));
+        const listId = 'units_' + escapeHtml(item.id);
+        return wrap(`
+          <div class="grid grid-cols-2 gap-2.5">
+            <div><label class="lbl">Type</label><select data-f="typeId" class="field">${typeOptions(item.typeId, false)}</select></div>
+            <div><label class="lbl">Record</label><input type="text" data-f="name" value="${escapeHtml(item.name)}" class="field mono" /></div>
+            <div><label class="lbl">Result</label><input type="text" data-f="result" value="${escapeHtml(item.result)}" inputmode="decimal" class="field mono" /></div>
+            <div><label class="lbl">Unit</label><input type="text" data-f="unit" value="${escapeHtml(item.unit)}" list="${listId}" class="field mono" placeholder="none" />
+              <datalist id="${listId}">${units.map((u) => `<option value="${escapeHtml(u)}"></option>`).join('')}</datalist></div>
+          </div>
+          ${common}
+          <div class="grid grid-cols-2 gap-2.5">
+            <div><label class="lbl">Volume / Quantity</label><input type="text" data-f="volume" value="${escapeHtml(item.volume)}" class="field mono" /></div>
+            <div><label class="lbl">Dilution / Source</label><input type="text" data-f="dilution" value="${escapeHtml(item.dilution)}" class="field" /></div>
           </div>
           <div><label class="lbl">Note</label><textarea data-f="notes" rows="2" class="field">${escapeHtml(item.notes)}</textarea></div>`);
       }
@@ -461,87 +681,95 @@
       function renderItem(item) {
         const id = escapeHtml(item.id);
         const editing = openEditor && openEditor.id === item.id ? openEditor.mode : null;
-        const delBtn = `<button type="button" data-act="delete" data-id="${id}" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50" title="Delete" aria-label="Delete">${ICON_TRASH}</button>`;
+        const time = item.timestamp ? `<span class="mono text-[11px] text-slate-400">${escapeHtml(item.timestamp)}</span>` : '';
+        const delBtn = `<button type="button" data-act="delete" data-id="${id}" class="icon-btn danger" title="Delete" aria-label="Delete">${ICON_TRASH}</button>`;
+        const editBtn = `<button type="button" data-act="edit" data-id="${id}" class="icon-btn" title="Edit" aria-label="Edit">${ICON_EDIT}</button>`;
 
         if (item.kind === 'note') {
           return `
-            <div class="px-4 py-3 bg-amber-50/40 border-l-4 border-amber-300">
-              <div class="flex items-start justify-between gap-2">
+            <div class="px-4 py-3">
+              <div class="flex items-start gap-3">
+                <div class="mt-0.5 w-8 h-8 rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-100 flex items-center justify-center shrink-0">${ICON_NOTE}</div>
                 <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">${ICON_NOTE} Note <span class="font-normal normal-case tracking-normal text-slate-400">· ${stamp(item)}</span></div>
-                  <p class="mt-1 text-sm text-slate-800 whitespace-pre-wrap break-words">${escapeHtml(item.text)}</p>
+                  <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-amber-700">Note ${time}</div>
+                  <p class="mt-0.5 text-sm text-slate-800 whitespace-pre-wrap break-words">${escapeHtml(item.text)}</p>
                 </div>
-                <div class="flex items-center gap-1.5 shrink-0">
-                  ${editing ? '' : `<button type="button" data-act="edit" data-id="${id}" class="${btnCls}">Edit</button>`}
-                  ${delBtn}
-                </div>
+                ${editing ? '' : `<div class="flex items-center -mr-1.5 shrink-0">${editBtn}${delBtn}</div>`}
               </div>
               ${editing ? renderEditor(item, 'edit') : ''}
             </div>`;
         }
 
         const details = [
-          item.volume ? `<span>Vol: <strong class="text-slate-700 font-mono-num">${escapeHtml(item.volume)}</strong></span>` : '',
-          item.dilution ? `<span>Dilution/Source: <strong class="text-slate-700">${escapeHtml(item.dilution)}</strong></span>` : ''
+          item.volume ? `<span>Vol <strong class="font-semibold text-slate-600 mono">${escapeHtml(item.volume)}</strong></span>` : '',
+          item.dilution ? `<span>From <strong class="font-semibold text-slate-600">${escapeHtml(item.dilution)}</strong></span>` : ''
         ].filter(Boolean).join('');
 
         return `
           <div class="px-4 py-3">
-            <div class="flex flex-wrap items-start justify-between gap-2">
-              <div class="min-w-0">
+            <div class="flex items-start gap-3">
+              <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span class="text-sm font-bold text-slate-900 font-mono-num break-all">${escapeHtml(item.name)}</span>
-                  <span class="text-slate-300">—</span>
-                  <span class="text-sm font-semibold text-lab-700 bg-lab-50 border border-lab-200 px-2.5 py-0.5 rounded-md font-mono-num break-all">${escapeHtml(item.result)}</span>
+                  <span class="text-[15px] font-semibold text-slate-900 mono break-all">${escapeHtml(item.name)}</span>
+                  ${chip(item)}
                 </div>
-                <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                  <span>${stamp(item)}</span>${details}
-                </div>
+                <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">${time}${details}</div>
               </div>
-              <div class="flex items-center gap-1.5 shrink-0">
-                ${editing ? '' : `
-                  <button type="button" data-act="note" data-id="${id}" class="${btnCls} flex items-center gap-1">${ICON_NOTE}${item.notes ? 'Note' : '+ Note'}</button>
-                  <button type="button" data-act="edit" data-id="${id}" class="${btnCls}">Edit</button>`}
-                ${delBtn}
+              <div class="text-right shrink-0 max-w-[45%]">
+                <div class="mono ${/^[<>~≈]?\s*-?[\d.,]+(e-?\d+)?$/i.test(item.result) ? 'text-lg' : 'text-sm'} font-semibold text-lab-700 leading-tight break-words">${escapeHtml(item.result)}${item.unit ? `<span class="ml-1 text-xs font-medium text-slate-400">${escapeHtml(item.unit)}</span>` : ''}</div>
               </div>
             </div>
-            ${item.notes && editing !== 'note' && editing !== 'edit' ? `
-              <div class="mt-2 flex items-start gap-1.5 text-xs text-slate-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
-                <span class="text-amber-600 mt-px">${ICON_NOTE}</span><span class="whitespace-pre-wrap break-words">${escapeHtml(item.notes)}</span>
+            ${item.notes && !editing ? `
+              <div class="mt-2 flex items-start gap-1.5 text-xs text-slate-700 bg-amber-50/70 ring-1 ring-amber-100 rounded-xl px-2.5 py-2">
+                <span class="text-amber-600">${ICON_NOTE}</span><span class="whitespace-pre-wrap break-words pt-px">${escapeHtml(item.notes)}</span>
               </div>` : ''}
-            ${editing ? renderEditor(item, editing) : ''}
+            ${editing ? renderEditor(item, editing) : `
+              <div class="mt-1.5 -ml-2 flex items-center">
+                <button type="button" data-act="note" data-id="${id}" class="icon-btn">${ICON_NOTE}${item.notes ? 'Edit note' : 'Add note'}</button>
+                ${editBtn}${delBtn}
+              </div>`}
           </div>`;
       }
 
       function renderLog() {
-        const total = state.quickItems.length;
-        $('entryCountBadge').textContent = `${total} ${total === 1 ? 'entry' : 'entries'}`;
-        renderSectionSelect();
+        const results = state.quickItems.filter((i) => i.kind === 'result').length;
+        const notes = state.quickItems.length - results;
+        $('runStats').textContent = state.quickItems.length
+          ? [`${results} ${results === 1 ? 'result' : 'results'}`, notes ? `${notes} ${notes === 1 ? 'note' : 'notes'}` : ''].filter(Boolean).join(' · ')
+          : 'No entries yet';
+        $('emptyState').classList.toggle('hidden', state.quickItems.length > 0);
+        renderSectionSelects();
 
         const sections = [...state.quickSections];
         if (state.quickItems.some(isOrphan)) sections.push({ id: '__general__', name: 'General', collapsed: false, isVirtual: true });
 
         $('sectionsContainer').innerHTML = sections.map((sec) => {
           const items = sec.isVirtual ? state.quickItems.filter(isOrphan) : state.quickItems.filter((i) => i.sectionId === sec.id);
+          // Hide empty default sections until something is logged, to keep a fresh run tidy.
+          if (!items.length && !state.quickItems.length) return '';
           const sid = escapeHtml(sec.id);
+          let lastDate = null;
           const body = items.length === 0
-            ? '<div class="px-4 py-4 text-xs text-slate-400">Nothing logged in this section yet.</div>'
-            : items.map(renderItem).join('');
+            ? '<div class="px-4 py-4 text-xs text-slate-400">Nothing logged here yet.</div>'
+            : items.map((i) => {
+                const divider = i.date !== lastDate
+                  ? `<div class="px-4 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50/60">${escapeHtml(friendlyDate(i.date))}</div>`
+                  : '';
+                lastDate = i.date;
+                return divider + renderItem(i);
+              }).join('');
           return `
-            <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div class="px-3 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
-                <div class="flex items-center gap-1.5 min-w-0">
-                  ${sec.isVirtual ? '<span class="w-6"></span>' : `
-                  <button type="button" data-act="collapse" data-sec="${sid}" class="p-1 text-slate-500 hover:text-slate-800 rounded" aria-label="${sec.collapsed ? 'Expand' : 'Collapse'} section">
-                    <svg class="w-4 h-4 transition-transform ${sec.collapsed ? '' : 'rotate-90'}" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-                  </button>`}
-                  <h2 class="text-sm font-bold text-slate-800 truncate">${escapeHtml(sec.name)}</h2>
-                  <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">${items.length}</span>
-                </div>
+            <section class="card overflow-hidden">
+              <div class="pl-2 pr-1.5 py-2 flex items-center justify-between gap-2 border-b border-slate-100">
+                <button type="button" ${sec.isVirtual ? 'disabled' : `data-act="collapse" data-sec="${sid}"`} class="flex items-center gap-1.5 min-w-0 px-1.5 py-1 rounded-lg hover:bg-slate-50 text-left">
+                  <svg class="w-4 h-4 text-slate-400 transition-transform ${sec.collapsed ? '' : 'rotate-90'} ${sec.isVirtual ? 'invisible' : ''}" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  <h3 class="text-sm font-bold text-slate-800 truncate">${escapeHtml(sec.name)}</h3>
+                  <span class="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500">${items.length}</span>
+                </button>
                 ${sec.isVirtual ? '' : `
-                <div class="flex items-center gap-1 shrink-0">
-                  <button type="button" data-act="rename" data-sec="${sid}" class="text-xs font-medium text-slate-600 hover:text-lab-700 px-2 py-1 rounded hover:bg-slate-200/60">Rename</button>
-                  <button type="button" data-act="remove-sec" data-sec="${sid}" class="text-xs font-medium text-slate-500 hover:text-rose-600 px-2 py-1 rounded hover:bg-rose-50">Remove</button>
+                <div class="flex items-center shrink-0">
+                  <button type="button" data-act="rename" data-sec="${sid}" class="icon-btn" title="Rename section" aria-label="Rename section">${ICON_EDIT}</button>
+                  <button type="button" data-act="remove-sec" data-sec="${sid}" class="icon-btn danger" title="Remove section" aria-label="Remove section">${ICON_TRASH}</button>
                 </div>`}
               </div>
               <div class="${sec.collapsed ? 'hidden' : 'divide-y divide-slate-100'}">${body}</div>
@@ -556,11 +784,14 @@
         return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
       }
       function orderedItems() {
-        // Section order first, then General, keeping entry order within each.
         const out = [];
         state.quickSections.forEach((sec) => out.push(...state.quickItems.filter((i) => i.sectionId === sec.id)));
         out.push(...state.quickItems.filter(isOrphan));
         return out;
+      }
+      function typeLabel(i) {
+        const t = typeById(i.typeId);
+        return t ? t.name : (i.typeName || 'General');
       }
       function buildCsv() {
         const row = (arr) => arr.map(csvCell).join(',');
@@ -569,18 +800,19 @@
           row(['Operator', state.meta.operator]),
           row(['Exported', `${todayISO()} ${nowTime()}`]),
           '',
-          row(['#', 'Date', 'Time', 'Section', 'Type', 'Name / Tube', 'Result', 'Volume / Quantity', 'Dilution / Source', 'Note'])
+          row(['#', 'Date', 'Time', 'Section', 'Entry', 'Type', 'Record', 'Result', 'Unit', 'Volume / Quantity', 'Dilution / Source', 'Note'])
         ];
         orderedItems().forEach((i, idx) => {
-          const note = i.kind === 'note' ? i.text : i.notes;
-          lines.push(row([idx + 1, i.date, i.timestamp, sectionName(i.sectionId), i.kind === 'note' ? 'Note' : 'Result',
-            i.kind === 'note' ? '' : i.name, i.kind === 'note' ? '' : i.result, i.volume, i.dilution, note]));
+          const isNote = i.kind === 'note';
+          lines.push(row([idx + 1, i.date, i.timestamp, sectionName(i.sectionId), isNote ? 'Note' : 'Result',
+            isNote ? '' : typeLabel(i), isNote ? '' : i.name, isNote ? '' : i.result, isNote ? '' : i.unit,
+            i.volume, i.dilution, isNote ? i.text : i.notes]));
         });
         return '﻿' + lines.join('\r\n');
       }
       function buildTextReport() {
         const lines = [];
-        const indentNote = (t) => String(t).split('\n').join('\n' + ' '.repeat(10));
+        const indent = (t) => String(t).split('\n').join('\n' + ' '.repeat(10));
         lines.push('============================================================');
         lines.push(`LABTRACK LOG: ${state.meta.id || 'Untitled run'}`);
         lines.push('============================================================');
@@ -591,15 +823,15 @@
         const groups = state.quickSections.map((s) => ({ name: s.name, items: state.quickItems.filter((i) => i.sectionId === s.id) }));
         groups.push({ name: 'General', items: state.quickItems.filter(isOrphan) });
         groups.filter((g) => g.items.length).forEach((g) => {
-          lines.push(`--- ${g.name.toUpperCase()} ---`);
+          lines.push(`--- ${g.name} ---`);
           g.items.forEach((i) => {
             const when = `[${i.date}${i.timestamp ? ' ' + i.timestamp : ''}]`;
             if (i.kind === 'note') {
-              lines.push(`${when} NOTE: ${indentNote(i.text)}`);
+              lines.push(`${when} NOTE: ${indent(i.text)}`);
             } else {
-              const extras = [i.volume ? `Vol: ${i.volume}` : '', i.dilution ? `Dilution: ${i.dilution}` : ''].filter(Boolean).join(' | ');
-              lines.push(`${when} ${i.name} — ${i.result}${extras ? ` (${extras})` : ''}`);
-              if (i.notes) lines.push(`          Note: ${indentNote(i.notes)}`);
+              const extras = [i.typeId !== 'general' ? typeLabel(i) : '', i.volume ? `Vol: ${i.volume}` : '', i.dilution ? `Dilution: ${i.dilution}` : ''].filter(Boolean).join(' | ');
+              lines.push(`${when} ${i.name} — ${resultText(i)}${extras ? ` (${extras})` : ''}`);
+              if (i.notes) lines.push(`          Note: ${indent(i.notes)}`);
             }
           });
           lines.push('');
@@ -607,9 +839,7 @@
         if (!state.quickItems.length) lines.push('(No entries)');
         return lines.join('\n');
       }
-      function fileBase() {
-        return (state.meta.id || 'labtrack_run').replace(/[^a-zA-Z0-9_-]+/g, '_');
-      }
+      const fileBase = () => (state.meta.id || 'labtrack_run').replace(/[^a-zA-Z0-9_-]+/g, '_');
       function downloadFile(filename, content, mimeType) {
         const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
         const a = document.createElement('a');
@@ -628,13 +858,37 @@
           ta.style.opacity = '0';
           document.body.appendChild(ta);
           ta.select();
-          try { document.execCommand('copy'); showToast('Copied summary to clipboard'); }
-          catch (e) { showToast('Copy failed — please use Download TXT'); }
+          try { document.execCommand('copy'); showToast('Copied to clipboard'); }
+          catch (e) { showToast('Copy failed — use Download'); }
           document.body.removeChild(ta);
         };
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(() => showToast('Copied summary to clipboard')).catch(fallback);
+          navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard')).catch(fallback);
         } else fallback();
+      }
+
+      /* ---------- Types modal ---------- */
+
+      function renderTypesList() {
+        $('typesList').innerHTML = allTypes().map((t) => {
+          const units = t.id === 'general' ? 'Any unit' : (t.units.length ? t.units.join(', ') : 'No unit');
+          const custom = !BUILTIN_TYPES.includes(t);
+          return `
+            <div class="py-2.5 flex items-center gap-3">
+              <span class="w-2.5 h-2.5 rounded-full ${DOTS[t.color] || DOTS.slate} shrink-0"></span>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-semibold text-slate-800">${escapeHtml(t.name)}</div>
+                <div class="text-xs text-slate-500 mono truncate">${escapeHtml(units)}</div>
+              </div>
+              ${custom
+                ? `<button type="button" data-del-type="${escapeHtml(t.id)}" class="icon-btn danger" aria-label="Delete ${escapeHtml(t.name)}">${ICON_TRASH}</button>`
+                : '<span class="text-[10px] font-semibold uppercase tracking-wider text-slate-300 pr-2">Built-in</span>'}
+            </div>`;
+        }).join('');
+      }
+      function openTypesModal() {
+        renderTypesList();
+        openModal('typesModal');
       }
 
       /* ---------- Events ---------- */
@@ -652,16 +906,51 @@
         const hidden = $('extraFields').classList.toggle('hidden');
         $('extraChevron').classList.toggle('rotate-90', !hidden);
       });
-      $('entrySection').addEventListener('change', (e) => { e.target.dataset.touched = '1'; });
+      document.querySelectorAll('.section-select').forEach((sel) => sel.addEventListener('change', (e) => {
+        currentSection = e.target.value;
+        document.querySelectorAll('.section-select').forEach((s) => { s.value = currentSection; });
+      }));
+
+      $('entryType').addEventListener('change', (e) => {
+        if (e.target.value === '__manage__') {
+          e.target.value = prefs.lastType;
+          openTypesModal();
+          return;
+        }
+        prefs.lastType = e.target.value;
+        savePrefs();
+        renderUnitSelect();
+        $('entryName').value ? $('entryResult').focus() : $('entryName').focus();
+      });
+      $('entryUnit').addEventListener('change', (e) => {
+        const type = typeById(prefs.lastType);
+        if (e.target.value === '__custom__') {
+          const u = (prompt('Enter a unit (e.g. ng/mL):') || '').trim();
+          if (!u) { renderUnitSelect(); return; }
+          if (!unitsFor(type).includes(u)) {
+            prefs.extraUnits[type.id] = [...(prefs.extraUnits[type.id] || []), u];
+          }
+          prefs.lastUnit[type.id] = u;
+          savePrefs();
+          renderUnitSelect(u);
+          return;
+        }
+        prefs.lastUnit[type.id] = e.target.value;
+        savePrefs();
+      });
+      $('entryName').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); $('entryResult').focus(); }
+      });
 
       $('entryForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const base = {
           id: newId('qi_'),
-          sectionId: $('entrySection').value,
+          sectionId: currentSection || '',
           date: $('entryDate').value || todayISO(),
           timestamp: nowTime(),
-          name: '', result: '', volume: '', dilution: '', notes: '', text: ''
+          typeId: 'general', typeName: 'General',
+          name: '', result: '', unit: '', volume: '', dilution: '', notes: '', text: ''
         };
         if (entryKind === 'note') {
           const text = $('noteText').value.trim();
@@ -673,17 +962,22 @@
         } else {
           const name = $('entryName').value.trim();
           const result = $('entryResult').value.trim();
-          if (!name) { $('entryName').focus(); showToast('Enter a name or tube'); return; }
+          if (!name) { $('entryName').focus(); showToast('Enter a record name'); return; }
           if (!result) { $('entryResult').focus(); showToast('Enter a result'); return; }
+          const type = typeById(prefs.lastType) || BUILTIN_TYPES[0];
+          const unit = $('entryUnit').value === '__custom__' ? '' : $('entryUnit').value;
           state.quickItems.push(Object.assign(base, {
-            kind: 'result', name, result,
+            kind: 'result', typeId: type.id, typeName: type.name, name, result, unit,
             volume: $('entryVolume').value.trim(),
             dilution: $('entryDilution').value.trim(),
             notes: $('entryNote').value.trim()
           }));
-          ['entryName', 'entryResult', 'entryVolume', 'entryDilution', 'entryNote'].forEach((id) => { $(id).value = ''; });
-          $('entryName').focus();
-          showToast(`Logged ${name}`);
+          ['entryResult', 'entryVolume', 'entryDilution', 'entryNote'].forEach((id) => { $(id).value = ''; });
+          // Get the next record ready: "Sample 1" -> "Sample 2", cursor straight to Result.
+          const next = nextRecordName(name);
+          $('entryName').value = next;
+          (next ? $('entryResult') : $('entryName')).focus();
+          showToast(`Logged ${name}: ${result}${unit ? ' ' + unit : ''}`);
         }
         saveState();
         renderLog();
@@ -710,7 +1004,7 @@
         } else if ((act === 'edit' || act === 'note') && item) {
           openEditor = { id: item.id, mode: act };
           renderLog();
-          const ed = document.querySelector(`[data-editor="${CSS.escape(item.id)}"] ${act === 'note' ? '[data-f="notes"]' : 'textarea, input'}`);
+          const ed = document.querySelector(`[data-editor="${CSS.escape(item.id)}"] ${act === 'note' ? '[data-f="notes"]' : (item.kind === 'note' ? 'textarea' : '[data-f="result"]')}`);
           if (ed) { ed.focus(); if (ed.setSelectionRange) ed.setSelectionRange(ed.value.length, ed.value.length); }
           return;
         } else if (act === 'cancel') {
@@ -722,9 +1016,11 @@
           ed.querySelectorAll('[data-f]').forEach((f) => {
             const k = f.dataset.f;
             const v = k === 'sectionId' ? f.value : f.value.trim();
-            if ((k === 'name' || k === 'result' || k === 'text') && !v) return; // keep required fields
-            item[k] = k === 'date' ? (v || item.date) : v;
+            if ((k === 'name' || k === 'result' || k === 'text' || k === 'date') && !v) return; // keep required fields
+            item[k] = v;
           });
+          const t = typeById(item.typeId);
+          if (t) item.typeName = t.name;
           openEditor = null;
           showToast('Saved');
         } else if (act === 'delete' && item) {
@@ -738,16 +1034,48 @@
         renderLog();
       });
 
+      // Types modal
+      $('typeForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = $('typeName').value.trim();
+        if (!name) { $('typeName').focus(); return; }
+        if (allTypes().some((t) => t.name.toLowerCase() === name.toLowerCase())) { showToast('That type already exists'); return; }
+        const units = [...new Set($('typeUnits').value.split(',').map((u) => u.trim()).filter(Boolean))];
+        const t = { id: newId('type_'), name, units, color: CUSTOM_COLORS[prefs.customTypes.length % CUSTOM_COLORS.length] };
+        prefs.customTypes.push(t);
+        prefs.lastType = t.id;
+        savePrefs();
+        $('typeName').value = '';
+        $('typeUnits').value = '';
+        renderTypeSelect();
+        closeModals();
+        $('entryName').focus();
+        showToast(`Added type "${name}"`);
+      });
+      $('typesList').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-del-type]');
+        if (!btn) return;
+        const t = typeById(btn.dataset.delType);
+        if (!t || !confirm(`Delete type "${t.name}"? Entries already logged keep their label.`)) return;
+        prefs.customTypes = prefs.customTypes.filter((x) => x.id !== t.id);
+        delete prefs.lastUnit[t.id];
+        delete prefs.extraUnits[t.id];
+        if (prefs.lastType === t.id) prefs.lastType = 'general';
+        savePrefs();
+        renderTypesList();
+        renderTypeSelect();
+        renderLog();
+      });
+
       // Sections modal
       function openSectionModal(sec) {
         editingSectionId = sec ? sec.id : null;
-        $('sectionModalTitle').textContent = sec ? 'Rename Section' : 'Add New Section';
+        $('sectionModalTitle').textContent = sec ? 'Rename section' : 'Add section';
         $('sectionNameInput').value = sec ? sec.name : '';
-        $('sectionModal').classList.remove('hidden');
+        openModal('sectionModal');
         $('sectionNameInput').focus();
       }
       $('btnAddSection').addEventListener('click', () => openSectionModal(null));
-      $('btnCancelSectionModal').addEventListener('click', () => $('sectionModal').classList.add('hidden'));
       $('sectionModalForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const name = $('sectionNameInput').value.trim();
@@ -759,95 +1087,279 @@
         } else {
           const id = newId('qsec_');
           state.quickSections.push({ id, name, collapsed: false });
-          saveState();
-          renderLog();
-          $('entrySection').value = id;
-          $('entrySection').dataset.touched = '1';
+          currentSection = id;
           showToast(`Added section "${name}"`);
         }
-        $('sectionModal').classList.add('hidden');
+        closeModals();
         saveState();
         renderLog();
       });
 
-      // Modals: close on backdrop tap or Escape
-      ['sectionModal', 'exportModal', 'newRunModal'].forEach((m) => {
-        $(m).addEventListener('click', (e) => { if (e.target === $(m)) $(m).classList.add('hidden'); });
+      // Modals: close buttons, backdrop tap, Escape
+      document.querySelectorAll('.modal').forEach((m) => {
+        m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('[data-close]')) closeModals(); });
       });
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') ['sectionModal', 'exportModal', 'newRunModal'].forEach((m) => $(m).classList.add('hidden'));
-      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModals(); });
 
-      $('btnOpenExport').addEventListener('click', () => $('exportModal').classList.remove('hidden'));
-      $('btnCloseExport').addEventListener('click', () => $('exportModal').classList.add('hidden'));
-      $('btnNewRun').addEventListener('click', () => $('newRunModal').classList.remove('hidden'));
-      $('btnCancelNewRun').addEventListener('click', () => $('newRunModal').classList.add('hidden'));
-
+      $('btnOpenExport').addEventListener('click', () => openModal('exportModal'));
+      $('btnNewRun').addEventListener('click', () => openModal('newRunModal'));
       $('btnConfirmBlank').addEventListener('click', () => {
         state = createBlankState();
         openEditor = null;
-        delete $('entrySection').dataset.touched;
-        $('entrySection').value = '';
+        currentSection = null;
+        $('entryName').value = '';
         saveState();
         renderAll();
-        $('newRunModal').classList.add('hidden');
+        closeModals();
         showToast('Started a new run');
       });
 
       $('btnDownloadCsv').addEventListener('click', () => {
         downloadFile(`${fileBase()}.csv`, buildCsv(), 'text/csv;charset=utf-8');
-        $('exportModal').classList.add('hidden');
-        showToast('Downloaded CSV file');
+        closeModals();
+        showToast('Downloaded spreadsheet');
       });
       $('btnDownloadTxt').addEventListener('click', () => {
         downloadFile(`${fileBase()}_report.txt`, buildTextReport(), 'text/plain;charset=utf-8');
-        $('exportModal').classList.add('hidden');
+        closeModals();
         showToast('Downloaded text report');
       });
       $('btnCopyTxt').addEventListener('click', () => {
         copyText(buildTextReport());
-        $('exportModal').classList.add('hidden');
+        closeModals();
       });
       $('btnDownloadJson').addEventListener('click', () => {
-        downloadFile(`${fileBase()}_backup.json`, JSON.stringify(state, null, 2), 'application/json');
-        $('exportModal').classList.add('hidden');
-        showToast('Saved JSON backup');
+        const backup = Object.assign({}, state, { recordTypes: prefs.customTypes });
+        downloadFile(`${fileBase()}_backup.json`, JSON.stringify(backup, null, 2), 'application/json');
+        closeModals();
+        showToast('Saved backup');
       });
-      $('inputImportJson').addEventListener('change', (e) => {
-        const file = e.target.files[0];
+      /* ---------- Continue a previous run (CSV / TXT / JSON) ---------- */
+
+      function parseCsv(text) {
+        const rows = [];
+        let row = [], cell = '', q = false;
+        for (let i = 0; i < text.length; i++) {
+          const c = text[i];
+          if (q) {
+            if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+            else cell += c;
+          } else if (c === '"') q = true;
+          else if (c === ',') { row.push(cell); cell = ''; }
+          else if (c === '\n' || c === '\r') {
+            if (c === '\r' && text[i + 1] === '\n') i++;
+            row.push(cell); rows.push(row); row = []; cell = '';
+          } else cell += c;
+        }
+        if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+        return rows;
+      }
+
+      // Builds a run from plain entry objects: { kind, date, time, section, typeName, name, result, unit, volume, dilution, note }
+      function buildRun(meta, entries) {
+        const run = createBlankState();
+        run.meta.id = meta.id || run.meta.id;
+        run.meta.operator = meta.operator || '';
+        run.meta.date = (entries[0] && entries[0].date) || todayISO();
+        run.quickSections = [];
+        const secId = (name) => {
+          if (!name || name.toLowerCase() === 'general') return '';
+          let sec = run.quickSections.find((s) => s.name.toLowerCase() === name.toLowerCase());
+          if (!sec) { sec = { id: newId('qsec_'), name, collapsed: false }; run.quickSections.push(sec); }
+          return sec.id;
+        };
+        let createdTypes = 0;
+        const typeFor = (name, unit) => {
+          if (!name || name.toLowerCase() === 'general') return BUILTIN_TYPES[0];
+          let t = allTypes().find((x) => x.name.toLowerCase() === name.toLowerCase());
+          if (!t) {
+            t = { id: newId('type_'), name, units: [], color: CUSTOM_COLORS[prefs.customTypes.length % CUSTOM_COLORS.length] };
+            prefs.customTypes.push(t);
+            createdTypes++;
+          }
+          if (unit && t.id !== 'general' && !BUILTIN_TYPES.includes(t) && !t.units.includes(unit)) t.units.push(unit);
+          return t;
+        };
+        entries.forEach((e) => {
+          const base = {
+            id: newId('qi_'), sectionId: secId(e.section), date: e.date || run.meta.date, timestamp: e.time || '',
+            typeId: 'general', typeName: 'General', name: '', result: '', unit: '',
+            volume: e.volume || '', dilution: e.dilution || '', notes: '', text: ''
+          };
+          if (e.kind === 'note') {
+            run.quickItems.push(Object.assign(base, { kind: 'note', text: e.note || '' }));
+          } else {
+            const t = typeFor(e.typeName, e.unit);
+            run.quickItems.push(Object.assign(base, {
+              kind: 'result', typeId: t.id, typeName: t.name, name: e.name || '', result: e.result || '', unit: e.unit || '', notes: e.note || ''
+            }));
+          }
+        });
+        if (!run.quickSections.length) run.quickSections = defaultSections();
+        if (createdTypes) savePrefs();
+        return run;
+      }
+
+      function runFromCsv(text) {
+        const rows = parseCsv(text.replace(/^﻿/, ''));
+        const meta = {};
+        const hIdx = rows.findIndex((r) => r[0] === '#' && r.includes('Date'));
+        if (hIdx === -1) throw new Error('csv');
+        rows.slice(0, hIdx).forEach((r) => {
+          if (r[0] === 'Run') meta.id = r[1];
+          if (r[0] === 'Operator') meta.operator = r[1];
+        });
+        const h = rows[hIdx];
+        const col = (...names) => { for (const n of names) { const i = h.indexOf(n); if (i !== -1) return i; } return -1; };
+        const hasEntry = col('Entry') !== -1; // v2.1+ has Entry (Result/Note) and Type (record type)
+        const c = {
+          date: col('Date'), time: col('Time'), section: col('Section'),
+          kind: hasEntry ? col('Entry') : col('Type'), type: hasEntry ? col('Type') : -1,
+          name: col('Record', 'Name / Tube'), result: col('Result'), unit: col('Unit'),
+          volume: col('Volume / Quantity'), dilution: col('Dilution / Source'), note: col('Note')
+        };
+        const get = (r, i) => (i >= 0 && r[i] !== undefined ? r[i] : '');
+        const entries = rows.slice(hIdx + 1).filter((r) => r.some((x) => x !== '')).map((r) => ({
+          kind: get(r, c.kind).toLowerCase() === 'note' ? 'note' : 'result',
+          date: get(r, c.date), time: get(r, c.time), section: get(r, c.section), typeName: get(r, c.type),
+          name: get(r, c.name), result: get(r, c.result), unit: get(r, c.unit),
+          volume: get(r, c.volume), dilution: get(r, c.dilution), note: get(r, c.note)
+        }));
+        return buildRun(meta, entries);
+      }
+
+      function splitResultUnit(text, typeName) {
+        const t = typeName ? allTypes().find((x) => x.name.toLowerCase() === typeName.toLowerCase()) : null;
+        const candidates = [...new Set([...(t ? unitsFor(t) : []), ...allTypes().flatMap((x) => unitsFor(x))])]
+          .sort((a, b) => b.length - a.length);
+        for (const u of candidates) {
+          if (text.endsWith(' ' + u)) return { result: text.slice(0, -u.length - 1), unit: u };
+        }
+        return { result: text, unit: '' };
+      }
+
+      function runFromText(text) {
+        const lines = text.replace(/\r\n?/g, '\n').split('\n');
+        if (!lines.some((l) => l.startsWith('LABTRACK LOG:'))) throw new Error('txt');
+        const meta = {};
+        const entries = [];
+        let section = 'General';
+        let last = null, lastField = null;
+        lines.forEach((line) => {
+          let m;
+          if ((m = line.match(/^LABTRACK LOG: (.*)$/))) { meta.id = m[1] === 'Untitled run' ? '' : m[1]; return; }
+          if ((m = line.match(/^Operator: (.*)$/))) { meta.operator = m[1]; return; }
+          if ((m = line.match(/^--- (.*) ---$/))) { section = m[1]; last = null; return; }
+          if ((m = line.match(/^\[(\d{4}-\d{2}-\d{2})(?: (\d{1,2}:\d{2}))?\] (.*)$/))) {
+            const rest = m[3];
+            if (rest.startsWith('NOTE: ')) {
+              last = { kind: 'note', date: m[1], time: m[2] || '', section, note: rest.slice(6) };
+              lastField = 'note';
+            } else {
+              const sep = rest.indexOf(' — ');
+              let name = sep === -1 ? rest : rest.slice(0, sep);
+              let res = sep === -1 ? '' : rest.slice(sep + 3);
+              let typeName = '', volume = '', dilution = '';
+              const ex = res.match(/^(.*) \(([^()]*)\)$/);
+              if (ex) {
+                const parts = ex[2].split(' | ');
+                const ok = parts.every((p) => p.startsWith('Vol: ') || p.startsWith('Dilution: ') || (parts.indexOf(p) === 0 && allTypes().some((t) => t.name === p)));
+                if (ok) {
+                  res = ex[1];
+                  parts.forEach((p) => {
+                    if (p.startsWith('Vol: ')) volume = p.slice(5);
+                    else if (p.startsWith('Dilution: ')) dilution = p.slice(10);
+                    else typeName = p;
+                  });
+                }
+              }
+              const ru = splitResultUnit(res, typeName);
+              last = { kind: 'result', date: m[1], time: m[2] || '', section, typeName, name, result: ru.result, unit: ru.unit, volume, dilution, note: '' };
+              lastField = null;
+            }
+            entries.push(last);
+            return;
+          }
+          if (last && (m = line.match(/^ {10}Note: (.*)$/))) { last.note = m[1]; lastField = 'note'; return; }
+          if (last && lastField === 'note' && line.startsWith(' '.repeat(10))) { last.note += '\n' + line.slice(10); }
+        });
+        return buildRun(meta, entries);
+      }
+
+      function runFromJson(text) {
+        const parsed = JSON.parse(text);
+        if (!isValidState(parsed)) throw new Error('json');
+        if (Array.isArray(parsed.recordTypes)) {
+          parsed.recordTypes.forEach((t) => {
+            if (t && t.id && t.name && !typeById(t.id)) prefs.customTypes.push({ id: t.id, name: t.name, units: Array.isArray(t.units) ? t.units : [], color: t.color || 'indigo' });
+          });
+          savePrefs();
+        }
+        delete parsed.recordTypes;
+        return normalize(parsed);
+      }
+
+      function continueFromFile(file) {
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
+          const text = String(ev.target.result || '');
+          let run;
           try {
-            const parsed = JSON.parse(ev.target.result);
-            if (!isValidState(parsed)) { showToast('Invalid backup file format'); return; }
-            state = normalize(parsed);
-            openEditor = null;
-            saveState();
-            renderAll();
-            $('exportModal').classList.add('hidden');
-            showToast('Imported backup');
+            const name = file.name.toLowerCase();
+            if (name.endsWith('.json') || text.trim().startsWith('{')) run = runFromJson(text);
+            else if (text.includes('LABTRACK LOG:')) run = runFromText(text);
+            else run = runFromCsv(text);
           } catch (err) {
-            showToast('Could not read that file');
+            showToast('That isn’t a LabTrack export file');
+            return;
           }
+          if (state.quickItems.length && !confirm(`Replace the current run "${state.meta.id || 'Untitled run'}" (${state.quickItems.length} entries) with "${run.meta.id || 'Untitled run'}"?\n\nExport the current run first if you still need it.`)) return;
+          state = run;
+          openEditor = null;
+          currentSection = null;
+          // Continue in the section used last, and get the next record name ready.
+          const lastItem = [...state.quickItems].reverse().find((i) => i.kind === 'result');
+          const lastAny = state.quickItems[state.quickItems.length - 1];
+          if (lastAny) currentSection = lastAny.sectionId || '';
+          if (lastItem) {
+            if (typeById(lastItem.typeId)) { prefs.lastType = lastItem.typeId; if (lastItem.unit) prefs.lastUnit[lastItem.typeId] = lastItem.unit; savePrefs(); }
+            $('entryName').value = nextRecordName(lastItem.name);
+          }
+          entryKind = 'result';
+          saveState();
+          renderAll();
+          closeModals();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          showToast(`Continuing "${state.meta.id || 'Untitled run'}": ${state.quickItems.length} entries loaded`);
         };
         reader.readAsText(file);
-        e.target.value = '';
-      });
+      }
+
+      document.querySelectorAll('[data-continue]').forEach((b) => b.addEventListener('click', () => $('inputContinue').click()));
+      $('inputContinue').addEventListener('change', (e) => { continueFromFile(e.target.files[0]); e.target.value = ''; });
+      $('inputImportJson').addEventListener('change', (e) => { continueFromFile(e.target.files[0]); e.target.value = ''; });
 
       function renderAll() {
         renderMeta();
         renderKind();
+        renderTypeSelect();
         renderLog();
       }
 
       // Date defaults to today; if the app is left open past midnight, roll it
       // forward unless the user picked a date themselves.
       $('entryDate').value = todayISO();
-      $('entryDate').addEventListener('change', (e) => { e.target.dataset.touched = e.target.value !== todayISO() ? '1' : ''; });
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && !$('entryDate').dataset.touched) $('entryDate').value = todayISO();
+      $('entryDate').addEventListener('change', (e) => {
+        if (!e.target.value) e.target.value = todayISO();
+        e.target.dataset.touched = e.target.value !== todayISO() ? '1' : '';
       });
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) return;
+        if (!$('entryDate').dataset.touched) $('entryDate').value = todayISO();
+        renderLog(); // refresh "Today"/"Yesterday" labels
+      });
+
       renderAll();
       saveState();
 

@@ -2,6 +2,22 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-11-23
+
+### Added
+- **Record types with automatic units.** Choose a type (Qubit, NanoDrop, Fragment size, Molarity, Volume, Temperature, pH, Cell count) and its unit is added for you, so you only type the number.
+- **Custom record types and units**, which are kept between runs.
+- The app remembers your last type and the unit you last used for each type.
+- **Auto-numbering:** `Sample 1` → `Sample 2`, with the cursor placed in Result.
+- **Continue a previous run** by uploading its CSV or text export (or a JSON backup).
+- Day headings in the log ("Today", "Yesterday").
+
+### Changed
+- "Name / Tube" is now **Record**.
+- The CSV has new **Entry**, **Type** and **Unit** columns.
+- Redesigned interface: run name as the page title, a cleaner entry form, coloured type tags, icon actions, an empty-log message and a phone-friendly sheet style for dialogs.
+- Text report section headings keep their original capitalisation.
+
 ## [2.0.0] - 2026-11-23
 
 LabTrack is now a single, simpler Quick Log.
@@ -46,6 +62,7 @@ First public release.
 - Header no longer overflows on narrow phone screens.
 - Pinch-to-zoom re-enabled for accessibility.
 
+[2.1.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v2.1.0
 [2.0.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v2.0.0
 [1.1.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v1.1.0
 [1.0.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v1.0.0

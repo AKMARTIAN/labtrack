@@ -25,11 +25,18 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 
 ## Features
 
-- **Log results fast:** type a name (e.g. `Tube 1`) and a result (e.g. `45.6 ng/µL`), then tap **Add Result**.
-- **Every entry is dated:** the date defaults to today and can be changed to log something from an earlier day. The time is recorded automatically.
+- **Log results fast:** enter a **Record** (e.g. `Sample 1`) and a **Result**, then tap **Add Result**.
+- **Record types with automatic units:** pick a type such as **Qubit** and the unit (ng/µL) is filled in for you, so you only type the number (`45.6` → `45.6 ng/µL`).
+  - Built-in types: General, Qubit, NanoDrop, Fragment size, Molarity, Volume, Temperature, pH and Cell count.
+  - Switch units from the dropdown next to Result, or choose **Custom…** to add your own unit.
+  - **Add your own types** (e.g. *Qubit RNA HS* with `ng/µL, ng/mL`) from **＋ Add or edit types…** in the Type menu.
+  - Your last type and the unit you last used for each type are remembered.
+- **Auto-numbering:** after logging `Sample 1`, the Record box fills in `Sample 2` and jumps to Result.
+- **Continue a previous run:** upload a LabTrack `.csv` or `.txt` export (or a `.json` backup) to load that run back in and keep adding to it. Nothing already recorded is lost.
+- **Every entry is dated:** the date defaults to today and can be changed if you're logging something from an earlier day. The time is recorded automatically. The log is grouped by day.
 - **Notes, two ways:**
-  - **Note on an entry:** tap **+ Note** on any result to attach a comment (e.g. *"sample looked cloudy, re-spun"*).
-  - **Note as its own step:** switch the entry box to **Note** to add a standalone note to the log (e.g. *"recalibrated Qubit with fresh standards"*).
+  - **Note on an entry:** tap **Add note** on any result.
+  - **Note as its own step:** switch the entry box to **Note** to add a standalone note to the log.
 - **Optional details:** volume/quantity and dilution/source for any result.
 - **Sections:** group entries into named stages (add, rename, collapse, remove).
 - **Edit or delete** any entry; deleting asks for confirmation.
@@ -37,8 +44,8 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 ### Export & backup
 | Format | Use it for |
 |---|---|
-| **CSV (.csv)** | Excel, Google Sheets, R, Python. One row per entry with date, time, section, type, result and note. |
-| **Text report (.txt)** | Readable summary for ELNs, emails or printing |
+| **CSV (.csv)** | Excel, Google Sheets, R, Python. One row per entry with date, time, section, type, record, result, unit and note. Can be uploaded again to continue the run. |
+| **Text report (.txt)** | Readable summary for ELNs, emails or printing. Can be uploaded again to continue the run. |
 | **Copy to clipboard** | Paste straight into a notebook entry or chat |
 | **JSON backup** | Save a full run and restore it later, or move it to another device |
 
@@ -51,16 +58,16 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 ## Quick start
 
 1. Open **<https://akmartian.github.io/labtrack/>**.
-2. Give your run a name (optional; it's used for the export file name).
-3. Pick a section, type a **Name / Tube** and **Result**, and tap **Add Result**.
-4. Need to write something down? Tap **+ Note** on an entry, or switch to **Note** to add a standalone note.
-5. Tap the **download** button (top right) → **Download CSV** or **Download Text Report**.
-6. To start the next run, tap **New** → **Clear Everything & Start Blank**.
+2. Tap the title to name your run (it's used for the export file name).
+3. Pick a **Type** (e.g. Qubit), type the **Record** and the number in **Result**, then tap **Add Result**.
+4. Need to write something down? Tap **Add note** on an entry, or switch to **Note** to add a standalone note.
+5. When you're done, tap **Export** → **Download spreadsheet** or **Download text report**.
+6. To pick that run up later, tap **Continue run** (**Open** on phones) and choose the exported file.
 
 ## Data & privacy
 
 - All data is stored **only in your browser** (`localStorage`) on the device you're using. Nothing is uploaded anywhere.
-- Data does **not** sync between devices. Use **JSON backup / import** to move a run.
+- Data does **not** sync between devices. To move a run, export it and use **Continue run** on the other device.
 - Clearing your browser's site data, or using private/incognito mode, will erase saved runs, so **export your results when you finish a session**.
 
 ## Run it locally
