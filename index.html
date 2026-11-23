@@ -1403,18 +1403,30 @@
         if (!e.target.value) e.target.value = todayISO();
         e.target.dataset.touched = e.target.value !== todayISO() ? '1' : '';
       });
-      let hiddenAt = 0;
-      const AWAY_MS = 30 * 60 * 1000; // ask again after 30 minutes away
+      // Shared-device safeguard timing: only ask after the app has been idle for
+      // 30+ minutes (closed, in the background, or untouched) — never on a quick reload.
+      const ACTIVE_KEY = 'labtrack_last_active';
+      const AWAY_MS = 30 * 60 * 1000;
+      const readActive = () => { try { return Number(localStorage.getItem(ACTIVE_KEY)) || 0; } catch (e) { return 0; } };
+      const markActive = () => { try { localStorage.setItem(ACTIVE_KEY, String(Date.now())); } catch (e) {} };
+      const awayTooLong = () => { const t = readActive(); return t > 0 && Date.now() - t > AWAY_MS; };
+      let lastMark = 0;
+      ['pointerdown', 'keydown', 'input'].forEach((ev) => document.addEventListener(ev, () => {
+        if (Date.now() - lastMark > 15000) { lastMark = Date.now(); markActive(); }
+      }, { passive: true }));
+      window.addEventListener('pagehide', markActive);
       document.addEventListener('visibilitychange', () => {
-        if (document.hidden) { hiddenAt = Date.now(); return; }
-        if (hiddenAt && Date.now() - hiddenAt > AWAY_MS) showWelcomeIfNeeded();
+        if (document.hidden) { markActive(); return; }
+        if (awayTooLong()) showWelcomeIfNeeded();
+        markActive();
         if (!$('entryDate').dataset.touched) $('entryDate').value = todayISO();
         renderLog(); // refresh "Today"/"Yesterday" labels
       });
 
       renderAll();
       saveState();
-      showWelcomeIfNeeded();
+      if (awayTooLong()) showWelcomeIfNeeded();
+      markActive();
 
       if ('serviceWorker' in navigator && location.protocol === 'https:') {
         window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
