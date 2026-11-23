@@ -2,6 +2,14 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-11-23
+
+### Added
+- **Shared-computer safeguard.** When the app opens with a run already in progress, or after 30 minutes away, it shows the run's name, entry count, operator and last entry. You can **continue it**, **start a new run** or **export it first**.
+
+### Changed
+- New runs are named **New Record + date** (e.g. *New Record 2026-11-23*) instead of *Run + date*.
+
 ## [2.1.0] - 2026-11-23
 
 ### Added
@@ -62,6 +70,7 @@ First public release.
 - Header no longer overflows on narrow phone screens.
 - Pinch-to-zoom re-enabled for accessibility.
 
+[2.2.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v2.2.0
 [2.1.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v2.1.0
 [2.0.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v2.0.0
 [1.1.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v1.1.0

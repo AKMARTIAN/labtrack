@@ -67,6 +67,8 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 ## Data & privacy
 
 - All data is stored **only in your browser** (`localStorage`) on the device you're using. Nothing is uploaded anywhere.
+- **Two people on different devices never see each other's data**, even when using the same link.
+- **Shared computers:** when LabTrack opens with a run already in it (or you come back after 30 minutes away), it asks whether to **continue this run** or **start a new one**, so results from different people don't get mixed.
 - Data does **not** sync between devices. To move a run, export it and use **Continue run** on the other device.
 - Clearing your browser's site data, or using private/incognito mode, will erase saved runs, so **export your results when you finish a session**.
 
