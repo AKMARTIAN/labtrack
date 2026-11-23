@@ -56,10 +56,11 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 ## Quick start
 
 1. Open **<https://akmartian.github.io/labtrack/>**.
-2. Tap **New** → **Clear Everything & Start Blank** to start fresh (the app opens with an example run so you can explore).
+2. The app opens with a blank run, ready to use. Fill in your experiment details (optional).
 3. *Quant & Dilutions:* add your stock under **Setup & Stocks**, then log each tube under **Log Step**.
    *Quick Log:* type a name and a result, then press **Add**.
 4. Tap the **download** button (top right) → **Download CSV** or **Download Text Report**.
+5. To start the next run, tap **New** → **Clear Everything & Start Blank**.
 
 ## Data & privacy
 

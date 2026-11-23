@@ -570,14 +570,11 @@
     <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl border border-slate-200 p-5 space-y-4">
       <div>
         <h3 class="text-base font-bold text-slate-900">Start a New Experiment Run?</h3>
-        <p class="text-xs text-slate-500 mt-1">Choose whether to clear all current data, or reset to the sample validation run.</p>
+        <p class="text-xs text-slate-500 mt-1">This clears all current data. Export or back up your results first if you need them.</p>
       </div>
       <div class="space-y-2">
         <button id="btnConfirmBlank" type="button" class="w-full py-2.5 px-4 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition">
           Clear Everything &amp; Start Blank
-        </button>
-        <button id="btnConfirmSample" type="button" class="w-full py-2.5 px-4 text-xs font-semibold text-lab-700 bg-lab-50 hover:bg-lab-100 border border-lab-200 rounded-lg transition">
-          Reset to Sample Validation Run
         </button>
         <button id="btnCancelNewRun" type="button" class="w-full py-2.5 px-4 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">
           Cancel
@@ -610,86 +607,6 @@
           { id: 'qsec_1', name: 'First Section', collapsed: false },
           { id: 'qsec_2', name: '2nd Section', collapsed: false }
         ];
-      }
-
-      function createSampleState() {
-        return {
-          meta: {
-            id: 'QV-2026-01',
-            date: todayISO(),
-            instrument: 'Qubit 4 Fluorometer',
-            assay: 'Qubit dsDNA HS',
-            operator: '',
-            unit: 'ng/µL',
-            notes: '2-fold serial dilution linearity check from 100 ng/µL gDNA stock.'
-          },
-          stocks: [
-            { id: 'stk_1', name: 'gDNA-Stock-A', conc: 100, vol: 200, diluent: 'TE Buffer' }
-          ],
-          steps: [
-            {
-              id: 'stp_1',
-              timestamp: '09:15:10',
-              type: 'Blank / Control',
-              tubeId: 'Blank-TE',
-              sourceRef: '',
-              sourceLabel: 'TE Buffer',
-              sampleVol: 0,
-              diluentVol: 200,
-              diluentName: 'TE Buffer',
-              dilutionFactor: 1,
-              expectedConc: 0,
-              reads: [0.02, 0.01],
-              status: 'Pass',
-              note: 'Instrument baseline check'
-            },
-            {
-              id: 'stp_2',
-              timestamp: '09:18:42',
-              type: 'Direct Dilution',
-              tubeId: 'D1 (1:2)',
-              sourceRef: 'stock:stk_1',
-              sourceLabel: 'gDNA-Stock-A',
-              sampleVol: 50,
-              diluentVol: 50,
-              diluentName: 'TE Buffer',
-              dilutionFactor: 2,
-              expectedConc: 50,
-              reads: [48.6, 49.4, 49.1],
-              status: 'Pass',
-              note: '1:2 working dilution'
-            },
-            {
-              id: 'stp_3',
-              timestamp: '09:22:15',
-              type: 'Serial Dilution',
-              tubeId: 'D2 (1:4)',
-              sourceRef: 'step:stp_2',
-              sourceLabel: 'D1 (1:2)',
-              sampleVol: 50,
-              diluentVol: 50,
-              diluentName: 'TE Buffer',
-              dilutionFactor: 2,
-              expectedConc: 25,
-              reads: [24.2, 24.8, 24.5],
-              status: 'Pass',
-              note: 'Serial 1:2 from D1'
-            }
-          ],
-          quickSections: defaultQuickSections(),
-          quickItems: [
-            {
-              id: 'qi_1',
-              sectionId: 'qsec_start',
-              name: 'Tube 1',
-              result: '45.6 ng/µL',
-              volume: '',
-              dilution: '',
-              notes: '',
-              timestamp: '09:10:00'
-            }
-          ]
-        };
       }
 
       function createBlankState() {
@@ -728,17 +645,27 @@
         return s;
       }
 
+      // Earlier versions opened with an example run. If a browser still has that
+      // example saved and nothing else was added, start blank instead.
+      function isUntouchedExampleRun(s) {
+        const only = (arr, ids) => (arr || []).every((x) => ids.includes(x.id));
+        return s.meta.id === 'QV-2026-01'
+          && only(s.stocks, ['stk_1'])
+          && only(s.steps, ['stp_1', 'stp_2', 'stp_3'])
+          && only(s.quickItems, ['qi_1']);
+      }
+
       function loadState() {
         try {
           const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('labquant_v1_state');
           if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed && parsed.meta && Array.isArray(parsed.stocks) && Array.isArray(parsed.steps)) {
-              return ensureQuickState(parsed);
+              if (!isUntouchedExampleRun(parsed)) return ensureQuickState(parsed);
             }
           }
         } catch (e) {}
-        return createSampleState();
+        return createBlankState();
       }
 
       function saveState() {
@@ -1838,18 +1765,6 @@
         renderQuickLog();
         $('newRunModal').classList.add('hidden');
         showToast('Started blank experiment');
-      });
-
-      $('btnConfirmSample').addEventListener('click', () => {
-        state = createSampleState();
-        saveState();
-        resetStepForm();
-        renderMeta();
-        renderStocks();
-        renderSteps();
-        renderQuickLog();
-        $('newRunModal').classList.add('hidden');
-        showToast('Loaded sample validation run');
       });
 
       $('btnDownloadCsv').addEventListener('click', () => {

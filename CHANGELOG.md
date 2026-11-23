@@ -2,6 +2,13 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-11-23
+
+### Changed
+- The app now opens with a blank run instead of an example run.
+- Removed the "Reset to Sample Validation Run" option.
+- Browsers that still have the untouched example run saved now start blank automatically. Your own data is never removed.
+
 ## [1.0.0] - 2026-11-23
 
 First public release.
@@ -21,4 +28,5 @@ First public release.
 - Header no longer overflows on narrow phone screens.
 - Pinch-to-zoom re-enabled for accessibility.
 
+[1.1.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v1.1.0
 [1.0.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v1.0.0
