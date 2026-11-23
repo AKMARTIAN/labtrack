@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
-  <title>LabTrack — Quantification &amp; Dilution Tracker</title>
-  <meta name="description" content="LabTrack — a free, offline-friendly lab notebook for logging Qubit readings, dilution series and quick results, with CSV and text export." />
+  <title>LabTrack — Quick Lab Log</title>
+  <meta name="description" content="LabTrack — a free, offline-friendly lab notebook for logging Qubit readings and bench results with dates and notes, with CSV and text export." />
   <meta name="theme-color" content="#0284c7" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="LabTrack" />
   <meta property="og:title" content="LabTrack" />
-  <meta property="og:description" content="Log Qubit readings, dilutions and quick lab results from any device. Export to CSV or text." />
+  <meta property="og:description" content="Log lab results and notes from any device. Export to CSV or text." />
   <meta property="og:type" content="website" />
   <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
   <link rel="apple-touch-icon" href="assets/icon-192.png" />
@@ -52,22 +52,29 @@
       font-family: 'JetBrains Mono', ui-monospace, monospace;
       font-variant-numeric: tabular-nums;
     }
-    input[type="number"]::-webkit-inner-spin-button,
-    input[type="number"]::-webkit-outer-spin-button {
-      opacity: 1;
+    .field {
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      font-size: 1rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.5rem;
+      background: #fff;
+      outline: none;
     }
+    @media (min-width: 640px) { .field { font-size: 0.875rem; } }
+    .field:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2); }
+    .lbl { display: block; font-size: 0.75rem; font-weight: 500; color: #475569; margin-bottom: 0.25rem; }
     @media print {
       .no-print { display: none !important; }
       body { background: #fff !important; }
-      .print-break { break-inside: avoid; }
     }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
 
-  <!-- Top Navigation / Header -->
+  <!-- Header -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 no-print">
-    <div class="max-w-7xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2.5 min-w-0">
         <div class="w-8 h-8 rounded-lg bg-lab-600 text-white flex items-center justify-center shrink-0 shadow-sm">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
@@ -75,27 +82,14 @@
           </svg>
         </div>
         <div class="min-w-0">
-          <h1 class="text-sm sm:text-base font-bold text-slate-900 truncate leading-tight">LabTrack</h1>
-          <p class="text-[11px] text-slate-500 truncate hidden sm:block">Quantification Validation &amp; Quick Lab Log</p>
+          <h1 class="text-base font-bold text-slate-900 leading-tight">LabTrack</h1>
+          <p class="text-[11px] text-slate-500 truncate hidden sm:block">Quick lab results log</p>
         </div>
+        <span id="entryCountBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">0 entries</span>
       </div>
-
-      <!-- Primary App View Switcher -->
-      <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200/80 shrink-0">
-        <button type="button" data-view="quant" class="app-view-btn px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-md transition bg-white text-lab-700 shadow-sm">
-          <span class="sm:hidden">Quant</span><span class="hidden sm:inline">Quant &amp; Dilutions</span>
-        </button>
-        <button type="button" data-view="quick" class="app-view-btn px-2 sm:px-3 py-1.5 text-xs font-semibold rounded-md transition text-slate-600 hover:text-slate-900">
-          <span class="sm:hidden">Quick</span><span class="hidden sm:inline">Quick Log</span> <span id="quickTotalBadge" class="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700">0</span>
-        </button>
-      </div>
-
-      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        <span id="saveStatus" class="hidden xl:inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Saved locally
-        </span>
-        <button id="btnNewRun" type="button" class="px-2.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 active:bg-slate-100 transition min-h-[38px]" title="Start a new run">
-          <span class="sm:hidden">New</span><span class="hidden sm:inline">New Run</span>
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="btnNewRun" type="button" title="Start a new run" class="px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 active:bg-slate-100 transition min-h-[38px]">
+          New<span class="hidden sm:inline"> Run</span>
         </button>
         <button id="btnOpenExport" type="button" title="Export results" aria-label="Export results" class="px-3 py-2 text-xs font-semibold text-white bg-lab-600 rounded-lg hover:bg-lab-700 active:bg-lab-800 transition shadow-sm flex items-center gap-1.5 min-h-[38px]">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
@@ -105,406 +99,113 @@
         </button>
       </div>
     </div>
-
-    <!-- Mobile / Tablet Section Tabs (for Quant & Dilutions view) -->
-    <div id="quantSubTabs" class="lg:hidden border-t border-slate-100 bg-slate-50/80 px-3 flex gap-1 overflow-x-auto">
-      <button type="button" data-tab="setup" class="tab-btn flex-1 py-2.5 px-3 text-xs font-semibold border-b-2 border-lab-600 text-lab-700 whitespace-nowrap">
-        1. Setup &amp; Stocks
-      </button>
-      <button type="button" data-tab="record" class="tab-btn flex-1 py-2.5 px-3 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">
-        2. Log Step
-      </button>
-      <button type="button" data-tab="log" class="tab-btn flex-1 py-2.5 px-3 text-xs font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-800 whitespace-nowrap">
-        3. Results (<span id="mobileStepCount">0</span>)
-      </button>
-    </div>
   </header>
 
-  <!-- VIEW 1: QUANT & DILUTIONS WORKSPACE -->
-  <main id="view-quant" class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+  <main class="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4">
 
-    <!-- LEFT COLUMN: Experiment Setup & Stocks -->
-    <section id="panel-setup" class="lg:col-span-4 space-y-5">
-
-      <!-- Experiment Metadata Card -->
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-600">Experiment Details</h2>
-          <button id="btnToggleMeta" type="button" class="text-xs text-lab-600 font-medium hover:underline">Collapse</button>
-        </div>
-        <div id="metaBody" class="p-4 space-y-3">
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label for="expId" class="block text-xs font-medium text-slate-600 mb-1">Experiment ID</label>
-              <input id="expId" type="text" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 focus:border-lab-500 outline-none font-mono-num" placeholder="e.g. QV-001" />
-            </div>
-            <div>
-              <label for="expDate" class="block text-xs font-medium text-slate-600 mb-1">Date</label>
-              <input id="expDate" type="date" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 focus:border-lab-500 outline-none" />
-            </div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label for="expInstrument" class="block text-xs font-medium text-slate-600 mb-1">Instrument</label>
-              <input id="expInstrument" type="text" list="instrumentList" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 focus:border-lab-500 outline-none" placeholder="e.g. Qubit 4" />
-              <datalist id="instrumentList">
-                <option value="Qubit 4 Fluorometer"></option>
-                <option value="NanoDrop One"></option>
-                <option value="Agilent Bioanalyzer"></option>
-                <option value="Agilent TapeStation"></option>
-                <option value="Plate Reader (SpectraMax)"></option>
-                <option value="qPCR (QuantStudio)"></option>
-              </datalist>
-            </div>
-            <div>
-              <label for="expAssay" class="block text-xs font-medium text-slate-600 mb-1">Assay / Kit</label>
-              <input id="expAssay" type="text" list="assayList" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 focus:border-lab-500 outline-none" placeholder="e.g. dsDNA HS" />
-              <datalist id="assayList">
-                <option value="Qubit dsDNA HS"></option>
-                <option value="Qubit dsDNA BR"></option>
-                <option value="Qubit RNA HS"></option>
-                <option value="UV-Vis A260"></option>
-                <option value="BCA Protein Assay"></option>
-              </datalist>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label for="expOperator" class="block text-xs font-medium text-slate-600 mb-1">Operator</label>
-              <input id="expOperator" type="text" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 focus:border-lab-500 outline-none" placeholder="Initials / Name" />
-            </div>
-            <div>
-              <label for="expUnit" class="block text-xs font-medium text-slate-600 mb-1">Default Unit</label>
-              <select id="expUnit" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 focus:border-lab-500 outline-none">
-                <option value="ng/µL">ng/µL</option>
-                <option value="µg/mL">µg/mL</option>
-                <option value="mg/mL">mg/mL</option>
-                <option value="pg/µL">pg/µL</option>
-                <option value="nM">nM</option>
-                <option value="µM">µM</option>
-                <option value="copies/µL">copies/µL</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label for="expNotes" class="block text-xs font-medium text-slate-600 mb-1">Run Notes / Objective</label>
-            <textarea id="expNotes" rows="2" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 focus:border-lab-500 outline-none resize-y" placeholder="Validation goal, lot numbers, reagent prep..."></textarea>
-          </div>
-        </div>
+    <!-- Run details -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div>
+        <label for="runName" class="lbl">Run name</label>
+        <input id="runName" type="text" class="field" placeholder="e.g. Qubit check 23 Nov" />
       </div>
-
-      <!-- Stocks Registry Card -->
-      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-600">Stocks &amp; Reference Tubes</h2>
-            <p class="text-[11px] text-slate-500">Define starting stocks to auto-calculate dilutions</p>
-          </div>
-          <span id="stockCountBadge" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-lab-100 text-lab-800">0</span>
-        </div>
-
-        <!-- Add Stock Form -->
-        <form id="stockForm" class="p-4 border-b border-slate-100 space-y-3 bg-slate-50/40">
-          <div class="grid grid-cols-2 gap-2.5">
-            <div>
-              <label for="stockName" class="block text-xs font-medium text-slate-600 mb-1">Stock ID *</label>
-              <input id="stockName" type="text" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 outline-none font-mono-num" placeholder="e.g. Stock-A" />
-            </div>
-            <div>
-              <label for="stockConc" class="block text-xs font-medium text-slate-600 mb-1">Nominal Conc.</label>
-              <input id="stockConc" type="number" step="any" min="0" inputmode="decimal" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 outline-none font-mono-num" placeholder="e.g. 100" />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2.5">
-            <div>
-              <label for="stockVol" class="block text-xs font-medium text-slate-600 mb-1">Starting Vol (µL)</label>
-              <input id="stockVol" type="number" step="any" min="0" inputmode="decimal" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 outline-none font-mono-num" placeholder="e.g. 500" />
-            </div>
-            <div>
-              <label for="stockDiluent" class="block text-xs font-medium text-slate-600 mb-1">Buffer / Diluent</label>
-              <input id="stockDiluent" type="text" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 outline-none" placeholder="e.g. TE Buffer" />
-            </div>
-          </div>
-          <button type="submit" class="w-full py-2.5 px-4 text-xs font-semibold text-lab-700 bg-lab-50 border border-lab-200 rounded-lg hover:bg-lab-100 active:bg-lab-200 transition min-h-[42px] flex items-center justify-center gap-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            <span>Add Stock</span>
-          </button>
-        </form>
-
-        <!-- Stock List -->
-        <div id="stockList" class="divide-y divide-slate-100 max-h-72 overflow-y-auto"></div>
+      <div>
+        <label for="runOperator" class="lbl">Operator (optional)</label>
+        <input id="runOperator" type="text" class="field" placeholder="Your name or initials" />
       </div>
-    </section>
+    </div>
 
-    <!-- RIGHT COLUMN: Step Entry & Results Log -->
-    <section class="lg:col-span-8 space-y-5">
-
-      <!-- Record Step & Tube Read Form -->
-      <div id="panel-record" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 id="stepFormTitle" class="text-xs font-bold uppercase tracking-wider text-slate-600">Record Dilution &amp; Tube Read</h2>
-            <p class="text-[11px] text-slate-500">Log quantities transferred and instrument read values</p>
-          </div>
-          <span id="editingBadge" class="hidden text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">Editing Step</span>
-        </div>
-
-        <form id="stepForm" class="p-4 space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label for="stepType" class="block text-xs font-medium text-slate-600 mb-1">Step Type</label>
-              <select id="stepType" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 outline-none">
-                <option value="Serial Dilution">Serial Dilution</option>
-                <option value="Direct Dilution">Direct Dilution</option>
-                <option value="Stock Read">Stock Read (Undiluted)</option>
-                <option value="Blank / Control">Blank / Control</option>
-                <option value="Re-read / QC">Re-read / QC</option>
-              </select>
-            </div>
-            <div>
-              <label for="tubeId" class="block text-xs font-medium text-slate-600 mb-1">Tube / Sample ID *</label>
-              <input id="tubeId" type="text" required class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 outline-none font-mono-num" placeholder="e.g. D1 or Tube-01" />
-            </div>
-            <div>
-              <label for="sourceSelect" class="block text-xs font-medium text-slate-600 mb-1">Source Stock / Tube</label>
-              <select id="sourceSelect" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 outline-none">
-                <option value="">— None / Blank —</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-200/80 space-y-3">
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div>
-                <label for="sampleVol" class="block text-xs font-medium text-slate-600 mb-1">Sample Vol (µL)</label>
-                <input id="sampleVol" type="number" step="any" min="0" inputmode="decimal" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 outline-none font-mono-num" placeholder="0" />
-              </div>
-              <div>
-                <label for="diluentVol" class="block text-xs font-medium text-slate-600 mb-1">Diluent Vol (µL)</label>
-                <input id="diluentVol" type="number" step="any" min="0" inputmode="decimal" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 outline-none font-mono-num" placeholder="0" />
-              </div>
-              <div>
-                <label for="diluentName" class="block text-xs font-medium text-slate-600 mb-1">Diluent</label>
-                <input id="diluentName" type="text" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 outline-none" placeholder="e.g. NFW / TE" />
-              </div>
-              <div>
-                <label for="expectedOverride" class="block text-xs font-medium text-slate-600 mb-1">Expected (<span class="unit-label">ng/µL</span>)</label>
-                <input id="expectedOverride" type="number" step="any" min="0" inputmode="decimal" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 outline-none font-mono-num" placeholder="Auto" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/80 text-center sm:text-left">
-              <div class="bg-white px-3 py-2 rounded-lg border border-slate-200/70">
-                <div class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Total Vol</div>
-                <div id="liveTotalVol" class="text-sm font-bold text-slate-800 font-mono-num mt-0.5">— µL</div>
-              </div>
-              <div class="bg-white px-3 py-2 rounded-lg border border-slate-200/70">
-                <div class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Dilution Factor</div>
-                <div id="liveDilFactor" class="text-sm font-bold text-slate-800 font-mono-num mt-0.5">—</div>
-              </div>
-              <div class="bg-white px-3 py-2 rounded-lg border border-slate-200/70">
-                <div class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">Target Conc.</div>
-                <div id="liveExpectedConc" class="text-sm font-bold text-lab-700 font-mono-num mt-0.5">—</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <label class="block text-xs font-semibold text-slate-700">Instrument Tube Reads (<span class="unit-label">ng/µL</span>)</label>
-              <button id="btnAddRead" type="button" class="text-xs font-semibold text-lab-600 hover:text-lab-800 flex items-center gap-1 py-1 px-2 rounded hover:bg-lab-50">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                Add Replicate Read
-              </button>
-            </div>
-            <div id="readsContainer" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5"></div>
-            <div id="liveReadSummary" class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 pt-1">
-              <span>Mean: <strong id="liveMean" class="font-mono-num text-slate-900">—</strong></span>
-              <span>%CV: <strong id="liveCV" class="font-mono-num text-slate-900">—</strong></span>
-              <span>Recovery: <strong id="liveRecovery" class="font-mono-num text-slate-900">—</strong></span>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label for="stepQc" class="block text-xs font-medium text-slate-600 mb-1">Step Status</label>
-              <select id="stepQc" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 outline-none">
-                <option value="Pass">Pass</option>
-                <option value="Check">Check / Flag</option>
-                <option value="Fail">Fail / Repeat</option>
-                <option value="Pending">Pending Read</option>
-              </select>
-            </div>
-            <div class="sm:col-span-2">
-              <label for="stepNote" class="block text-xs font-medium text-slate-600 mb-1">Step Observations / Tube Notes</label>
-              <input id="stepNote" type="text" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 outline-none" placeholder="e.g. Bubble in tube, out of range low, re-blanked..." />
-            </div>
-          </div>
-
-          <div class="flex flex-wrap items-center justify-end gap-2.5 pt-2">
-            <button id="btnCancelEdit" type="button" class="hidden px-4 py-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 min-h-[44px]">
-              Cancel Edit
-            </button>
-            <button id="btnSubmitStep" type="submit" class="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-white bg-lab-600 rounded-lg hover:bg-lab-700 active:bg-lab-800 transition shadow-sm min-h-[44px] flex items-center justify-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              <span id="submitStepLabel">Log Step</span>
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Results & Tube Reads Log -->
-      <div id="panel-log" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
-            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-600">Recorded Steps &amp; Tube Reads</h2>
-            <span id="stepCountBadge" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">0</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <select id="filterStatus" class="text-xs px-2.5 py-1.5 border border-slate-300 rounded-lg bg-white text-slate-700 outline-none">
-              <option value="ALL">All Statuses</option>
-              <option value="Pass">Pass</option>
-              <option value="Check">Check / Flag</option>
-              <option value="Fail">Fail</option>
-              <option value="Pending">Pending</option>
-            </select>
-          </div>
-        </div>
-
-        <div id="kpiStrip" class="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 border-b border-slate-200 bg-white">
-          <div class="p-3">
-            <div class="text-[11px] text-slate-500 font-medium">Total Steps</div>
-            <div id="kpiTotal" class="text-lg font-bold text-slate-900 font-mono-num">0</div>
-          </div>
-          <div class="p-3">
-            <div class="text-[11px] text-slate-500 font-medium">Pass Rate</div>
-            <div id="kpiPass" class="text-lg font-bold text-emerald-700 font-mono-num">—</div>
-          </div>
-          <div class="p-3">
-            <div class="text-[11px] text-slate-500 font-medium">Avg % Recovery</div>
-            <div id="kpiRecovery" class="text-lg font-bold text-lab-700 font-mono-num">—</div>
-          </div>
-          <div class="p-3">
-            <div class="text-[11px] text-slate-500 font-medium">Avg Replicate %CV</div>
-            <div id="kpiCV" class="text-lg font-bold text-slate-800 font-mono-num">—</div>
-          </div>
-        </div>
-
-        <div id="mobileStepList" class="md:hidden divide-y divide-slate-100"></div>
-
-        <div class="hidden md:block overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                <th class="py-2.5 px-3">#</th>
-                <th class="py-2.5 px-3">Tube / Type</th>
-                <th class="py-2.5 px-3">Source &amp; Dilution</th>
-                <th class="py-2.5 px-3 text-right">Expected</th>
-                <th class="py-2.5 px-3 text-right">Measured Mean</th>
-                <th class="py-2.5 px-3 text-right">%CV / Rec.</th>
-                <th class="py-2.5 px-3">Status</th>
-                <th class="py-2.5 px-3 text-right no-print">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="desktopStepTable" class="divide-y divide-slate-100 text-sm"></tbody>
-          </table>
-        </div>
-
-        <div id="emptyStepsState" class="hidden p-8 text-center">
-          <p class="text-sm font-medium text-slate-600">No dilution steps or tube reads logged yet.</p>
-          <p class="text-xs text-slate-400 mt-1">Use the form above to record your first stock read or dilution step.</p>
-        </div>
-      </div>
-
-    </section>
-  </main>
-
-  <!-- VIEW 2: QUICK LOG TAB -->
-  <main id="view-quick" class="hidden flex-1 max-w-4xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5">
-
-    <!-- Quick Add Bar -->
+    <!-- Entry form -->
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-600">Quick Result Entry</h2>
-          <p class="text-[11px] text-slate-500">Name a tube or sample, enter the result, and add extra details anytime</p>
+        <div class="flex items-center bg-slate-200/70 p-1 rounded-lg" role="tablist" aria-label="Entry type">
+          <button type="button" data-kind="result" class="kind-btn px-3.5 py-1.5 text-xs font-semibold rounded-md transition">Result</button>
+          <button type="button" data-kind="note" class="kind-btn px-3.5 py-1.5 text-xs font-semibold rounded-md transition">Note</button>
         </div>
-        <button id="btnAddQuickSection" type="button" class="px-3 py-1.5 text-xs font-semibold text-lab-700 bg-lab-50 border border-lab-200 rounded-lg hover:bg-lab-100 transition flex items-center gap-1">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
+        <button id="btnAddSection" type="button" class="px-3 py-1.5 text-xs font-semibold text-lab-700 bg-lab-50 border border-lab-200 rounded-lg hover:bg-lab-100 transition flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
           Add Section
         </button>
       </div>
 
-      <form id="quickEntryForm" class="p-4 space-y-3">
-        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-          <div class="sm:col-span-3">
-            <label for="quickSectionSelect" class="block text-xs font-medium text-slate-600 mb-1">Section (Optional)</label>
-            <select id="quickSectionSelect" class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-lab-500 outline-none"></select>
+      <form id="entryForm" class="p-4 space-y-3" novalidate>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="entrySection" class="lbl">Section</label>
+            <select id="entrySection" class="field"></select>
           </div>
-          <div class="sm:col-span-4">
-            <label for="quickName" class="block text-xs font-medium text-slate-600 mb-1">Name / Tube *</label>
-            <input id="quickName" type="text" required class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 outline-none font-mono-num" placeholder="e.g. Tube 1" />
-          </div>
-          <div class="sm:col-span-3">
-            <label for="quickResult" class="block text-xs font-medium text-slate-600 mb-1">Result *</label>
-            <input id="quickResult" type="text" required class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 outline-none font-mono-num" placeholder="e.g. 45 ng/uL" />
-          </div>
-          <div class="sm:col-span-2">
-            <button type="submit" class="w-full py-2.5 px-4 text-sm font-semibold text-white bg-lab-600 rounded-lg hover:bg-lab-700 active:bg-lab-800 transition shadow-sm min-h-[42px]">
-              Add
-            </button>
+          <div>
+            <label for="entryDate" class="lbl">Date</label>
+            <input id="entryDate" type="date" class="field" />
           </div>
         </div>
 
-        <!-- Optional More Details Toggle -->
-        <div>
-          <button id="btnToggleQuickExtra" type="button" class="text-xs font-medium text-lab-600 hover:text-lab-800 flex items-center gap-1">
-            <svg id="quickExtraChevron" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-            <span>Add optional details now (volume, dilution, notes)</span>
-          </button>
-          <div id="quickExtraFields" class="hidden mt-3 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- Result fields -->
+        <div id="resultFields" class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label for="quickVolume" class="block text-xs font-medium text-slate-600 mb-1">Volume / Quantity</label>
-              <input id="quickVolume" type="text" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 outline-none font-mono-num" placeholder="e.g. 20 uL" />
+              <label for="entryName" class="lbl">Name / Tube *</label>
+              <input id="entryName" type="text" class="field font-mono-num" placeholder="e.g. Tube 1" autocomplete="off" />
             </div>
             <div>
-              <label for="quickDilution" class="block text-xs font-medium text-slate-600 mb-1">Dilution / Source</label>
-              <input id="quickDilution" type="text" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 outline-none" placeholder="e.g. 1:2 from Stock A" />
+              <label for="entryResult" class="lbl">Result *</label>
+              <input id="entryResult" type="text" class="field font-mono-num" placeholder="e.g. 45.6 ng/µL" autocomplete="off" />
             </div>
-            <div>
-              <label for="quickNotes" class="block text-xs font-medium text-slate-600 mb-1">Notes</label>
-              <input id="quickNotes" type="text" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 outline-none" placeholder="Any extra details..." />
+          </div>
+          <div>
+            <button id="btnToggleExtra" type="button" class="text-xs font-medium text-lab-600 hover:text-lab-800 flex items-center gap-1">
+              <svg id="extraChevron" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+              <span>More details (volume, dilution, note)</span>
+            </button>
+            <div id="extraFields" class="hidden mt-3 pt-3 border-t border-slate-100 space-y-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label for="entryVolume" class="lbl">Volume / Quantity</label>
+                  <input id="entryVolume" type="text" class="field font-mono-num" placeholder="e.g. 20 µL" />
+                </div>
+                <div>
+                  <label for="entryDilution" class="lbl">Dilution / Source</label>
+                  <input id="entryDilution" type="text" class="field" placeholder="e.g. 1:2 from Stock A" />
+                </div>
+              </div>
+              <div>
+                <label for="entryNote" class="lbl">Note</label>
+                <textarea id="entryNote" rows="2" class="field" placeholder="Anything worth remembering about this result"></textarea>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- Note fields -->
+        <div id="noteFields" class="hidden">
+          <label for="noteText" class="lbl">Note *</label>
+          <textarea id="noteText" rows="3" class="field" placeholder="e.g. Recalibrated Qubit with fresh standards; switched to new TE batch"></textarea>
+        </div>
+
+        <button id="btnSubmitEntry" type="submit" class="w-full py-3 px-4 text-sm font-semibold text-white bg-lab-600 rounded-lg hover:bg-lab-700 active:bg-lab-800 transition shadow-sm">
+          Add Result
+        </button>
       </form>
     </div>
 
-    <!-- Sections List -->
-    <div id="quickSectionsContainer" class="space-y-4"></div>
-
+    <!-- Log -->
+    <div id="sectionsContainer" class="space-y-4"></div>
   </main>
 
+  <footer class="text-center text-[11px] text-slate-400 py-4 no-print">
+    Saved on this device only · <a class="underline hover:text-slate-600" href="https://github.com/AKMARTIAN/labtrack" target="_blank" rel="noopener">About LabTrack</a>
+  </footer>
+
   <!-- Add / Rename Section Modal -->
-  <div id="sectionModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
+  <div id="sectionModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4 no-print">
     <form id="sectionModalForm" class="bg-white w-full max-w-sm rounded-2xl shadow-xl border border-slate-200 p-5 space-y-4">
       <div>
         <h3 id="sectionModalTitle" class="text-base font-bold text-slate-900">Add New Section</h3>
-        <p class="text-xs text-slate-500 mt-0.5">Group your quick readings into optional stages or sections.</p>
+        <p class="text-xs text-slate-500 mt-0.5">Group your entries into stages or sections.</p>
       </div>
       <div>
-        <label for="sectionNameInput" class="block text-xs font-medium text-slate-600 mb-1">Section Name</label>
-        <input id="sectionNameInput" type="text" required class="w-full px-3 py-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 outline-none" placeholder="e.g. 3rd Section" />
+        <label for="sectionNameInput" class="lbl">Section name</label>
+        <input id="sectionNameInput" type="text" required class="field" placeholder="e.g. Library prep" />
       </div>
       <div class="flex items-center justify-end gap-2">
         <button id="btnCancelSectionModal" type="button" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
@@ -514,48 +215,41 @@
   </div>
 
   <!-- Export Modal -->
-  <div id="exportModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 no-print">
+  <div id="exportModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 flex items-end sm:items-center justify-center p-0 sm:p-4 no-print">
     <div class="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
       <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
         <div>
-          <h3 class="text-base font-bold text-slate-900">Export Experiment Data</h3>
-          <p class="text-xs text-slate-500">Download files for reports, Excel, or future runs</p>
+          <h3 class="text-base font-bold text-slate-900">Export Results</h3>
+          <p class="text-xs text-slate-500">Download files for reports, Excel, or another device</p>
         </div>
-        <button id="btnCloseExport" type="button" class="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+        <button id="btnCloseExport" type="button" aria-label="Close" class="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
       <div class="p-5 space-y-3">
         <button id="btnDownloadCsv" type="button" class="w-full p-3.5 rounded-xl border border-slate-200 hover:border-lab-400 hover:bg-lab-50/50 transition flex items-center justify-between text-left">
           <div>
             <div class="text-sm font-semibold text-slate-900">Download CSV (.csv)</div>
-            <div class="text-xs text-slate-500">Includes Quant &amp; Dilutions table plus Quick Log sections</div>
+            <div class="text-xs text-slate-500">One row per entry, for Excel or Google Sheets</div>
           </div>
           <span class="text-xs font-bold text-lab-700 bg-lab-100 px-2.5 py-1 rounded-md">CSV</span>
         </button>
-
         <button id="btnDownloadTxt" type="button" class="w-full p-3.5 rounded-xl border border-slate-200 hover:border-lab-400 hover:bg-lab-50/50 transition flex items-center justify-between text-left">
           <div>
             <div class="text-sm font-semibold text-slate-900">Download Text Report (.txt)</div>
-            <div class="text-xs text-slate-500">Readable lab notebook summary for both tabs</div>
+            <div class="text-xs text-slate-500">Readable lab notebook summary</div>
           </div>
           <span class="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md">TXT</span>
         </button>
-
         <button id="btnCopyTxt" type="button" class="w-full p-3.5 rounded-xl border border-slate-200 hover:border-lab-400 hover:bg-lab-50/50 transition flex items-center justify-between text-left">
           <div>
             <div class="text-sm font-semibold text-slate-900">Copy Summary to Clipboard</div>
-            <div class="text-xs text-slate-500">Paste directly into an ELN, Google Doc, or email</div>
+            <div class="text-xs text-slate-500">Paste into an ELN, document or email</div>
           </div>
           <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md">COPY</span>
         </button>
-
         <div class="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2.5">
-          <button id="btnDownloadJson" type="button" class="py-2.5 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">
-            Save Backup (.json)
-          </button>
+          <button id="btnDownloadJson" type="button" class="py-2.5 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">Save Backup (.json)</button>
           <label class="py-2.5 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition text-center cursor-pointer">
             Import Backup (.json)
             <input id="inputImportJson" type="file" accept=".json,application/json" class="hidden" />
@@ -565,116 +259,111 @@
     </div>
   </div>
 
-  <!-- New Run Confirmation Modal -->
-  <div id="newRunModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 no-print">
+  <!-- New Run Modal -->
+  <div id="newRunModal" class="hidden fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4 no-print">
     <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl border border-slate-200 p-5 space-y-4">
       <div>
-        <h3 class="text-base font-bold text-slate-900">Start a New Experiment Run?</h3>
-        <p class="text-xs text-slate-500 mt-1">This clears all current data. Export or back up your results first if you need them.</p>
+        <h3 class="text-base font-bold text-slate-900">Start a new run?</h3>
+        <p class="text-xs text-slate-500 mt-1">This clears all current entries. Export or back up your results first if you need them.</p>
       </div>
       <div class="space-y-2">
-        <button id="btnConfirmBlank" type="button" class="w-full py-2.5 px-4 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition">
-          Clear Everything &amp; Start Blank
-        </button>
-        <button id="btnCancelNewRun" type="button" class="w-full py-2.5 px-4 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">
-          Cancel
-        </button>
+        <button id="btnConfirmBlank" type="button" class="w-full py-2.5 px-4 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition">Clear Everything &amp; Start Blank</button>
+        <button id="btnCancelNewRun" type="button" class="w-full py-2.5 px-4 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition">Cancel</button>
       </div>
     </div>
   </div>
 
-  <!-- Toast Notification -->
-  <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-lg transition-opacity no-print"></div>
+  <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-lg no-print"></div>
 
   <script>
     (function () {
       const STORAGE_KEY = 'labtrack_v1_state';
+      const $ = (id) => document.getElementById(id);
+      const pad = (n) => String(n).padStart(2, '0');
 
       function todayISO() {
         const d = new Date();
-        const pad = (n) => String(n).padStart(2, '0');
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
       }
-
-      function nowTimeStr() {
+      function nowTime() {
         const d = new Date();
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      }
+      function fmtDate(iso) {
+        if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso || '';
+        const [y, m, d] = iso.split('-').map(Number);
+        return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+      function escapeHtml(str) {
+        return String(str ?? '')
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+      function newId(prefix) {
+        return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       }
 
-      function defaultQuickSections() {
+      function defaultSections() {
         return [
           { id: 'qsec_start', name: 'Start', collapsed: false },
           { id: 'qsec_1', name: 'First Section', collapsed: false },
           { id: 'qsec_2', name: '2nd Section', collapsed: false }
         ];
       }
-
       function createBlankState() {
         return {
-          meta: {
-            id: 'QV-' + todayISO().replace(/-/g, '').slice(2),
-            date: todayISO(),
-            instrument: '',
-            assay: '',
-            operator: '',
-            unit: 'ng/µL',
-            notes: ''
-          },
-          stocks: [],
-          steps: [],
-          quickSections: defaultQuickSections(),
+          version: 2,
+          meta: { id: `Run ${todayISO()}`, operator: '', date: todayISO() },
+          quickSections: defaultSections(),
           quickItems: []
         };
-      }
-
-      let state = loadState();
-      let editingStepId = null;
-      let currentReads = ['', ''];
-      let activeMobileTab = 'record';
-      let activeAppView = 'quant';
-      let expandedQuickItemId = null;
-      let editingSectionId = null;
-
-      function ensureQuickState(s) {
-        if (!Array.isArray(s.quickSections) || s.quickSections.length === 0) {
-          s.quickSections = defaultQuickSections();
-        }
-        if (!Array.isArray(s.quickItems)) {
-          s.quickItems = [];
-        }
-        return s;
       }
 
       // Earlier versions opened with an example run. If a browser still has that
       // example saved and nothing else was added, start blank instead.
       function isUntouchedExampleRun(s) {
         const only = (arr, ids) => (arr || []).every((x) => ids.includes(x.id));
-        return s.meta.id === 'QV-2026-01'
+        return s.meta && s.meta.id === 'QV-2026-01'
           && only(s.stocks, ['stk_1'])
           && only(s.steps, ['stp_1', 'stp_2', 'stp_3'])
           && only(s.quickItems, ['qi_1']);
       }
 
+      // Bring saved data from any version up to the current shape.
+      function normalize(s) {
+        s.meta = Object.assign({ id: '', operator: '', date: todayISO() }, s.meta || {});
+        if (!Array.isArray(s.quickSections) || s.quickSections.length === 0) s.quickSections = defaultSections();
+        if (!Array.isArray(s.quickItems)) s.quickItems = [];
+        s.quickItems.forEach((i) => {
+          if (i.kind !== 'note') i.kind = 'result';
+          if (!i.date) i.date = s.meta.date || todayISO();
+          if (i.timestamp && /^\d{1,2}:\d{2}/.test(i.timestamp)) i.timestamp = i.timestamp.slice(0, 5);
+          ['name', 'result', 'volume', 'dilution', 'notes', 'text', 'sectionId'].forEach((k) => { if (i[k] == null) i[k] = ''; });
+        });
+        s.version = 2;
+        return s;
+      }
+      function isValidState(p) {
+        return p && typeof p === 'object' && p.meta && (Array.isArray(p.quickItems) || Array.isArray(p.steps));
+      }
       function loadState() {
         try {
           const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('labquant_v1_state');
           if (raw) {
             const parsed = JSON.parse(raw);
-            if (parsed && parsed.meta && Array.isArray(parsed.stocks) && Array.isArray(parsed.steps)) {
-              if (!isUntouchedExampleRun(parsed)) return ensureQuickState(parsed);
-            }
+            if (isValidState(parsed) && !isUntouchedExampleRun(parsed)) return normalize(parsed);
           }
         } catch (e) {}
         return createBlankState();
       }
-
       function saveState() {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        } catch (e) {}
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
       }
 
-      const $ = (id) => document.getElementById(id);
+      let state = loadState();
+      let entryKind = 'result';
+      let openEditor = null; // { id, mode: 'edit' | 'note' }
+      let editingSectionId = null;
 
       function showToast(msg) {
         const el = $('toast');
@@ -684,744 +373,245 @@
         showToast._t = setTimeout(() => el.classList.add('hidden'), 2600);
       }
 
-      function escapeHtml(str) {
-        return String(str ?? '')
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;');
+      const sectionName = (id) => {
+        const s = state.quickSections.find((x) => x.id === id);
+        return s ? s.name : 'General';
+      };
+      const isOrphan = (i) => !i.sectionId || !state.quickSections.some((s) => s.id === i.sectionId);
+
+      function sectionOptions(selectedId) {
+        return '<option value="">General</option>' + state.quickSections.map((s) =>
+          `<option value="${escapeHtml(s.id)}" ${s.id === selectedId ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
+        ).join('');
       }
 
-      function fmtNum(val, decimals = 2) {
-        if (val === null || val === undefined || isNaN(val) || !isFinite(val)) return '—';
-        const n = Number(val);
-        if (n === 0) return '0';
-        if (Math.abs(n) < 0.01) return n.toExponential(2);
-        return Number(n.toFixed(decimals)).toString();
-      }
-
-      function calcStats(reads) {
-        const valid = (reads || []).map(Number).filter((n) => !isNaN(n) && isFinite(n));
-        if (valid.length === 0) return { count: 0, mean: null, sd: null, cv: null };
-        const mean = valid.reduce((a, b) => a + b, 0) / valid.length;
-        if (valid.length === 1) return { count: 1, mean, sd: 0, cv: 0 };
-        const variance = valid.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (valid.length - 1);
-        const sd = Math.sqrt(variance);
-        const cv = mean !== 0 ? (sd / Math.abs(mean)) * 100 : null;
-        return { count: valid.length, mean, sd, cv };
-      }
-
-      function getSourceConcentration(sourceRef) {
-        if (!sourceRef) return null;
-        if (sourceRef.startsWith('stock:')) {
-          const sid = sourceRef.slice(6);
-          const stk = state.stocks.find((s) => s.id === sid);
-          return stk && stk.conc !== null && stk.conc !== '' ? Number(stk.conc) : null;
-        }
-        if (sourceRef.startsWith('step:')) {
-          const stpid = sourceRef.slice(5);
-          const stp = state.steps.find((s) => s.id === stpid);
-          if (!stp) return null;
-          if (stp.expectedConc !== null && stp.expectedConc !== '' && !isNaN(stp.expectedConc)) {
-            return Number(stp.expectedConc);
-          }
-          const stats = calcStats(stp.reads);
-          return stats.mean;
-        }
-        return null;
-      }
-
-      function getSourceLabel(sourceRef) {
-        if (!sourceRef) return '';
-        if (sourceRef.startsWith('stock:')) {
-          const stk = state.stocks.find((s) => s.id === sourceRef.slice(6));
-          return stk ? stk.name : 'Unknown Stock';
-        }
-        if (sourceRef.startsWith('step:')) {
-          const stp = state.steps.find((s) => s.id === sourceRef.slice(5));
-          return stp ? stp.tubeId : 'Unknown Tube';
-        }
-        return '';
-      }
-
-      function switchAppView(view) {
-        activeAppView = view;
-        document.querySelectorAll('.app-view-btn').forEach((btn) => {
-          const isMatch = btn.dataset.view === view;
-          btn.classList.toggle('bg-white', isMatch);
-          btn.classList.toggle('text-lab-700', isMatch);
-          btn.classList.toggle('shadow-sm', isMatch);
-          btn.classList.toggle('text-slate-600', !isMatch);
-        });
-        $('view-quant').classList.toggle('hidden', view !== 'quant');
-        $('view-quick').classList.toggle('hidden', view !== 'quick');
-        $('quantSubTabs').classList.toggle('hidden', view !== 'quant');
-      }
+      /* ---------- Rendering ---------- */
 
       function renderMeta() {
-        $('expId').value = state.meta.id || '';
-        $('expDate').value = state.meta.date || todayISO();
-        $('expInstrument').value = state.meta.instrument || '';
-        $('expAssay').value = state.meta.assay || '';
-        $('expOperator').value = state.meta.operator || '';
-        $('expUnit').value = state.meta.unit || 'ng/µL';
-        $('expNotes').value = state.meta.notes || '';
-        document.querySelectorAll('.unit-label').forEach((el) => {
-          el.textContent = state.meta.unit || 'ng/µL';
+        $('runName').value = state.meta.id || '';
+        $('runOperator').value = state.meta.operator || '';
+      }
+
+      function renderKind() {
+        document.querySelectorAll('.kind-btn').forEach((b) => {
+          const on = b.dataset.kind === entryKind;
+          b.classList.toggle('bg-white', on);
+          b.classList.toggle('text-lab-700', on);
+          b.classList.toggle('shadow-sm', on);
+          b.classList.toggle('text-slate-600', !on);
+          b.setAttribute('aria-selected', on);
         });
+        $('resultFields').classList.toggle('hidden', entryKind !== 'result');
+        $('noteFields').classList.toggle('hidden', entryKind !== 'note');
+        $('btnSubmitEntry').textContent = entryKind === 'note' ? 'Add Note' : 'Add Result';
       }
 
-      function bindMetaInputs() {
-        const map = {
-          expId: 'id',
-          expDate: 'date',
-          expInstrument: 'instrument',
-          expAssay: 'assay',
-          expOperator: 'operator',
-          expUnit: 'unit',
-          expNotes: 'notes'
-        };
-        Object.entries(map).forEach(([elId, key]) => {
-          $(elId).addEventListener('input', (e) => {
-            state.meta[key] = e.target.value;
-            if (key === 'unit') {
-              document.querySelectorAll('.unit-label').forEach((el) => {
-                el.textContent = state.meta.unit;
-              });
-              renderStocks();
-              renderSteps();
-              updateLiveStepCalc();
-            }
-            saveState();
-          });
-        });
-      }
-
-      function renderStocks() {
-        const container = $('stockList');
-        $('stockCountBadge').textContent = state.stocks.length;
-        if (state.stocks.length === 0) {
-          container.innerHTML = '<div class="p-4 text-xs text-slate-400 text-center">No stocks added yet.</div>';
-        } else {
-          container.innerHTML = state.stocks.map((stk) => `
-            <div class="px-4 py-2.5 flex items-center justify-between gap-2 hover:bg-slate-50">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="text-sm font-semibold text-slate-800 font-mono-num truncate">${escapeHtml(stk.name)}</span>
-                  ${stk.conc !== null && stk.conc !== '' ? `<span class="text-xs font-mono-num px-1.5 py-0.5 rounded bg-lab-50 text-lab-700 border border-lab-200">${fmtNum(stk.conc)} ${escapeHtml(state.meta.unit)}</span>` : ''}
-                </div>
-                <div class="text-[11px] text-slate-500 mt-0.5">
-                  ${stk.vol ? `Vol: ${fmtNum(stk.vol, 1)} µL` : 'Vol: —'} ${stk.diluent ? `· ${escapeHtml(stk.diluent)}` : ''}
-                </div>
-              </div>
-              <button type="button" data-del-stock="${stk.id}" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 shrink-0" title="Remove stock">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </div>
-          `).join('');
-        }
-        renderSourceDropdown();
-      }
-
-      function renderSourceDropdown() {
-        const sel = $('sourceSelect');
-        const currentVal = sel.value;
-        let opts = '<option value="">— None / Blank —</option>';
-        if (state.stocks.length > 0) {
-          opts += '<optgroup label="Stocks">';
-          state.stocks.forEach((s) => {
-            const c = s.conc !== null && s.conc !== '' ? ` (${fmtNum(s.conc)} ${state.meta.unit})` : '';
-            opts += `<option value="stock:${s.id}">${escapeHtml(s.name)}${escapeHtml(c)}</option>`;
-          });
-          opts += '</optgroup>';
-        }
-        const eligibleSteps = state.steps.filter((st) => st.id !== editingStepId);
-        if (eligibleSteps.length > 0) {
-          opts += '<optgroup label="Previous Tubes / Dilutions">';
-          eligibleSteps.forEach((st) => {
-            const c = st.expectedConc !== null && !isNaN(st.expectedConc) ? ` (~${fmtNum(st.expectedConc)} ${state.meta.unit})` : '';
-            opts += `<option value="step:${st.id}">${escapeHtml(st.tubeId)}${escapeHtml(c)}</option>`;
-          });
-          opts += '</optgroup>';
-        }
-        sel.innerHTML = opts;
-        if (currentVal) sel.value = currentVal;
-      }
-
-      function renderReadInputs() {
-        const container = $('readsContainer');
-        container.innerHTML = currentReads.map((val, idx) => `
-          <div class="relative flex items-center">
-            <span class="absolute left-3 text-[11px] font-semibold text-slate-400 pointer-events-none">R${idx + 1}</span>
-            <input type="number" step="any" inputmode="decimal" data-read-idx="${idx}" value="${escapeHtml(val)}"
-              class="read-input w-full pl-9 pr-8 py-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-lab-500 outline-none font-mono-num"
-              placeholder="0.00" />
-            ${currentReads.length > 1 ? `
-              <button type="button" data-remove-read="${idx}" class="absolute right-2 text-slate-400 hover:text-rose-600 p-1" title="Remove read">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            ` : ''}
-          </div>
-        `).join('');
-        updateLiveStepCalc();
-      }
-
-      function computeStepFormMath() {
-        const sVol = parseFloat($('sampleVol').value);
-        const dVol = parseFloat($('diluentVol').value);
-        const validS = !isNaN(sVol) && sVol >= 0 ? sVol : 0;
-        const validD = !isNaN(dVol) && dVol >= 0 ? dVol : 0;
-        const totalVol = validS + validD;
-
-        let dilutionFactor = null;
-        if (validS > 0 && totalVol > 0) {
-          dilutionFactor = totalVol / validS;
-        } else if ($('stepType').value === 'Stock Read' && validS > 0) {
-          dilutionFactor = 1;
-        }
-
-        const sourceRef = $('sourceSelect').value;
-        const sourceConc = getSourceConcentration(sourceRef);
-        const overrideVal = $('expectedOverride').value.trim();
-
-        let expectedConc = null;
-        if (overrideVal !== '' && !isNaN(parseFloat(overrideVal))) {
-          expectedConc = parseFloat(overrideVal);
-        } else if ($('stepType').value === 'Blank / Control') {
-          expectedConc = 0;
-        } else if (sourceConc !== null && dilutionFactor !== null && dilutionFactor > 0) {
-          expectedConc = sourceConc / dilutionFactor;
-        } else if (sourceConc !== null && $('stepType').value === 'Stock Read') {
-          expectedConc = sourceConc;
-        }
-
-        return { totalVol, dilutionFactor, expectedConc };
-      }
-
-      function updateLiveStepCalc() {
-        const { totalVol, dilutionFactor, expectedConc } = computeStepFormMath();
-        $('liveTotalVol').textContent = totalVol > 0 ? `${fmtNum(totalVol, 1)} µL` : '— µL';
-        $('liveDilFactor').textContent = dilutionFactor ? `1:${fmtNum(dilutionFactor, 2)} (${fmtNum(dilutionFactor, 2)}×)` : '—';
-        $('liveExpectedConc').textContent = expectedConc !== null ? `${fmtNum(expectedConc)} ${state.meta.unit}` : '—';
-
-        const numericReads = currentReads.filter((v) => String(v).trim() !== '').map(Number);
-        const stats = calcStats(numericReads);
-        $('liveMean').textContent = stats.mean !== null ? `${fmtNum(stats.mean)} ${state.meta.unit}` : '—';
-        $('liveCV').textContent = stats.cv !== null && stats.count > 1 ? `${fmtNum(stats.cv, 1)}%` : '—';
-        if (stats.mean !== null && expectedConc !== null && expectedConc > 0) {
-          const rec = (stats.mean / expectedConc) * 100;
-          $('liveRecovery').textContent = `${fmtNum(rec, 1)}%`;
-        } else {
-          $('liveRecovery').textContent = '—';
-        }
-      }
-
-      function statusBadge(status) {
-        const map = {
-          'Pass': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-          'Check': 'bg-amber-50 text-amber-700 border-amber-200',
-          'Fail': 'bg-rose-50 text-rose-700 border-rose-200',
-          'Pending': 'bg-slate-100 text-slate-600 border-slate-200'
-        };
-        const cls = map[status] || map['Pending'];
-        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cls}">${escapeHtml(status)}</span>`;
-      }
-
-      function renderSteps() {
-        const filter = $('filterStatus').value;
-        const allSteps = state.steps;
-        const filtered = filter === 'ALL' ? allSteps : allSteps.filter((s) => s.status === filter);
-
-        $('stepCountBadge').textContent = allSteps.length;
-        $('mobileStepCount').textContent = allSteps.length;
-
-        $('kpiTotal').textContent = allSteps.length;
-        const decided = allSteps.filter((s) => s.status !== 'Pending');
-        const passed = allSteps.filter((s) => s.status === 'Pass');
-        $('kpiPass').textContent = decided.length > 0 ? `${Math.round((passed.length / decided.length) * 100)}%` : '—';
-
-        const recoveries = [];
-        const cvs = [];
-        allSteps.forEach((s) => {
-          const stats = calcStats(s.reads);
-          if (stats.mean !== null && s.expectedConc !== null && s.expectedConc > 0) {
-            recoveries.push((stats.mean / s.expectedConc) * 100);
-          }
-          if (stats.cv !== null && stats.count > 1) {
-            cvs.push(stats.cv);
-          }
-        });
-        $('kpiRecovery').textContent = recoveries.length > 0
-          ? `${fmtNum(recoveries.reduce((a, b) => a + b, 0) / recoveries.length, 1)}%`
-          : '—';
-        $('kpiCV').textContent = cvs.length > 0
-          ? `${fmtNum(cvs.reduce((a, b) => a + b, 0) / cvs.length, 1)}%`
-          : '—';
-
-        if (filtered.length === 0) {
-          $('desktopStepTable').innerHTML = '';
-          $('mobileStepList').innerHTML = '';
-          $('emptyStepsState').classList.remove('hidden');
-          return;
-        }
-        $('emptyStepsState').classList.add('hidden');
-
-        $('desktopStepTable').innerHTML = filtered.map((s) => {
-          const idx = allSteps.findIndex((x) => x.id === s.id) + 1;
-          const stats = calcStats(s.reads);
-          const rec = (stats.mean !== null && s.expectedConc !== null && s.expectedConc > 0)
-            ? (stats.mean / s.expectedConc) * 100
-            : null;
-          const readsStr = s.reads && s.reads.length > 0 ? s.reads.map((r) => fmtNum(r)).join(', ') : 'No reads';
-          const volStr = (s.sampleVol || s.diluentVol)
-            ? `${fmtNum(s.sampleVol, 1)} + ${fmtNum(s.diluentVol, 1)} µL`
-            : 'Undiluted';
-          const dfStr = s.dilutionFactor && s.dilutionFactor > 1 ? `1:${fmtNum(s.dilutionFactor, 2)}` : '1:1';
-
-          return `
-            <tr class="hover:bg-slate-50/80 transition">
-              <td class="py-3 px-3 text-xs font-mono-num text-slate-400 align-top">${idx}</td>
-              <td class="py-3 px-3 align-top">
-                <div class="font-semibold text-slate-900 font-mono-num">${escapeHtml(s.tubeId)}</div>
-                <div class="text-[11px] text-slate-500">${escapeHtml(s.type)} · ${escapeHtml(s.timestamp || '')}</div>
-                ${s.note ? `<div class="text-[11px] text-slate-600 mt-1 italic">${escapeHtml(s.note)}</div>` : ''}
-              </td>
-              <td class="py-3 px-3 align-top">
-                <div class="text-xs font-medium text-slate-800">${escapeHtml(s.sourceLabel || '—')}</div>
-                <div class="text-[11px] text-slate-500 font-mono-num">${volStr} (${dfStr})</div>
-              </td>
-              <td class="py-3 px-3 text-right align-top font-mono-num text-xs text-slate-700">
-                ${s.expectedConc !== null && s.expectedConc !== '' ? `${fmtNum(s.expectedConc)} <span class="text-slate-400">${escapeHtml(state.meta.unit)}</span>` : '—'}
-              </td>
-              <td class="py-3 px-3 text-right align-top">
-                <div class="font-bold text-slate-900 font-mono-num">${stats.mean !== null ? fmtNum(stats.mean) : '—'}</div>
-                <div class="text-[10px] text-slate-400 font-mono-num">[${readsStr}]</div>
-              </td>
-              <td class="py-3 px-3 text-right align-top font-mono-num text-xs">
-                <div class="text-slate-700">${stats.cv !== null && stats.count > 1 ? `${fmtNum(stats.cv, 1)}% CV` : '—'}</div>
-                <div class="${rec !== null ? (rec >= 85 && rec <= 115 ? 'text-emerald-700 font-semibold' : 'text-amber-700 font-semibold') : 'text-slate-400'}">
-                  ${rec !== null ? `${fmtNum(rec, 1)}% rec` : '—'}
-                </div>
-              </td>
-              <td class="py-3 px-3 align-top">${statusBadge(s.status)}</td>
-              <td class="py-3 px-3 text-right align-top no-print whitespace-nowrap">
-                <button type="button" data-edit-step="${s.id}" class="text-xs font-medium text-lab-600 hover:text-lab-800 px-2 py-1 rounded hover:bg-lab-50">Edit</button>
-                <button type="button" data-del-step="${s.id}" class="text-xs font-medium text-rose-600 hover:text-rose-800 px-2 py-1 rounded hover:bg-rose-50">Del</button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-
-        $('mobileStepList').innerHTML = filtered.map((s) => {
-          const idx = allSteps.findIndex((x) => x.id === s.id) + 1;
-          const stats = calcStats(s.reads);
-          const rec = (stats.mean !== null && s.expectedConc !== null && s.expectedConc > 0)
-            ? (stats.mean / s.expectedConc) * 100
-            : null;
-          return `
-            <div class="p-4 space-y-2.5">
-              <div class="flex items-start justify-between gap-2">
-                <div>
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs font-mono-num text-slate-400">#${idx}</span>
-                    <span class="text-sm font-bold text-slate-900 font-mono-num">${escapeHtml(s.tubeId)}</span>
-                    ${statusBadge(s.status)}
-                  </div>
-                  <div class="text-xs text-slate-500 mt-0.5">${escapeHtml(s.type)} · From: ${escapeHtml(s.sourceLabel || 'None')}</div>
-                </div>
-                <div class="flex items-center gap-1">
-                  <button type="button" data-edit-step="${s.id}" class="text-xs font-semibold text-lab-600 px-2.5 py-1.5 rounded-lg bg-lab-50">Edit</button>
-                  <button type="button" data-del-step="${s.id}" class="text-xs font-semibold text-rose-600 px-2.5 py-1.5 rounded-lg bg-rose-50">Del</button>
-                </div>
-              </div>
-              <div class="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-lg text-xs">
-                <div>
-                  <div class="text-[10px] text-slate-500">Dilution</div>
-                  <div class="font-mono-num font-semibold text-slate-800">${s.dilutionFactor > 1 ? `1:${fmtNum(s.dilutionFactor, 2)}` : '1:1'}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-slate-500">Expected</div>
-                  <div class="font-mono-num font-semibold text-slate-800">${s.expectedConc !== null ? fmtNum(s.expectedConc) : '—'}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-slate-500">Mean (${escapeHtml(state.meta.unit)})</div>
-                  <div class="font-mono-num font-bold text-lab-700">${stats.mean !== null ? fmtNum(stats.mean) : '—'}</div>
-                </div>
-              </div>
-              <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-500 gap-2">
-                <span class="font-mono-num">Reads: [${s.reads.map((r) => fmtNum(r)).join(', ') || '—'}]</span>
-                <span>${rec !== null ? `Rec: ${fmtNum(rec, 1)}%` : ''} ${stats.cv !== null && stats.count > 1 ? `· CV: ${fmtNum(stats.cv, 1)}%` : ''}</span>
-              </div>
-              ${s.note ? `<div class="text-xs text-slate-600 italic bg-amber-50/50 px-2.5 py-1.5 rounded border border-amber-100">${escapeHtml(s.note)}</div>` : ''}
-            </div>
-          `;
-        }).join('');
-      }
-
-      function resetStepForm() {
-        editingStepId = null;
-        $('stepForm').reset();
-        $('stepType').value = 'Serial Dilution';
-        $('stepQc').value = 'Pass';
-        currentReads = ['', ''];
-        $('editingBadge').classList.add('hidden');
-        $('btnCancelEdit').classList.add('hidden');
-        $('submitStepLabel').textContent = 'Log Step';
-        renderSourceDropdown();
-        renderReadInputs();
-      }
-
-      function populateStepFormForEdit(stepId) {
-        const s = state.steps.find((x) => x.id === stepId);
-        if (!s) return;
-        editingStepId = stepId;
-        renderSourceDropdown();
-        $('stepType').value = s.type;
-        $('tubeId').value = s.tubeId;
-        $('sourceSelect').value = s.sourceRef || '';
-        $('sampleVol').value = s.sampleVol || '';
-        $('diluentVol').value = s.diluentVol || '';
-        $('diluentName').value = s.diluentName || '';
-        $('expectedOverride').value = s.expectedConc !== null && s.expectedConc !== undefined ? s.expectedConc : '';
-        $('stepQc').value = s.status || 'Pass';
-        $('stepNote').value = s.note || '';
-        currentReads = s.reads && s.reads.length > 0 ? s.reads.map(String) : [''];
-        $('editingBadge').classList.remove('hidden');
-        $('btnCancelEdit').classList.remove('hidden');
-        $('submitStepLabel').textContent = 'Update Step';
-        renderReadInputs();
-        switchMobileTab('record');
-        $('panel-record').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-
-      function switchMobileTab(tab) {
-        activeMobileTab = tab;
-        document.querySelectorAll('.tab-btn').forEach((btn) => {
-          const isMatch = btn.dataset.tab === tab;
-          btn.classList.toggle('border-lab-600', isMatch);
-          btn.classList.toggle('text-lab-700', isMatch);
-          btn.classList.toggle('border-transparent', !isMatch);
-          btn.classList.toggle('text-slate-500', !isMatch);
-        });
-        if (window.innerWidth < 1024) {
-          $('panel-setup').classList.toggle('hidden', tab !== 'setup');
-          $('panel-record').classList.toggle('hidden', tab !== 'record');
-          $('panel-log').classList.toggle('hidden', tab !== 'log');
-        } else {
-          $('panel-setup').classList.remove('hidden');
-          $('panel-record').classList.remove('hidden');
-          $('panel-log').classList.remove('hidden');
-        }
-      }
-
-      function renderQuickSectionSelect() {
-        const sel = $('quickSectionSelect');
+      function renderSectionSelect() {
+        const sel = $('entrySection');
         const prev = sel.value;
-        let opts = '<option value="">Unsectioned / General</option>';
-        state.quickSections.forEach((sec) => {
-          opts += `<option value="${sec.id}">${escapeHtml(sec.name)}</option>`;
-        });
-        sel.innerHTML = opts;
-        if (prev && (prev === '' || state.quickSections.some((s) => s.id === prev))) {
-          sel.value = prev;
-        } else if (state.quickSections.length > 0) {
-          sel.value = state.quickSections[0].id;
-        }
+        sel.innerHTML = sectionOptions(null);
+        if (prev === '' || state.quickSections.some((s) => s.id === prev)) sel.value = prev;
+        if (!sel.dataset.touched && !prev && state.quickSections.length) sel.value = state.quickSections[0].id;
       }
 
-      function renderQuickLog() {
-        $('quickTotalBadge').textContent = state.quickItems.length;
-        renderQuickSectionSelect();
+      const ICON_NOTE = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5M5 4h14a1 1 0 011 1v11l-4 4H5a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>';
+      const ICON_TRASH = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
+      const btnCls = 'text-xs font-medium px-2.5 py-1.5 rounded-lg border bg-white border-slate-200 text-slate-600 hover:bg-slate-100';
 
-        const container = $('quickSectionsContainer');
-        const sectionsToRender = [
-          ...state.quickSections,
-          ...(state.quickItems.some((i) => !i.sectionId || !state.quickSections.some((s) => s.id === i.sectionId))
-            ? [{ id: '__unsectioned__', name: 'General / Unsectioned', collapsed: false, isVirtual: true }]
-            : [])
-        ];
+      function stamp(item) {
+        return `${escapeHtml(fmtDate(item.date))}${item.timestamp ? ` · ${escapeHtml(item.timestamp)}` : ''}`;
+      }
 
-        container.innerHTML = sectionsToRender.map((sec) => {
-          const items = sec.isVirtual
-            ? state.quickItems.filter((i) => !i.sectionId || !state.quickSections.some((s) => s.id === i.sectionId))
-            : state.quickItems.filter((i) => i.sectionId === sec.id);
+      function editorActions(id) {
+        return `
+          <div class="flex justify-end gap-2">
+            <button type="button" data-act="cancel" data-id="${escapeHtml(id)}" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200/60 rounded-lg">Cancel</button>
+            <button type="button" data-act="save" data-id="${escapeHtml(id)}" class="px-4 py-1.5 text-xs font-semibold text-white bg-lab-600 hover:bg-lab-700 rounded-lg">Save</button>
+          </div>`;
+      }
 
-          const itemsHtml = items.length === 0
-            ? '<div class="px-4 py-4 text-xs text-slate-400">No readings in this section yet.</div>'
-            : items.map((item) => {
-                const isExpanded = expandedQuickItemId === item.id;
-                const hasDetails = Boolean(item.volume || item.dilution || item.notes);
-                const sectionOptions = '<option value="">Unsectioned / General</option>' + state.quickSections.map((s) =>
-                  `<option value="${s.id}" ${item.sectionId === s.id ? 'selected' : ''}>${escapeHtml(s.name)}</option>`
-                ).join('');
+      function renderEditor(item, mode) {
+        const wrap = (inner) => `<div class="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3" data-editor="${escapeHtml(item.id)}">${inner}${editorActions(item.id)}</div>`;
+        if (mode === 'note') {
+          return wrap(`
+            <div>
+              <label class="lbl">Note for ${escapeHtml(item.name)}</label>
+              <textarea data-f="notes" rows="2" class="field" placeholder="Add a note to this result">${escapeHtml(item.notes)}</textarea>
+            </div>`);
+        }
+        const common = `
+          <div class="grid grid-cols-2 gap-2.5">
+            <div><label class="lbl">Section</label><select data-f="sectionId" class="field">${sectionOptions(item.sectionId)}</select></div>
+            <div><label class="lbl">Date</label><input type="date" data-f="date" value="${escapeHtml(item.date)}" class="field" /></div>
+          </div>`;
+        if (item.kind === 'note') {
+          return wrap(`${common}
+            <div><label class="lbl">Note</label><textarea data-f="text" rows="3" class="field">${escapeHtml(item.text)}</textarea></div>`);
+        }
+        return wrap(`${common}
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div><label class="lbl">Name / Tube</label><input type="text" data-f="name" value="${escapeHtml(item.name)}" class="field font-mono-num" /></div>
+            <div><label class="lbl">Result</label><input type="text" data-f="result" value="${escapeHtml(item.result)}" class="field font-mono-num" /></div>
+            <div><label class="lbl">Volume / Quantity</label><input type="text" data-f="volume" value="${escapeHtml(item.volume)}" placeholder="e.g. 20 µL" class="field font-mono-num" /></div>
+            <div><label class="lbl">Dilution / Source</label><input type="text" data-f="dilution" value="${escapeHtml(item.dilution)}" placeholder="e.g. 1:2 from Stock A" class="field" /></div>
+          </div>
+          <div><label class="lbl">Note</label><textarea data-f="notes" rows="2" class="field">${escapeHtml(item.notes)}</textarea></div>`);
+      }
 
-                return `
-                  <div class="px-4 py-3 hover:bg-slate-50/70 transition">
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                      <div class="flex items-center gap-2.5 min-w-0">
-                        <span class="text-sm font-bold text-slate-900 font-mono-num">${escapeHtml(item.name)}</span>
-                        <span class="text-slate-300">—</span>
-                        <span class="text-sm font-semibold text-lab-700 bg-lab-50 border border-lab-200 px-2.5 py-0.5 rounded-md font-mono-num">${escapeHtml(item.result)}</span>
-                        <span class="text-[11px] text-slate-400 hidden sm:inline">${escapeHtml(item.timestamp || '')}</span>
-                      </div>
-                      <div class="flex items-center gap-1.5">
-                        <button type="button" data-q-toggle-details="${item.id}" class="text-xs font-medium px-2.5 py-1.5 rounded-lg border ${isExpanded ? 'bg-lab-50 border-lab-200 text-lab-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'}">
-                          ${isExpanded ? 'Close' : (hasDetails ? 'Edit Details' : '+ Add Details')}
-                        </button>
-                        <button type="button" data-q-del="${item.id}" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50" title="Delete entry">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
+      function renderItem(item) {
+        const id = escapeHtml(item.id);
+        const editing = openEditor && openEditor.id === item.id ? openEditor.mode : null;
+        const delBtn = `<button type="button" data-act="delete" data-id="${id}" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50" title="Delete" aria-label="Delete">${ICON_TRASH}</button>`;
 
-                    ${hasDetails && !isExpanded ? `
-                      <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                        ${item.volume ? `<span>Vol: <strong class="text-slate-700 font-mono-num">${escapeHtml(item.volume)}</strong></span>` : ''}
-                        ${item.dilution ? `<span>Dilution/Source: <strong class="text-slate-700">${escapeHtml(item.dilution)}</strong></span>` : ''}
-                        ${item.notes ? `<span class="italic text-slate-600">${escapeHtml(item.notes)}</span>` : ''}
-                      </div>
-                    ` : ''}
-
-                    ${isExpanded ? `
-                      <div class="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3" data-q-editor="${item.id}">
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                          <div>
-                            <label class="block text-[11px] font-medium text-slate-600 mb-1">Name / Tube</label>
-                            <input type="text" data-q-field="name" value="${escapeHtml(item.name)}" class="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg bg-white font-mono-num" />
-                          </div>
-                          <div>
-                            <label class="block text-[11px] font-medium text-slate-600 mb-1">Result</label>
-                            <input type="text" data-q-field="result" value="${escapeHtml(item.result)}" class="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg bg-white font-mono-num" />
-                          </div>
-                          <div>
-                            <label class="block text-[11px] font-medium text-slate-600 mb-1">Section</label>
-                            <select data-q-field="sectionId" class="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg bg-white">${sectionOptions}</select>
-                          </div>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                          <div>
-                            <label class="block text-[11px] font-medium text-slate-600 mb-1">Volume / Quantity</label>
-                            <input type="text" data-q-field="volume" value="${escapeHtml(item.volume || '')}" placeholder="e.g. 20 uL" class="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg bg-white font-mono-num" />
-                          </div>
-                          <div>
-                            <label class="block text-[11px] font-medium text-slate-600 mb-1">Dilution / Source</label>
-                            <input type="text" data-q-field="dilution" value="${escapeHtml(item.dilution || '')}" placeholder="e.g. 1:2 from Stock A" class="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg bg-white" />
-                          </div>
-                          <div>
-                            <label class="block text-[11px] font-medium text-slate-600 mb-1">Notes</label>
-                            <input type="text" data-q-field="notes" value="${escapeHtml(item.notes || '')}" placeholder="Observations..." class="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg bg-white" />
-                          </div>
-                        </div>
-                        <div class="flex justify-end">
-                          <button type="button" data-q-save="${item.id}" class="px-4 py-1.5 text-xs font-semibold text-white bg-lab-600 hover:bg-lab-700 rounded-lg">
-                            Save Details
-                          </button>
-                        </div>
-                      </div>
-                    ` : ''}
-                  </div>
-                `;
-              }).join('');
-
+        if (item.kind === 'note') {
           return `
-            <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2 min-w-0">
-                  <button type="button" data-sec-collapse="${sec.id}" class="p-1 text-slate-500 hover:text-slate-800 rounded">
-                    <svg class="w-4 h-4 transition-transform ${sec.collapsed ? '' : 'rotate-90'}" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                  <h3 class="text-sm font-bold text-slate-800 truncate">${escapeHtml(sec.name)}</h3>
+            <div class="px-4 py-3 bg-amber-50/40 border-l-4 border-amber-300">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">${ICON_NOTE} Note <span class="font-normal normal-case tracking-normal text-slate-400">· ${stamp(item)}</span></div>
+                  <p class="mt-1 text-sm text-slate-800 whitespace-pre-wrap break-words">${escapeHtml(item.text)}</p>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  ${editing ? '' : `<button type="button" data-act="edit" data-id="${id}" class="${btnCls}">Edit</button>`}
+                  ${delBtn}
+                </div>
+              </div>
+              ${editing ? renderEditor(item, 'edit') : ''}
+            </div>`;
+        }
+
+        const details = [
+          item.volume ? `<span>Vol: <strong class="text-slate-700 font-mono-num">${escapeHtml(item.volume)}</strong></span>` : '',
+          item.dilution ? `<span>Dilution/Source: <strong class="text-slate-700">${escapeHtml(item.dilution)}</strong></span>` : ''
+        ].filter(Boolean).join('');
+
+        return `
+          <div class="px-4 py-3">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span class="text-sm font-bold text-slate-900 font-mono-num break-all">${escapeHtml(item.name)}</span>
+                  <span class="text-slate-300">—</span>
+                  <span class="text-sm font-semibold text-lab-700 bg-lab-50 border border-lab-200 px-2.5 py-0.5 rounded-md font-mono-num break-all">${escapeHtml(item.result)}</span>
+                </div>
+                <div class="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                  <span>${stamp(item)}</span>${details}
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                ${editing ? '' : `
+                  <button type="button" data-act="note" data-id="${id}" class="${btnCls} flex items-center gap-1">${ICON_NOTE}${item.notes ? 'Note' : '+ Note'}</button>
+                  <button type="button" data-act="edit" data-id="${id}" class="${btnCls}">Edit</button>`}
+                ${delBtn}
+              </div>
+            </div>
+            ${item.notes && editing !== 'note' && editing !== 'edit' ? `
+              <div class="mt-2 flex items-start gap-1.5 text-xs text-slate-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
+                <span class="text-amber-600 mt-px">${ICON_NOTE}</span><span class="whitespace-pre-wrap break-words">${escapeHtml(item.notes)}</span>
+              </div>` : ''}
+            ${editing ? renderEditor(item, editing) : ''}
+          </div>`;
+      }
+
+      function renderLog() {
+        const total = state.quickItems.length;
+        $('entryCountBadge').textContent = `${total} ${total === 1 ? 'entry' : 'entries'}`;
+        renderSectionSelect();
+
+        const sections = [...state.quickSections];
+        if (state.quickItems.some(isOrphan)) sections.push({ id: '__general__', name: 'General', collapsed: false, isVirtual: true });
+
+        $('sectionsContainer').innerHTML = sections.map((sec) => {
+          const items = sec.isVirtual ? state.quickItems.filter(isOrphan) : state.quickItems.filter((i) => i.sectionId === sec.id);
+          const sid = escapeHtml(sec.id);
+          const body = items.length === 0
+            ? '<div class="px-4 py-4 text-xs text-slate-400">Nothing logged in this section yet.</div>'
+            : items.map(renderItem).join('');
+          return `
+            <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              <div class="px-3 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  ${sec.isVirtual ? '<span class="w-6"></span>' : `
+                  <button type="button" data-act="collapse" data-sec="${sid}" class="p-1 text-slate-500 hover:text-slate-800 rounded" aria-label="${sec.collapsed ? 'Expand' : 'Collapse'} section">
+                    <svg class="w-4 h-4 transition-transform ${sec.collapsed ? '' : 'rotate-90'}" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  </button>`}
+                  <h2 class="text-sm font-bold text-slate-800 truncate">${escapeHtml(sec.name)}</h2>
                   <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">${items.length}</span>
                 </div>
-                ${!sec.isVirtual ? `
-                  <div class="flex items-center gap-1 shrink-0">
-                    <button type="button" data-sec-rename="${sec.id}" class="text-xs font-medium text-slate-600 hover:text-lab-700 px-2 py-1 rounded hover:bg-slate-200/60">Rename</button>
-                    <button type="button" data-sec-del="${sec.id}" class="text-xs font-medium text-slate-500 hover:text-rose-600 px-2 py-1 rounded hover:bg-rose-50">Remove</button>
-                  </div>
-                ` : ''}
+                ${sec.isVirtual ? '' : `
+                <div class="flex items-center gap-1 shrink-0">
+                  <button type="button" data-act="rename" data-sec="${sid}" class="text-xs font-medium text-slate-600 hover:text-lab-700 px-2 py-1 rounded hover:bg-slate-200/60">Rename</button>
+                  <button type="button" data-act="remove-sec" data-sec="${sid}" class="text-xs font-medium text-slate-500 hover:text-rose-600 px-2 py-1 rounded hover:bg-rose-50">Remove</button>
+                </div>`}
               </div>
-              <div class="${sec.collapsed ? 'hidden' : 'divide-y divide-slate-100'}">
-                ${itemsHtml}
-              </div>
-            </div>
-          `;
+              <div class="${sec.collapsed ? 'hidden' : 'divide-y divide-slate-100'}">${body}</div>
+            </section>`;
         }).join('');
       }
+
+      /* ---------- Exports ---------- */
 
       function csvCell(v) {
         const s = String(v ?? '');
-        if (/[",\r\n]/.test(s)) {
-          return '"' + s.replace(/"/g, '""') + '"';
-        }
-        return s;
+        return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
       }
-
-      function buildCsvContent() {
-        const lines = [];
-        lines.push(['EXPERIMENT METADATA', ''].map(csvCell).join(','));
-        lines.push(['Experiment ID', state.meta.id].map(csvCell).join(','));
-        lines.push(['Date', state.meta.date].map(csvCell).join(','));
-        lines.push(['Instrument', state.meta.instrument].map(csvCell).join(','));
-        lines.push(['Assay / Kit', state.meta.assay].map(csvCell).join(','));
-        lines.push(['Operator', state.meta.operator].map(csvCell).join(','));
-        lines.push(['Concentration Unit', state.meta.unit].map(csvCell).join(','));
-        lines.push(['Notes', state.meta.notes].map(csvCell).join(','));
-        lines.push('');
-
-        if (state.stocks.length > 0) {
-          lines.push(['STOCKS', 'Nominal Conc', 'Unit', 'Starting Vol (uL)', 'Buffer / Diluent'].map(csvCell).join(','));
-          state.stocks.forEach((s) => {
-            lines.push([s.name, s.conc ?? '', state.meta.unit, s.vol ?? '', s.diluent ?? ''].map(csvCell).join(','));
-          });
-          lines.push('');
-        }
-
-        if (state.steps.length > 0) {
-          const maxReads = Math.max(1, ...state.steps.map((s) => (s.reads ? s.reads.length : 0)));
-          const readHeaders = Array.from({ length: maxReads }, (_, i) => `Read_${i + 1} (${state.meta.unit})`);
-          const headers = [
-            'Step #', 'Timestamp', 'Step Type', 'Tube ID', 'Source',
-            'Sample Vol (uL)', 'Diluent Vol (uL)', 'Total Vol (uL)', 'Diluent',
-            'Dilution Factor', `Expected Conc (${state.meta.unit})`,
-            ...readHeaders,
-            `Measured Mean (${state.meta.unit})`, 'SD', '%CV', '% Recovery', 'Status', 'Notes'
-          ];
-          lines.push(headers.map(csvCell).join(','));
-
-          state.steps.forEach((s, idx) => {
-            const stats = calcStats(s.reads);
-            const rec = (stats.mean !== null && s.expectedConc !== null && s.expectedConc > 0)
-              ? ((stats.mean / s.expectedConc) * 100).toFixed(2)
-              : '';
-            const totalVol = (Number(s.sampleVol) || 0) + (Number(s.diluentVol) || 0);
-            const readCols = Array.from({ length: maxReads }, (_, i) => (s.reads && s.reads[i] !== undefined ? s.reads[i] : ''));
-            const row = [
-              idx + 1,
-              s.timestamp || '',
-              s.type,
-              s.tubeId,
-              s.sourceLabel || '',
-              s.sampleVol ?? '',
-              s.diluentVol ?? '',
-              totalVol > 0 ? totalVol : '',
-              s.diluentName || '',
-              s.dilutionFactor ? s.dilutionFactor.toFixed(4) : '',
-              s.expectedConc !== null && s.expectedConc !== undefined ? s.expectedConc : '',
-              ...readCols,
-              stats.mean !== null ? stats.mean.toFixed(4) : '',
-              stats.sd !== null ? stats.sd.toFixed(4) : '',
-              stats.cv !== null && stats.count > 1 ? stats.cv.toFixed(2) : '',
-              rec,
-              s.status,
-              s.note || ''
-            ];
-            lines.push(row.map(csvCell).join(','));
-          });
-          lines.push('');
-        }
-
-        if (state.quickItems.length > 0) {
-          lines.push(['QUICK LOG', 'Section', 'Name / Tube', 'Result', 'Volume / Quantity', 'Dilution / Source', 'Notes', 'Timestamp'].map(csvCell).join(','));
-          state.quickItems.forEach((item, idx) => {
-            const sec = state.quickSections.find((s) => s.id === item.sectionId);
-            lines.push([
-              idx + 1,
-              sec ? sec.name : 'General',
-              item.name,
-              item.result,
-              item.volume || '',
-              item.dilution || '',
-              item.notes || '',
-              item.timestamp || ''
-            ].map(csvCell).join(','));
-          });
-        }
-
-        return lines.join('\n');
+      function orderedItems() {
+        // Section order first, then General, keeping entry order within each.
+        const out = [];
+        state.quickSections.forEach((sec) => out.push(...state.quickItems.filter((i) => i.sectionId === sec.id)));
+        out.push(...state.quickItems.filter(isOrphan));
+        return out;
       }
-
+      function buildCsv() {
+        const row = (arr) => arr.map(csvCell).join(',');
+        const lines = [
+          row(['Run', state.meta.id]),
+          row(['Operator', state.meta.operator]),
+          row(['Exported', `${todayISO()} ${nowTime()}`]),
+          '',
+          row(['#', 'Date', 'Time', 'Section', 'Type', 'Name / Tube', 'Result', 'Volume / Quantity', 'Dilution / Source', 'Note'])
+        ];
+        orderedItems().forEach((i, idx) => {
+          const note = i.kind === 'note' ? i.text : i.notes;
+          lines.push(row([idx + 1, i.date, i.timestamp, sectionName(i.sectionId), i.kind === 'note' ? 'Note' : 'Result',
+            i.kind === 'note' ? '' : i.name, i.kind === 'note' ? '' : i.result, i.volume, i.dilution, note]));
+        });
+        return '﻿' + lines.join('\r\n');
+      }
       function buildTextReport() {
         const lines = [];
+        const indentNote = (t) => String(t).split('\n').join('\n' + ' '.repeat(10));
         lines.push('============================================================');
-        lines.push(`LABTRACK LOG: ${state.meta.id || 'Untitled'}`);
+        lines.push(`LABTRACK LOG: ${state.meta.id || 'Untitled run'}`);
         lines.push('============================================================');
-        lines.push(`Date:       ${state.meta.date || '—'}`);
-        lines.push(`Operator:   ${state.meta.operator || '—'}`);
-        lines.push(`Instrument: ${state.meta.instrument || '—'}`);
-        lines.push(`Assay/Kit:  ${state.meta.assay || '—'}`);
-        lines.push(`Unit:       ${state.meta.unit}`);
-        if (state.meta.notes) lines.push(`Notes:      ${state.meta.notes}`);
+        if (state.meta.operator) lines.push(`Operator: ${state.meta.operator}`);
+        lines.push(`Exported: ${fmtDate(todayISO())} ${nowTime()}`);
+        lines.push(`Entries:  ${state.quickItems.length}`);
         lines.push('');
-
-        if (state.stocks.length > 0) {
-          lines.push('--- STOCKS & REFERENCE TUBES ---');
-          state.stocks.forEach((s, i) => {
-            lines.push(`  ${i + 1}. ${s.name} | Conc: ${s.conc ?? '—'} ${state.meta.unit} | Vol: ${s.vol ?? '—'} uL | Diluent: ${s.diluent || '—'}`);
-          });
-          lines.push('');
-        }
-
-        if (state.steps.length > 0) {
-          lines.push('--- DILUTION STEPS & TUBE READS ---');
-          state.steps.forEach((s, i) => {
-            const stats = calcStats(s.reads);
-            const rec = (stats.mean !== null && s.expectedConc !== null && s.expectedConc > 0)
-              ? `${((stats.mean / s.expectedConc) * 100).toFixed(1)}%`
-              : '—';
-            const totalVol = (Number(s.sampleVol) || 0) + (Number(s.diluentVol) || 0);
-            lines.push(`Step ${i + 1} [${s.timestamp || ''}] ${s.tubeId} (${s.type}) — Status: ${s.status}`);
-            lines.push(`  Source:   ${s.sourceLabel || 'None'} | Sample: ${s.sampleVol || 0} uL + Diluent: ${s.diluentVol || 0} uL (${s.diluentName || '—'}) = ${totalVol} uL (1:${fmtNum(s.dilutionFactor, 2)})`);
-            lines.push(`  Expected: ${s.expectedConc !== null ? fmtNum(s.expectedConc) + ' ' + state.meta.unit : '—'}`);
-            lines.push(`  Reads:    [${s.reads.join(', ') || 'None'}] -> Mean: ${stats.mean !== null ? fmtNum(stats.mean) + ' ' + state.meta.unit : '—'} | %CV: ${stats.cv !== null && stats.count > 1 ? fmtNum(stats.cv, 1) + '%' : '—'} | Recovery: ${rec}`);
-            if (s.note) lines.push(`  Note:     ${s.note}`);
-            lines.push('');
-          });
-        }
-
-        if (state.quickItems.length > 0) {
-          lines.push('--- QUICK LOG ---');
-          state.quickSections.forEach((sec) => {
-            const items = state.quickItems.filter((i) => i.sectionId === sec.id);
-            if (items.length > 0) {
-              lines.push(`[${sec.name}]`);
-              items.forEach((item) => {
-                const extras = [
-                  item.volume ? `Vol: ${item.volume}` : '',
-                  item.dilution ? `Dilution: ${item.dilution}` : '',
-                  item.notes ? `Note: ${item.notes}` : ''
-                ].filter(Boolean).join(' | ');
-                lines.push(`  • ${item.name} — ${item.result}${extras ? ` (${extras})` : ''}`);
-              });
-              lines.push('');
+        const groups = state.quickSections.map((s) => ({ name: s.name, items: state.quickItems.filter((i) => i.sectionId === s.id) }));
+        groups.push({ name: 'General', items: state.quickItems.filter(isOrphan) });
+        groups.filter((g) => g.items.length).forEach((g) => {
+          lines.push(`--- ${g.name.toUpperCase()} ---`);
+          g.items.forEach((i) => {
+            const when = `[${i.date}${i.timestamp ? ' ' + i.timestamp : ''}]`;
+            if (i.kind === 'note') {
+              lines.push(`${when} NOTE: ${indentNote(i.text)}`);
+            } else {
+              const extras = [i.volume ? `Vol: ${i.volume}` : '', i.dilution ? `Dilution: ${i.dilution}` : ''].filter(Boolean).join(' | ');
+              lines.push(`${when} ${i.name} — ${i.result}${extras ? ` (${extras})` : ''}`);
+              if (i.notes) lines.push(`          Note: ${indentNote(i.notes)}`);
             }
           });
-          const unsec = state.quickItems.filter((i) => !i.sectionId || !state.quickSections.some((s) => s.id === i.sectionId));
-          if (unsec.length > 0) {
-            lines.push('[General]');
-            unsec.forEach((item) => {
-              const extras = [
-                item.volume ? `Vol: ${item.volume}` : '',
-                item.dilution ? `Dilution: ${item.dilution}` : '',
-                item.notes ? `Note: ${item.notes}` : ''
-              ].filter(Boolean).join(' | ');
-              lines.push(`  • ${item.name} — ${item.result}${extras ? ` (${extras})` : ''}`);
-            });
-          }
-        }
+          lines.push('');
+        });
+        if (!state.quickItems.length) lines.push('(No entries)');
         return lines.join('\n');
       }
-
+      function fileBase() {
+        return (state.meta.id || 'labtrack_run').replace(/[^a-zA-Z0-9_-]+/g, '_');
+      }
       function downloadFile(filename, content, mimeType) {
-        const blob = new Blob([content], { type: mimeType });
-        const url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
@@ -1430,222 +620,134 @@
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
-
       function copyText(text) {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(() => {
-            showToast('Copied summary to clipboard');
-          }).catch(() => fallbackCopy(text));
-        } else {
-          fallbackCopy(text);
-        }
-      }
-
-      function fallbackCopy(text) {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.select();
-        try {
-          document.execCommand('copy');
-          showToast('Copied summary to clipboard');
-        } catch (e) {
-          showToast('Copy failed — please use Download TXT');
-        }
-        document.body.removeChild(ta);
-      }
-
-      document.querySelectorAll('.app-view-btn').forEach((btn) => {
-        btn.addEventListener('click', () => switchAppView(btn.dataset.view));
-      });
-
-      $('btnToggleMeta').addEventListener('click', () => {
-        const body = $('metaBody');
-        const hidden = body.classList.toggle('hidden');
-        $('btnToggleMeta').textContent = hidden ? 'Expand' : 'Collapse';
-      });
-
-      $('stockForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = $('stockName').value.trim();
-        if (!name) return;
-        const concRaw = $('stockConc').value.trim();
-        const volRaw = $('stockVol').value.trim();
-        state.stocks.push({
-          id: 'stk_' + Date.now(),
-          name,
-          conc: concRaw !== '' ? parseFloat(concRaw) : null,
-          vol: volRaw !== '' ? parseFloat(volRaw) : null,
-          diluent: $('stockDiluent').value.trim()
-        });
-        $('stockForm').reset();
-        saveState();
-        renderStocks();
-        showToast(`Added stock ${name}`);
-      });
-
-      $('stockList').addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-del-stock]');
-        if (!btn) return;
-        const id = btn.dataset.delStock;
-        const stk = state.stocks.find((s) => s.id === id);
-        if (!confirm(`Remove stock "${stk ? stk.name : ''}"?`)) return;
-        state.stocks = state.stocks.filter((s) => s.id !== id);
-        saveState();
-        renderStocks();
-        updateLiveStepCalc();
-        showToast('Stock removed');
-      });
-
-      $('btnAddRead').addEventListener('click', () => {
-        currentReads.push('');
-        renderReadInputs();
-      });
-
-      $('readsContainer').addEventListener('input', (e) => {
-        const idx = e.target.dataset.readIdx;
-        if (idx !== undefined) {
-          currentReads[Number(idx)] = e.target.value;
-          updateLiveStepCalc();
-        }
-      });
-
-      $('readsContainer').addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-remove-read]');
-        if (!btn) return;
-        const idx = Number(btn.dataset.removeRead);
-        currentReads.splice(idx, 1);
-        renderReadInputs();
-      });
-
-      ['stepType', 'sourceSelect', 'sampleVol', 'diluentVol', 'expectedOverride'].forEach((id) => {
-        $(id).addEventListener('input', updateLiveStepCalc);
-        $(id).addEventListener('change', updateLiveStepCalc);
-      });
-
-      $('stepForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const tubeId = $('tubeId').value.trim();
-        if (!tubeId) return;
-
-        const { dilutionFactor, expectedConc } = computeStepFormMath();
-        const sourceRef = $('sourceSelect').value;
-        const numericReads = currentReads.filter((v) => String(v).trim() !== '').map(Number);
-
-        const stepData = {
-          id: editingStepId || 'stp_' + Date.now(),
-          timestamp: editingStepId
-            ? (state.steps.find((x) => x.id === editingStepId)?.timestamp || nowTimeStr())
-            : nowTimeStr(),
-          type: $('stepType').value,
-          tubeId,
-          sourceRef,
-          sourceLabel: getSourceLabel(sourceRef) || ($('stepType').value === 'Blank / Control' ? 'Blank' : 'Direct'),
-          sampleVol: $('sampleVol').value !== '' ? parseFloat($('sampleVol').value) : 0,
-          diluentVol: $('diluentVol').value !== '' ? parseFloat($('diluentVol').value) : 0,
-          diluentName: $('diluentName').value.trim(),
-          dilutionFactor: dilutionFactor || 1,
-          expectedConc,
-          reads: numericReads,
-          status: $('stepQc').value,
-          note: $('stepNote').value.trim()
+        const fallback = () => {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand('copy'); showToast('Copied summary to clipboard'); }
+          catch (e) { showToast('Copy failed — please use Download TXT'); }
+          document.body.removeChild(ta);
         };
-
-        if (editingStepId) {
-          const idx = state.steps.findIndex((x) => x.id === editingStepId);
-          if (idx !== -1) state.steps[idx] = stepData;
-          showToast(`Updated ${tubeId}`);
-        } else {
-          state.steps.push(stepData);
-          showToast(`Logged ${tubeId}`);
-        }
-
-        saveState();
-        resetStepForm();
-        renderSteps();
-      });
-
-      $('btnCancelEdit').addEventListener('click', resetStepForm);
-      $('filterStatus').addEventListener('change', renderSteps);
-
-      function handleStepListClick(e) {
-        const editBtn = e.target.closest('[data-edit-step]');
-        if (editBtn) {
-          populateStepFormForEdit(editBtn.dataset.editStep);
-          return;
-        }
-        const delBtn = e.target.closest('[data-del-step]');
-        if (delBtn) {
-          const id = delBtn.dataset.delStep;
-          const stp = state.steps.find((s) => s.id === id);
-          if (!confirm(`Delete step "${stp ? stp.tubeId : ''}"? This cannot be undone.`)) return;
-          state.steps = state.steps.filter((s) => s.id !== id);
-          if (editingStepId === id) resetStepForm();
-          saveState();
-          renderSourceDropdown();
-          renderSteps();
-          showToast('Step deleted');
-        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => showToast('Copied summary to clipboard')).catch(fallback);
+        } else fallback();
       }
 
-      $('desktopStepTable').addEventListener('click', handleStepListClick);
-      $('mobileStepList').addEventListener('click', handleStepListClick);
+      /* ---------- Events ---------- */
 
-      document.querySelectorAll('.tab-btn').forEach((btn) => {
-        btn.addEventListener('click', () => switchMobileTab(btn.dataset.tab));
+      $('runName').addEventListener('input', (e) => { state.meta.id = e.target.value; saveState(); });
+      $('runOperator').addEventListener('input', (e) => { state.meta.operator = e.target.value; saveState(); });
+
+      document.querySelectorAll('.kind-btn').forEach((b) => b.addEventListener('click', () => {
+        entryKind = b.dataset.kind;
+        renderKind();
+        (entryKind === 'note' ? $('noteText') : $('entryName')).focus();
+      }));
+
+      $('btnToggleExtra').addEventListener('click', () => {
+        const hidden = $('extraFields').classList.toggle('hidden');
+        $('extraChevron').classList.toggle('rotate-90', !hidden);
       });
-      window.addEventListener('resize', () => switchMobileTab(activeMobileTab));
+      $('entrySection').addEventListener('change', (e) => { e.target.dataset.touched = '1'; });
 
-      $('btnToggleQuickExtra').addEventListener('click', () => {
-        const hidden = $('quickExtraFields').classList.toggle('hidden');
-        $('quickExtraChevron').classList.toggle('rotate-90', !hidden);
-      });
-
-      $('quickEntryForm').addEventListener('submit', (e) => {
+      $('entryForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const name = $('quickName').value.trim();
-        const result = $('quickResult').value.trim();
-        if (!name || !result) return;
-
-        const sectionId = $('quickSectionSelect').value;
-        state.quickItems.push({
-          id: 'qi_' + Date.now(),
-          sectionId,
-          name,
-          result,
-          volume: $('quickVolume').value.trim(),
-          dilution: $('quickDilution').value.trim(),
-          notes: $('quickNotes').value.trim(),
-          timestamp: nowTimeStr()
-        });
-
-        $('quickName').value = '';
-        $('quickResult').value = '';
-        $('quickVolume').value = '';
-        $('quickDilution').value = '';
-        $('quickNotes').value = '';
-        $('quickName').focus();
-
+        const base = {
+          id: newId('qi_'),
+          sectionId: $('entrySection').value,
+          date: $('entryDate').value || todayISO(),
+          timestamp: nowTime(),
+          name: '', result: '', volume: '', dilution: '', notes: '', text: ''
+        };
+        if (entryKind === 'note') {
+          const text = $('noteText').value.trim();
+          if (!text) { $('noteText').focus(); showToast('Write a note first'); return; }
+          state.quickItems.push(Object.assign(base, { kind: 'note', text }));
+          $('noteText').value = '';
+          $('noteText').focus();
+          showToast('Note added');
+        } else {
+          const name = $('entryName').value.trim();
+          const result = $('entryResult').value.trim();
+          if (!name) { $('entryName').focus(); showToast('Enter a name or tube'); return; }
+          if (!result) { $('entryResult').focus(); showToast('Enter a result'); return; }
+          state.quickItems.push(Object.assign(base, {
+            kind: 'result', name, result,
+            volume: $('entryVolume').value.trim(),
+            dilution: $('entryDilution').value.trim(),
+            notes: $('entryNote').value.trim()
+          }));
+          ['entryName', 'entryResult', 'entryVolume', 'entryDilution', 'entryNote'].forEach((id) => { $(id).value = ''; });
+          $('entryName').focus();
+          showToast(`Logged ${name}`);
+        }
         saveState();
-        renderQuickLog();
-        showToast(`Logged ${name}`);
+        renderLog();
       });
 
-      $('btnAddQuickSection').addEventListener('click', () => {
-        editingSectionId = null;
-        $('sectionModalTitle').textContent = 'Add New Section';
-        $('sectionNameInput').value = '';
+      $('sectionsContainer').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        const act = btn.dataset.act;
+        const item = btn.dataset.id ? state.quickItems.find((i) => i.id === btn.dataset.id) : null;
+        const sec = btn.dataset.sec ? state.quickSections.find((s) => s.id === btn.dataset.sec) : null;
+
+        if (act === 'collapse' && sec) {
+          sec.collapsed = !sec.collapsed;
+        } else if (act === 'rename' && sec) {
+          openSectionModal(sec);
+          return;
+        } else if (act === 'remove-sec' && sec) {
+          const n = state.quickItems.filter((i) => i.sectionId === sec.id).length;
+          if (!confirm(`Remove section "${sec.name}"?${n ? ` Its ${n} ${n === 1 ? 'entry' : 'entries'} will move to General.` : ''}`)) return;
+          state.quickSections = state.quickSections.filter((s) => s.id !== sec.id);
+          state.quickItems.forEach((i) => { if (i.sectionId === sec.id) i.sectionId = ''; });
+          showToast('Section removed');
+        } else if ((act === 'edit' || act === 'note') && item) {
+          openEditor = { id: item.id, mode: act };
+          renderLog();
+          const ed = document.querySelector(`[data-editor="${CSS.escape(item.id)}"] ${act === 'note' ? '[data-f="notes"]' : 'textarea, input'}`);
+          if (ed) { ed.focus(); if (ed.setSelectionRange) ed.setSelectionRange(ed.value.length, ed.value.length); }
+          return;
+        } else if (act === 'cancel') {
+          openEditor = null;
+          renderLog();
+          return;
+        } else if (act === 'save' && item) {
+          const ed = document.querySelector(`[data-editor="${CSS.escape(item.id)}"]`);
+          ed.querySelectorAll('[data-f]').forEach((f) => {
+            const k = f.dataset.f;
+            const v = k === 'sectionId' ? f.value : f.value.trim();
+            if ((k === 'name' || k === 'result' || k === 'text') && !v) return; // keep required fields
+            item[k] = k === 'date' ? (v || item.date) : v;
+          });
+          openEditor = null;
+          showToast('Saved');
+        } else if (act === 'delete' && item) {
+          const label = item.kind === 'note' ? 'this note' : `"${item.name}"`;
+          if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+          state.quickItems = state.quickItems.filter((i) => i.id !== item.id);
+          if (openEditor && openEditor.id === item.id) openEditor = null;
+          showToast('Entry deleted');
+        } else return;
+        saveState();
+        renderLog();
+      });
+
+      // Sections modal
+      function openSectionModal(sec) {
+        editingSectionId = sec ? sec.id : null;
+        $('sectionModalTitle').textContent = sec ? 'Rename Section' : 'Add New Section';
+        $('sectionNameInput').value = sec ? sec.name : '';
         $('sectionModal').classList.remove('hidden');
         $('sectionNameInput').focus();
-      });
-
+      }
+      $('btnAddSection').addEventListener('click', () => openSectionModal(null));
       $('btnCancelSectionModal').addEventListener('click', () => $('sectionModal').classList.add('hidden'));
-      $('sectionModal').addEventListener('click', (e) => {
-        if (e.target === $('sectionModal')) $('sectionModal').classList.add('hidden');
-      });
-
       $('sectionModalForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const name = $('sectionNameInput').value.trim();
@@ -1655,144 +757,62 @@
           if (sec) sec.name = name;
           showToast('Section renamed');
         } else {
-          const newId = 'qsec_' + Date.now();
-          state.quickSections.push({ id: newId, name, collapsed: false });
-          $('quickSectionSelect').value = newId;
+          const id = newId('qsec_');
+          state.quickSections.push({ id, name, collapsed: false });
+          saveState();
+          renderLog();
+          $('entrySection').value = id;
+          $('entrySection').dataset.touched = '1';
           showToast(`Added section "${name}"`);
         }
         $('sectionModal').classList.add('hidden');
         saveState();
-        renderQuickLog();
+        renderLog();
       });
 
-      $('quickSectionsContainer').addEventListener('click', (e) => {
-        const collapseBtn = e.target.closest('[data-sec-collapse]');
-        if (collapseBtn) {
-          const sec = state.quickSections.find((s) => s.id === collapseBtn.dataset.secCollapse);
-          if (sec) {
-            sec.collapsed = !sec.collapsed;
-            saveState();
-            renderQuickLog();
-          }
-          return;
-        }
-
-        const renameBtn = e.target.closest('[data-sec-rename]');
-        if (renameBtn) {
-          const sec = state.quickSections.find((s) => s.id === renameBtn.dataset.secRename);
-          if (!sec) return;
-          editingSectionId = sec.id;
-          $('sectionModalTitle').textContent = 'Rename Section';
-          $('sectionNameInput').value = sec.name;
-          $('sectionModal').classList.remove('hidden');
-          $('sectionNameInput').focus();
-          return;
-        }
-
-        const delSecBtn = e.target.closest('[data-sec-del]');
-        if (delSecBtn) {
-          const sid = delSecBtn.dataset.secDel;
-          state.quickSections = state.quickSections.filter((s) => s.id !== sid);
-          state.quickItems.forEach((i) => {
-            if (i.sectionId === sid) i.sectionId = '';
-          });
-          saveState();
-          renderQuickLog();
-          showToast('Section removed (items moved to General)');
-          return;
-        }
-
-        const toggleDetailsBtn = e.target.closest('[data-q-toggle-details]');
-        if (toggleDetailsBtn) {
-          const id = toggleDetailsBtn.dataset.qToggleDetails;
-          expandedQuickItemId = expandedQuickItemId === id ? null : id;
-          renderQuickLog();
-          return;
-        }
-
-        const saveBtn = e.target.closest('[data-q-save]');
-        if (saveBtn) {
-          const id = saveBtn.dataset.qSave;
-          const editor = document.querySelector(`[data-q-editor="${id}"]`);
-          const item = state.quickItems.find((i) => i.id === id);
-          if (editor && item) {
-            item.name = editor.querySelector('[data-q-field="name"]').value.trim() || item.name;
-            item.result = editor.querySelector('[data-q-field="result"]').value.trim() || item.result;
-            item.sectionId = editor.querySelector('[data-q-field="sectionId"]').value;
-            item.volume = editor.querySelector('[data-q-field="volume"]').value.trim();
-            item.dilution = editor.querySelector('[data-q-field="dilution"]').value.trim();
-            item.notes = editor.querySelector('[data-q-field="notes"]').value.trim();
-            expandedQuickItemId = null;
-            saveState();
-            renderQuickLog();
-            showToast('Details saved');
-          }
-          return;
-        }
-
-        const delItemBtn = e.target.closest('[data-q-del]');
-        if (delItemBtn) {
-          const id = delItemBtn.dataset.qDel;
-          const qi = state.quickItems.find((i) => i.id === id);
-          if (!confirm(`Delete entry "${qi ? qi.name : ''}"? This cannot be undone.`)) return;
-          state.quickItems = state.quickItems.filter((i) => i.id !== id);
-          if (expandedQuickItemId === id) expandedQuickItemId = null;
-          saveState();
-          renderQuickLog();
-          showToast('Entry removed');
-        }
+      // Modals: close on backdrop tap or Escape
+      ['sectionModal', 'exportModal', 'newRunModal'].forEach((m) => {
+        $(m).addEventListener('click', (e) => { if (e.target === $(m)) $(m).classList.add('hidden'); });
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') ['sectionModal', 'exportModal', 'newRunModal'].forEach((m) => $(m).classList.add('hidden'));
       });
 
       $('btnOpenExport').addEventListener('click', () => $('exportModal').classList.remove('hidden'));
       $('btnCloseExport').addEventListener('click', () => $('exportModal').classList.add('hidden'));
-      $('exportModal').addEventListener('click', (e) => {
-        if (e.target === $('exportModal')) $('exportModal').classList.add('hidden');
-      });
-
       $('btnNewRun').addEventListener('click', () => $('newRunModal').classList.remove('hidden'));
       $('btnCancelNewRun').addEventListener('click', () => $('newRunModal').classList.add('hidden'));
-      $('newRunModal').addEventListener('click', (e) => {
-        if (e.target === $('newRunModal')) $('newRunModal').classList.add('hidden');
-      });
 
       $('btnConfirmBlank').addEventListener('click', () => {
         state = createBlankState();
+        openEditor = null;
+        delete $('entrySection').dataset.touched;
+        $('entrySection').value = '';
         saveState();
-        resetStepForm();
-        renderMeta();
-        renderStocks();
-        renderSteps();
-        renderQuickLog();
+        renderAll();
         $('newRunModal').classList.add('hidden');
-        showToast('Started blank experiment');
+        showToast('Started a new run');
       });
 
       $('btnDownloadCsv').addEventListener('click', () => {
-        const base = (state.meta.id || 'labtrack_run').replace(/[^a-zA-Z0-9_-]/g, '_');
-        downloadFile(`${base}.csv`, '\uFEFF' + buildCsvContent().replace(/\n/g, '\r\n'), 'text/csv;charset=utf-8;');
+        downloadFile(`${fileBase()}.csv`, buildCsv(), 'text/csv;charset=utf-8');
         $('exportModal').classList.add('hidden');
         showToast('Downloaded CSV file');
       });
-
       $('btnDownloadTxt').addEventListener('click', () => {
-        const base = (state.meta.id || 'labtrack_run').replace(/[^a-zA-Z0-9_-]/g, '_');
-        downloadFile(`${base}_report.txt`, buildTextReport(), 'text/plain;charset=utf-8;');
+        downloadFile(`${fileBase()}_report.txt`, buildTextReport(), 'text/plain;charset=utf-8');
         $('exportModal').classList.add('hidden');
         showToast('Downloaded text report');
       });
-
       $('btnCopyTxt').addEventListener('click', () => {
         copyText(buildTextReport());
         $('exportModal').classList.add('hidden');
       });
-
       $('btnDownloadJson').addEventListener('click', () => {
-        const base = (state.meta.id || 'labtrack_run').replace(/[^a-zA-Z0-9_-]/g, '_');
-        downloadFile(`${base}_backup.json`, JSON.stringify(state, null, 2), 'application/json');
+        downloadFile(`${fileBase()}_backup.json`, JSON.stringify(state, null, 2), 'application/json');
         $('exportModal').classList.add('hidden');
         showToast('Saved JSON backup');
       });
-
       $('inputImportJson').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1800,35 +820,36 @@
         reader.onload = (ev) => {
           try {
             const parsed = JSON.parse(ev.target.result);
-            if (parsed && parsed.meta && Array.isArray(parsed.stocks) && Array.isArray(parsed.steps)) {
-              state = ensureQuickState(parsed);
-              saveState();
-              resetStepForm();
-              renderMeta();
-              renderStocks();
-              renderSteps();
-              renderQuickLog();
-              $('exportModal').classList.add('hidden');
-              showToast('Imported experiment backup');
-            } else {
-              showToast('Invalid backup file format');
-            }
+            if (!isValidState(parsed)) { showToast('Invalid backup file format'); return; }
+            state = normalize(parsed);
+            openEditor = null;
+            saveState();
+            renderAll();
+            $('exportModal').classList.add('hidden');
+            showToast('Imported backup');
           } catch (err) {
-            showToast('Could not parse JSON file');
+            showToast('Could not read that file');
           }
         };
         reader.readAsText(file);
         e.target.value = '';
       });
 
-      bindMetaInputs();
-      renderMeta();
-      renderStocks();
-      renderReadInputs();
-      renderSteps();
-      renderQuickLog();
-      switchMobileTab('record');
-      switchAppView('quant');
+      function renderAll() {
+        renderMeta();
+        renderKind();
+        renderLog();
+      }
+
+      // Date defaults to today; if the app is left open past midnight, roll it
+      // forward unless the user picked a date themselves.
+      $('entryDate').value = todayISO();
+      $('entryDate').addEventListener('change', (e) => { e.target.dataset.touched = e.target.value !== todayISO() ? '1' : ''; });
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && !$('entryDate').dataset.touched) $('entryDate').value = todayISO();
+      });
+      renderAll();
+      saveState();
 
       if ('serviceWorker' in navigator && location.protocol === 'https:') {
         window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

@@ -2,6 +2,24 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] - 2026-11-23
+
+LabTrack is now a single, simpler Quick Log.
+
+### Added
+- **Date on every entry.** Defaults to today, can be changed for back-logging, and is shown on each entry and included in all exports.
+- **Notes on entries.** Tap **+ Note** on any result to attach a note.
+- **Standalone notes.** Switch the entry box to **Note** to add a note as its own step in the log.
+- Run name and operator fields at the top of the page.
+- Edit the date and section of any entry.
+
+### Removed
+- The **Quant & Dilutions** screen (stocks, dilution steps, recovery and %CV calculations).
+
+### Changed
+- The CSV export is now one row per entry, with columns Date, Time, Section, Type, Name / Tube, Result, Volume, Dilution and Note.
+- Existing saved Quick Log entries are kept. Entries from before this version get the run's date.
+
 ## [1.1.0] - 2026-11-23
 
 ### Changed
@@ -28,5 +46,6 @@ First public release.
 - Header no longer overflows on narrow phone screens.
 - Pinch-to-zoom re-enabled for accessibility.
 
+[2.0.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v2.0.0
 [1.1.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v1.1.0
 [1.0.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v1.0.0

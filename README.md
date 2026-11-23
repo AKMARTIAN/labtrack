@@ -4,7 +4,7 @@
 
 # LabTrack
 
-**A simple, mobile-friendly lab notebook for recording Qubit readings, dilution series and quick bench results, with one-tap CSV and text export.**
+**A simple, mobile-friendly lab log for recording results like Qubit readings, plus notes, each with a date, and one-tap CSV and text export.**
 
 [![Open the app](https://img.shields.io/badge/Open%20the%20app-akmartian.github.io%2Flabtrack-0284c7?style=for-the-badge)](https://akmartian.github.io/labtrack/)
 
@@ -25,24 +25,19 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 
 ## Features
 
-### Quant & Dilutions
-- **Experiment details:** experiment ID, date, instrument, assay/kit, operator, units and notes.
-- **Stocks:** register stock tubes with nominal concentration, volume and diluent.
-- **Dilution steps:** log direct dilutions, serial dilutions, stock reads and blanks/controls.
-  - Total volume, dilution factor and expected concentration are calculated automatically, including down a serial dilution chain.
-  - Enter as many replicate reads as you need. **Mean, SD, %CV and % recovery** are calculated live.
-  - Mark each step **Pass / Check / Fail / Pending**, and filter by status.
-- **Summary KPIs:** total steps, pass rate, average recovery and average %CV.
-
-### Quick Log
-- A fast "name → result" logger for any reading (e.g. `Tube 1 — 45.6 ng/µL`).
-- Group entries into named sections (rename, collapse, remove).
-- Add optional volume, dilution/source and notes to any entry.
+- **Log results fast:** type a name (e.g. `Tube 1`) and a result (e.g. `45.6 ng/µL`), then tap **Add Result**.
+- **Every entry is dated:** the date defaults to today and can be changed to log something from an earlier day. The time is recorded automatically.
+- **Notes, two ways:**
+  - **Note on an entry:** tap **+ Note** on any result to attach a comment (e.g. *"sample looked cloudy, re-spun"*).
+  - **Note as its own step:** switch the entry box to **Note** to add a standalone note to the log (e.g. *"recalibrated Qubit with fresh standards"*).
+- **Optional details:** volume/quantity and dilution/source for any result.
+- **Sections:** group entries into named stages (add, rename, collapse, remove).
+- **Edit or delete** any entry; deleting asks for confirmation.
 
 ### Export & backup
 | Format | Use it for |
 |---|---|
-| **CSV (.csv)** | Excel, Google Sheets, R, Python. Opens with correct `µ` characters in Excel. |
+| **CSV (.csv)** | Excel, Google Sheets, R, Python. One row per entry with date, time, section, type, result and note. |
 | **Text report (.txt)** | Readable summary for ELNs, emails or printing |
 | **Copy to clipboard** | Paste straight into a notebook entry or chat |
 | **JSON backup** | Save a full run and restore it later, or move it to another device |
@@ -56,11 +51,11 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 ## Quick start
 
 1. Open **<https://akmartian.github.io/labtrack/>**.
-2. The app opens with a blank run, ready to use. Fill in your experiment details (optional).
-3. *Quant & Dilutions:* add your stock under **Setup & Stocks**, then log each tube under **Log Step**.
-   *Quick Log:* type a name and a result, then press **Add**.
-4. Tap the **download** button (top right) → **Download CSV** or **Download Text Report**.
-5. To start the next run, tap **New** → **Clear Everything & Start Blank**.
+2. Give your run a name (optional; it's used for the export file name).
+3. Pick a section, type a **Name / Tube** and **Result**, and tap **Add Result**.
+4. Need to write something down? Tap **+ Note** on an entry, or switch to **Note** to add a standalone note.
+5. Tap the **download** button (top right) → **Download CSV** or **Download Text Report**.
+6. To start the next run, tap **New** → **Clear Everything & Start Blank**.
 
 ## Data & privacy
 
@@ -91,7 +86,7 @@ assets/               App icons
 
 ## Roadmap ideas
 
-- Charts of measured vs expected concentration
+- Search and filter entries
 - Multiple saved runs on one device
 - Optional cloud sync
 
