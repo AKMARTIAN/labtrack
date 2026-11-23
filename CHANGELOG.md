@@ -2,6 +2,19 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.0.0] - 2026-11-23
+
+A new look, and tube numbers.
+
+### Added
+- **Tube number** field next to Record, for tubes you can't write on (Qubit, TapeStation). It counts up automatically (tube 4 → 5) and is shown in the log as a *tube 4* tag. It's included in the CSV (new **Tube** column) and text exports and is restored when you continue a run.
+- **Dark mode**: tap ☾ / ☀ in the top bar. The choice is remembered on each device.
+
+### Changed
+- New command-line style design: monospace font, a terminal-style entry window and coloured type tags. **Light** is the default.
+- The page no longer loads an external CSS framework, so it starts faster and is more reliable offline.
+- The old `/preview/` link now forwards to the main app.
+
 ## [2.2.1] - 2026-11-23
 
 ### Changed
@@ -75,6 +88,7 @@ First public release.
 - Header no longer overflows on narrow phone screens.
 - Pinch-to-zoom re-enabled for accessibility.
 
+[3.0.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v3.0.0
 [2.2.1]: https://github.com/AKMARTIAN/labtrack/releases/tag/v2.2.1
 [2.2.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v2.2.0
 [2.1.0]: https://github.com/AKMARTIAN/labtrack/releases/tag/v2.1.0

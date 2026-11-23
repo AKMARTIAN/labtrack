@@ -25,13 +25,14 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 
 ## Features
 
-- **Log results fast:** enter a **Record** (e.g. `Sample 1`) and a **Result**, then tap **Add Result**.
+- **Log results fast:** enter a **Record** (e.g. `Blood 2`) and a **Result**, then tap **add result**.
+- **Tube numbers:** an optional **tube** box next to Record, for when you can't write on the tube (e.g. Qubit or TapeStation tubes). Log *tube 4 → Blood 2 → 45.6 ng/µL*; the tube number counts up automatically with each entry.
 - **Record types with automatic units:** pick a type such as **Qubit** and the unit (ng/µL) is filled in for you, so you only type the number (`45.6` → `45.6 ng/µL`).
   - Built-in types: General, Qubit, NanoDrop, Fragment size, Molarity, Volume, Temperature, pH and Cell count.
   - Switch units from the dropdown next to Result, or choose **Custom…** to add your own unit.
   - **Add your own types** (e.g. *Qubit RNA HS* with `ng/µL, ng/mL`) from **＋ Add or edit types…** in the Type menu.
   - Your last type and the unit you last used for each type are remembered.
-- **Auto-numbering:** after logging `Sample 1`, the Record box fills in `Sample 2` and jumps to Result.
+- **Auto-numbering:** after logging `tube 4 · Blood 2`, the boxes fill in `tube 5 · Blood 3` and jump to Result.
 - **Continue a previous run:** upload a LabTrack `.csv` or `.txt` export (or a `.json` backup) to load that run back in and keep adding to it. Nothing already recorded is lost.
 - **Every entry is dated:** the date defaults to today and can be changed if you're logging something from an earlier day. The time is recorded automatically. The log is grouped by day.
 - **Notes, two ways:**
@@ -44,12 +45,13 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 ### Export & backup
 | Format | Use it for |
 |---|---|
-| **CSV (.csv)** | Excel, Google Sheets, R, Python. One row per entry with date, time, section, type, record, result, unit and note. Can be uploaded again to continue the run. |
+| **CSV (.csv)** | Excel, Google Sheets, R, Python. One row per entry with date, time, section, type, tube, record, result, unit and note. Can be uploaded again to continue the run. |
 | **Text report (.txt)** | Readable summary for ELNs, emails or printing. Can be uploaded again to continue the run. |
 | **Copy to clipboard** | Paste straight into a notebook entry or chat |
 | **JSON backup** | Save a full run and restore it later, or move it to another device |
 
 ### Works everywhere
+- **Light and dark mode:** a clean command-line look in light by default; tap **☾** in the top bar for dark mode (remembered on each device).
 - Responsive layout designed for one-handed phone use as well as desktop.
 - **Installable:** add it to your home screen (iOS: *Share → Add to Home Screen*; Android/Chrome: *Install app*).
 - **Works offline** after the first visit, which helps in labs with patchy Wi-Fi.
@@ -59,10 +61,10 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 
 1. Open **<https://akmartian.github.io/labtrack/>**.
 2. Tap the title to name your run (it's used for the export file name).
-3. Pick a **Type** (e.g. Qubit), type the **Record** and the number in **Result**, then tap **Add Result**.
+3. Pick a **Type** (e.g. Qubit), optionally the **tube** number, type the **Record** and the number in **Result**, then tap **add result**.
 4. Need to write something down? Tap **Add note** on an entry, or switch to **Note** to add a standalone note.
-5. When you're done, tap **Export** → **Download spreadsheet** or **Download text report**.
-6. To pick that run up later, tap **Continue run** (**Open** on phones) and choose the exported file.
+5. When you're done, tap **export** → **download spreadsheet** or **download text report**.
+6. To pick that run up later, tap **open** and choose the exported file.
 
 ## Data & privacy
 
@@ -87,7 +89,7 @@ You can also open `index.html` directly in a browser; offline caching then just 
 ## Project structure
 
 ```
-index.html            The whole app (HTML + Tailwind CSS + vanilla JS)
+index.html            The whole app (HTML + CSS + vanilla JS, no build step or dependencies)
 manifest.webmanifest  Install-to-home-screen metadata
 sw.js                 Service worker for offline use
 assets/               App icons

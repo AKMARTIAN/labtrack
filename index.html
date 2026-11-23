@@ -5,9 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <title>LabTrack — Quick Lab Log</title>
   <meta name="description" content="LabTrack — a free, offline-friendly lab notebook for logging Qubit readings and bench results with dates, units and notes, with CSV and text export." />
-  <meta name="theme-color" content="#0284c7" />
+  <meta id="metaTheme" name="theme-color" content="#f3f5f8" />
+  <meta name="color-scheme" content="light dark" />
+  <script>
+    // Apply the saved theme before the page paints (light is the default).
+    try { document.documentElement.dataset.theme = localStorage.getItem('labtrack_theme') === 'dark' ? 'dark' : 'light'; }
+    catch (e) { document.documentElement.dataset.theme = 'light'; }
+  </script>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="LabTrack" />
   <meta property="og:title" content="LabTrack" />
   <meta property="og:description" content="Log lab results and notes from any device. Export to CSV or text." />
@@ -15,381 +22,586 @@
   <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
   <link rel="apple-touch-icon" href="assets/icon-192.png" />
   <link rel="manifest" href="manifest.webmanifest" />
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
-          },
-          colors: {
-            lab: {
-              50: '#f0f7ff',
-              100: '#e0effe',
-              200: '#bae0fd',
-              300: '#7cc8fb',
-              500: '#0ea5e9',
-              600: '#0284c7',
-              700: '#0369a1',
-              800: '#075985',
-              900: '#0c4a6e',
-            }
-          }
-        }
-      }
-    };
-  </script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet" />
   <style>
+    /* Light (default) */
+    :root {
+      color-scheme: light;
+      --bg: #f3f5f8;
+      --bg-2: #f8fafc;
+      --panel: #ffffff;
+      --panel-2: #edf1f5;
+      --input: #fcfdfe;
+      --border: #dde3ea;
+      --border-2: #c9d2dd;
+      --text: #18212d;
+      --muted: #566377;
+      --dim: #8995a6;
+      --green: #1a7f37;
+      --cyan: #0b7285;
+      --blue: #0969da;
+      --amber: #9a6700;
+      --violet: #7246c9;
+      --red: #cf222e;
+      --primary: #1f883d;
+      --primary-hover: #1a7f37;
+      --on-primary: #ffffff;
+      --note-text: #6b5000;
+      --topbar: rgba(255, 255, 255, 0.86);
+      --hover: #e6ebf1;
+      --toast: #ffffff;
+      --overlay: rgba(15, 23, 42, 0.34);
+      --grid: rgba(15, 23, 42, 0.06);
+      --glow-a: rgba(11, 114, 133, 0.08);
+      --glow-b: rgba(114, 70, 201, 0.07);
+      --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 26px -18px rgba(15, 23, 42, 0.3);
+      --num-glow: none;
+      --t-slate: #566377; --t-violet: #7246c9; --t-teal: #0f7b6c; --t-amber: #9a6700; --t-rose: #cf222e;
+      --t-sky: #0969da; --t-orange: #bc4c00; --t-emerald: #1a7f37; --t-pink: #bf3989; --t-indigo: #4f46e5;
+      --t-cyan: #0b7285; --t-lime: #4d7c0f; --t-fuchsia: #a21caf;
+      --radius: 12px;
+      --font: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    /* Dark mode */
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --bg-2: #0f141b;
+      --panel: #121821;
+      --panel-2: #18202b;
+      --input: #0b0f14;
+      --border: #222c39;
+      --border-2: #2e3a4a;
+      --text: #dce3ec;
+      --muted: #8492a3;
+      --dim: #56637a;
+      --green: #7ee787;
+      --cyan: #56d4dd;
+      --blue: #79c0ff;
+      --amber: #f2cc60;
+      --violet: #c4a7ff;
+      --red: #ff7b72;
+      --primary: #7ee787;
+      --primary-hover: #95f09d;
+      --on-primary: #07210c;
+      --note-text: #eadba6;
+      --topbar: rgba(11, 15, 20, 0.82);
+      --hover: #1d2632;
+      --toast: #0f1a14;
+      --overlay: rgba(3, 6, 10, 0.72);
+      --grid: rgba(255, 255, 255, 0.035);
+      --glow-a: color-mix(in srgb, var(--cyan) 10%, transparent);
+      --glow-b: color-mix(in srgb, var(--violet) 8%, transparent);
+      --shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.8);
+      --num-glow: 0 0 18px color-mix(in srgb, var(--green) 25%, transparent);
+      --t-slate: #8492a3; --t-violet: #c4a7ff; --t-teal: #3fd7b5; --t-amber: #f2cc60; --t-rose: #ff7b72;
+      --t-sky: #79c0ff; --t-orange: #ffa657; --t-emerald: #7ee787; --t-pink: #ff9bce; --t-indigo: #a5b4fc;
+      --t-cyan: #56d4dd; --t-lime: #b5e853; --t-fuchsia: #f0abfc;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
     body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text);
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(900px 380px at 15% -80px, var(--glow-a), transparent 70%),
+        radial-gradient(700px 320px at 95% -60px, var(--glow-b), transparent 70%),
+        radial-gradient(var(--grid) 1px, transparent 1px);
+      background-size: auto, auto, 22px 22px;
       -webkit-tap-highlight-color: transparent;
-      background:
-        radial-gradient(1200px 400px at 50% -120px, rgba(14, 165, 233, 0.10), transparent 70%),
-        #f6f8fb;
+      -webkit-font-smoothing: antialiased;
     }
-    .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
-    .card {
-      background: #fff;
-      border: 1px solid rgba(15, 23, 42, 0.07);
-      border-radius: 1rem;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px -8px rgba(15, 23, 42, 0.08);
+    ::selection { background: color-mix(in srgb, var(--green) 28%, transparent); }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; background: none; border: 0; padding: 0; }
+    a { color: var(--cyan); }
+    .hidden { display: none !important; }
+    .invisible { visibility: hidden; }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .c-green { color: var(--green); } .c-cyan { color: var(--cyan); } .c-amber { color: var(--amber); }
+    .c-muted { color: var(--muted); } .c-dim { color: var(--dim); } .c-violet { color: var(--violet); }
+
+    .wrap { width: 100%; max-width: 760px; margin: 0 auto; padding: 0 16px; }
+
+    /* ---------- Top bar ---------- */
+    .topbar {
+      position: sticky; top: 0; z-index: 30;
+      background: var(--topbar);
+      -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding-top: env(safe-area-inset-top);
     }
+    .topbar-in { height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .brand { display: flex; align-items: baseline; gap: 6px; font-weight: 700; font-size: 15px; white-space: nowrap; }
+    .brand .path { color: var(--cyan); font-weight: 500; }
+    .brand .name { color: var(--text); letter-spacing: -0.01em; }
+    .cursor { display: inline-block; color: var(--green); animation: blink 1.1s steps(1) infinite; margin-left: 1px; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .top-actions { display: flex; align-items: center; gap: 6px; }
+
+    /* ---------- Buttons ---------- */
+    .btn {
+      height: 36px; padding: 0 12px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      border: 1px solid var(--border-2); border-radius: 9px;
+      background: var(--panel-2); color: var(--text);
+      font-size: 12.5px; font-weight: 600; white-space: nowrap;
+      transition: border-color .15s, background .15s, color .15s, transform .05s;
+    }
+    .btn:hover { border-color: var(--dim); background: var(--hover); }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-accent { background: color-mix(in srgb, var(--cyan) 8%, transparent); border-color: color-mix(in srgb, var(--cyan) 45%, transparent); color: var(--cyan); }
+    .btn-accent:hover { background: color-mix(in srgb, var(--cyan) 15%, transparent); border-color: var(--cyan); }
+    .btn-danger { background: color-mix(in srgb, var(--red) 10%, transparent); border-color: color-mix(in srgb, var(--red) 50%, transparent); color: var(--red); }
+    .btn-danger:hover { background: color-mix(in srgb, var(--red) 18%, transparent); border-color: var(--red); }
+    .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
+    .btn-ghost:hover { background: var(--panel-2); color: var(--text); border-color: var(--border); }
+    .btn-block { width: 100%; height: 48px; font-size: 14px; font-weight: 800; letter-spacing: 0.02em; border-radius: 10px; }
+    .btn .k { opacity: .85; }
+    @media (max-width: 399px) { .hide-xs { display: none; } .top-actions { gap: 4px; } .top-actions .btn { padding: 0 9px; } }
+    .icon-btn { width: 36px; padding: 0 !important; font-size: 15px; }
+    @media (max-width: 639px) { .hide-sm { display: none; } }
+
+    /* ---------- Run header ---------- */
+    .run { padding: 22px 0 4px; }
+    .run-title { display: flex; align-items: center; gap: 10px; }
+    .run-title .hash { color: var(--green); font-size: 24px; font-weight: 800; }
+    .run-title input {
+      flex: 1; min-width: 0; background: transparent; border: 0; outline: none;
+      font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--text);
+      border-radius: 8px; padding: 2px 6px; margin-left: -6px;
+    }
+    .run-title input:focus { background: var(--panel); box-shadow: 0 0 0 1px var(--border-2); }
+    .run-title input::placeholder { color: var(--dim); }
+    .run-meta { margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; color: var(--muted); }
+    .run-meta .op { display: inline-flex; align-items: center; gap: 2px; color: var(--violet); }
+    .run-meta .op input { background: transparent; border: 0; outline: none; width: 150px; color: var(--violet); font-size: 12px; padding: 2px 4px; border-radius: 6px; }
+    .run-meta .op input::placeholder { color: var(--dim); }
+    .run-meta .op input:focus { background: var(--panel); }
+
+    /* ---------- Panels ---------- */
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.015), transparent 40%), var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .panel-bar {
+      height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 12px;
+      border-bottom: 1px solid var(--border); background: var(--bg-2);
+      border-radius: var(--radius) var(--radius) 0 0;
+      font-size: 11.5px; color: var(--muted);
+    }
+    .dots { display: inline-flex; gap: 6px; }
+    .dots i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+    .dots i:nth-child(1) { background: #ff7b72; } .dots i:nth-child(2) { background: #f2cc60; } .dots i:nth-child(3) { background: #7ee787; }
+    .panel-bar .title { flex: 1; text-align: center; margin-right: 46px; }
+
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border); }
+    .tab {
+      height: 42px; color: var(--muted); font-weight: 700; font-size: 13px;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color .15s, border-color .15s, background .15s;
+    }
+    .tab:hover { color: var(--text); background: var(--bg-2); }
+    .tab.active { color: var(--green); border-bottom-color: var(--green); background: color-mix(in srgb, var(--green) 5%, transparent); }
+    .tab .g { opacity: .7; margin-right: 6px; }
+
+    /* ---------- Form ---------- */
+    .form { padding: 16px; display: grid; gap: 14px; }
+    .stack { display: grid; gap: 14px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-2-sm { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .rec-grid { display: grid; grid-template-columns: 88px 1fr; gap: 12px; }
+    .rec-grid .res-col { grid-column: 1 / -1; }
+    @media (min-width: 640px) { .rec-grid { grid-template-columns: 88px 1fr 1fr; } .rec-grid .res-col { grid-column: auto; } }
+    @media (min-width: 640px) { .grid-2-sm { grid-template-columns: 1fr 1fr; } }
+    .lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+    .lbl::before { content: '--'; color: var(--dim); margin-right: 2px; }
+    .lbl .req { color: var(--green); }
     .field {
-      width: 100%;
-      padding: 0.625rem 0.75rem;
-      font-size: 1rem;
-      line-height: 1.4;
-      border: 1px solid #d5dde7;
-      border-radius: 0.625rem;
-      background: #fff;
-      color: #0f172a;
-      outline: none;
+      width: 100%; padding: 10px 12px; font-size: 16px; line-height: 1.4;
+      background: var(--input); color: var(--text);
+      border: 1px solid var(--border-2); border-radius: 9px; outline: none;
+      caret-color: var(--green);
       transition: border-color .15s, box-shadow .15s;
-      -webkit-appearance: none;
-      appearance: none;
+      -webkit-appearance: none; appearance: none;
     }
+    @media (min-width: 640px) { .field { font-size: 14px; } }
+    .field::placeholder { color: var(--dim); }
+    .field:focus, .field-group:focus-within { border-color: var(--cyan); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cyan) 15%, transparent); }
+    textarea.field { resize: vertical; min-height: 44px; }
     select.field {
-      padding-right: 2rem;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2364748b'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 0.55rem center;
-      background-size: 1.1rem;
+      padding-right: 30px; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%238492a3'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center; background-size: 16px;
     }
-    input[type="date"].field { min-height: 2.75rem; }
-    @media (min-width: 640px) { .field { font-size: 0.875rem; } }
-    .field:focus, .field-group:focus-within { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.18); }
-    .field-group { display: flex; border: 1px solid #d5dde7; border-radius: 0.625rem; background: #fff; overflow: hidden; transition: border-color .15s, box-shadow .15s; }
+    .field-group { display: flex; border: 1px solid var(--border-2); border-radius: 9px; background: var(--input); overflow: hidden; transition: border-color .15s, box-shadow .15s; }
     .field-group .field { border: 0; border-radius: 0; box-shadow: none; }
-    .field-group select.field { width: auto; max-width: 48%; flex-shrink: 0; background-color: #f1f5f9; border-left: 1px solid #e2e8f0; font-weight: 600; color: #334155; }
-    .lbl { display: block; font-size: 0.72rem; font-weight: 600; color: #64748b; margin-bottom: 0.3rem; letter-spacing: 0.01em; }
-    .icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; min-width: 2.25rem; height: 2.25rem; padding: 0 0.5rem; border-radius: 0.6rem; color: #64748b; font-size: 0.75rem; font-weight: 600; transition: background .15s, color .15s; }
-    .icon-btn:hover { background: #f1f5f9; color: #0f172a; }
-    .icon-btn.danger:hover { background: #fff1f2; color: #e11d48; }
-    .fade-in { animation: fadeIn .25s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-    @media print {
-      .no-print { display: none !important; }
-      body { background: #fff !important; }
+    .field-group input.field { flex: 1; min-width: 0; color: var(--green); font-weight: 700; }
+    .field-group select.field { width: auto; max-width: 50%; flex-shrink: 0; background-color: var(--panel-2); border-left: 1px solid var(--border-2); color: var(--cyan); font-weight: 700; }
+    .form-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+    .date-pick { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+    .date-pick input { background: var(--input); border: 1px solid var(--border); border-radius: 7px; padding: 5px 8px; font-size: 12.5px; font-weight: 600; color: var(--text); outline: none; }
+    .date-pick input:focus { border-color: var(--cyan); }
+    .linkish { display: inline-flex; align-items: center; gap: 6px; padding: 6px 2px; color: var(--cyan); font-size: 12px; font-weight: 600; }
+    .linkish:hover { opacity: .75; }
+    .chev { display: inline-block; transition: transform .15s; }
+    .rotate-90 { transform: rotate(90deg); }
+
+    /* ---------- Log ---------- */
+    .log-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 2px 0; }
+    .log-head h2 { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+    .stack-lg { display: grid; gap: 14px; }
+
+    .sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 4px; border-bottom: 1px solid var(--border); background: var(--bg-2); border-radius: var(--radius) var(--radius) 0 0; }
+    .sec-collapsed .sec-head { border-bottom: 0; border-radius: var(--radius); }
+    .sec-toggle { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 8px; border-radius: 8px; text-align: left; }
+    .sec-toggle:hover { background: var(--panel-2); }
+    .sec-toggle[disabled] { cursor: default; background: none; }
+    .caret { color: var(--green); width: 10px; display: inline-block; }
+    .sec-name { font-weight: 800; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .count { font-size: 11px; font-weight: 700; color: var(--cyan); background: color-mix(in srgb, var(--cyan) 10%, transparent); border: 1px solid color-mix(in srgb, var(--cyan) 25%, transparent); border-radius: 6px; padding: 0 6px; }
+    .sec-actions { display: flex; align-items: center; flex-shrink: 0; }
+    .sec-empty { padding: 14px 16px; color: var(--dim); font-size: 12px; }
+
+    .day { display: flex; align-items: center; gap: 8px; padding: 12px 16px 4px; font-size: 11px; font-weight: 700; color: var(--dim); text-transform: lowercase; }
+    .day::after { content: ''; flex: 1; border-top: 1px dashed var(--border-2); }
+    .day b { color: var(--violet); font-weight: 700; }
+
+    .entry { padding: 10px 16px 8px; border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent); }
+    .day + .entry { border-top: 0; }
+    .entry-main { display: flex; align-items: flex-start; gap: 12px; }
+    .time { flex-shrink: 0; width: 42px; padding-top: 2px; font-size: 11.5px; color: var(--dim); }
+    .entry-body { flex: 1; min-width: 0; }
+    .rec-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+    .rec { font-weight: 700; color: var(--text); word-break: break-word; }
+    .tube { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 5px; font-size: 11px; font-weight: 700; color: var(--blue); border: 1px dashed color-mix(in srgb, var(--blue) 55%, transparent); background: color-mix(in srgb, var(--blue) 7%, transparent); white-space: nowrap; }
+    .details { margin-top: 2px; font-size: 11.5px; color: var(--muted); }
+    .details b { color: var(--text); font-weight: 600; }
+    .result { flex-shrink: 0; max-width: 46%; text-align: right; color: var(--green); font-weight: 800; line-height: 1.25; word-break: break-word; }
+    .result.num { font-size: 18px; text-shadow: var(--num-glow); }
+    .result.txt { font-size: 13px; }
+    .unit { margin-left: 5px; font-size: 11.5px; font-weight: 600; color: var(--cyan); text-shadow: none; }
+    .annot { margin: 6px 0 0 54px; display: flex; gap: 8px; font-size: 12.5px; color: var(--note-text); white-space: pre-wrap; word-break: break-word; }
+    .annot .branch { color: var(--amber); flex-shrink: 0; }
+    .entry-actions { margin: 4px 0 0 46px; display: flex; flex-wrap: wrap; gap: 2px; }
+    .act { height: 30px; padding: 0 8px; border-radius: 7px; font-size: 11.5px; font-weight: 600; color: var(--dim); transition: color .15s, background .15s; }
+    .act:hover { color: var(--text); background: var(--panel-2); }
+    .act.danger:hover { color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent); }
+    .act.amber:hover { color: var(--amber); background: color-mix(in srgb, var(--amber) 8%, transparent); }
+
+    .entry-note .note-label { font-size: 11px; font-weight: 800; color: var(--amber); letter-spacing: 0.04em; }
+    .entry-note .note-text { margin: 1px 0 0; color: var(--note-text); white-space: pre-wrap; word-break: break-word; }
+    .entry-note { background: linear-gradient(90deg, color-mix(in srgb, var(--amber) 6%, transparent), transparent 60%); box-shadow: inset 2px 0 0 var(--amber); }
+
+    .tag {
+      --c: var(--muted);
+      display: inline-flex; align-items: center; height: 19px; padding: 0 6px; border-radius: 5px;
+      font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; text-transform: lowercase;
+      color: var(--c);
+      border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+      background: color-mix(in srgb, var(--c) 12%, transparent);
     }
+
+    .editor { margin: 10px 0 4px; padding: 12px; display: grid; gap: 12px; background: var(--bg-2); border: 1px solid var(--border-2); border-radius: 10px; }
+    .editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+    .empty { padding: 22px 20px; }
+    .term-line { font-size: 13px; }
+    .empty p { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+    .empty .btn { margin-top: 16px; }
+    .empty .tiny { font-size: 11px; color: var(--dim); }
+
+    footer { padding: 26px 16px calc(24px + env(safe-area-inset-bottom)); text-align: center; font-size: 11px; color: var(--dim); }
+    footer a { color: var(--muted); }
+
+    /* ---------- Modals ---------- */
+    .modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; background: var(--overlay); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+    @media (min-width: 640px) { .modal { align-items: center; padding: 16px; } }
+    .sheet {
+      width: 100%; max-width: 460px; max-height: 92vh; display: flex; flex-direction: column;
+      background: var(--panel); border: 1px solid var(--border-2);
+      border-radius: 16px 16px 0 0; box-shadow: 0 -10px 50px rgba(0, 0, 0, 0.6);
+      padding-bottom: env(safe-area-inset-bottom);
+      animation: up .2s ease-out;
+    }
+    @media (min-width: 640px) { .sheet { border-radius: 16px; } }
+    @keyframes up { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+    .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 16px 16px 10px; }
+    .sheet-head h3 { margin: 0; font-size: 15px; font-weight: 800; }
+    .sheet-head h3::before { content: '> '; color: var(--green); }
+    .sheet-head p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+    .close { width: 34px; height: 34px; border-radius: 8px; color: var(--muted); font-size: 18px; flex-shrink: 0; }
+    .close:hover { background: var(--panel-2); color: var(--text); }
+    .sheet-body { padding: 6px 16px 16px; display: grid; gap: 10px; overflow-y: auto; }
+    .opt { display: flex; align-items: center; gap: 12px; padding: 12px; text-align: left; border: 1px solid var(--border); border-radius: 11px; background: var(--bg-2); transition: border-color .15s, background .15s; }
+    .opt:hover { border-color: var(--cyan); background: color-mix(in srgb, var(--cyan) 5%, transparent); }
+    .opt .badge { width: 42px; height: 42px; flex-shrink: 0; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
+    .opt strong { display: block; font-size: 13px; }
+    .opt small { display: block; font-size: 11.5px; color: var(--muted); }
+    .b-green { color: var(--green); background: color-mix(in srgb, var(--green) 10%, transparent); border: 1px solid color-mix(in srgb, var(--green) 30%, transparent); }
+    .b-cyan { color: var(--cyan); background: color-mix(in srgb, var(--cyan) 10%, transparent); border: 1px solid color-mix(in srgb, var(--cyan) 30%, transparent); }
+    .b-violet { color: var(--violet); background: color-mix(in srgb, var(--violet) 10%, transparent); border: 1px solid color-mix(in srgb, var(--violet) 30%, transparent); }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .type-list { padding: 0 16px; overflow-y: auto; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .type-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+    .type-row:last-child { border-bottom: 0; }
+    .type-row .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 10px currentColor; }
+    .type-row .grow { flex: 1; min-width: 0; }
+    .type-row .nm { font-weight: 700; font-size: 13px; }
+    .type-row .un { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .builtin { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; }
+    .runcard { padding: 12px; border: 1px solid var(--border-2); border-radius: 11px; background: var(--bg-2); }
+    .runcard .nm { font-weight: 800; word-break: break-word; }
+    .runcard .info { margin-top: 3px; font-size: 12px; color: var(--muted); }
+    .warn-head h3::before { content: '! '; color: var(--amber); }
+
+    .toast {
+      position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 60;
+      display: flex; align-items: center; gap: 8px; max-width: calc(100% - 32px);
+      padding: 10px 14px; border-radius: 10px;
+      background: var(--toast); border: 1px solid color-mix(in srgb, var(--green) 45%, transparent); color: var(--green);
+      font-size: 12.5px; font-weight: 600; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    }
+    .fade-in { animation: fadeIn .2s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } .sheet, .fade-in { animation: none; } }
+    @media print { .no-print { display: none !important; } body { background: #fff; color: #000; } }
   </style>
 </head>
-<body class="text-slate-900 min-h-screen flex flex-col">
+<body>
 
-  <!-- Header -->
-  <header class="sticky top-0 z-30 no-print bg-white/75 backdrop-blur-md border-b border-slate-200/70">
-    <div class="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2">
-      <div class="flex items-center gap-2.5 min-w-0">
-        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-lab-500 to-lab-700 text-white flex items-center justify-center shrink-0 shadow-sm shadow-lab-600/30">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 3h6m-5 0v5.5L5.2 17.4A2 2 0 007 20h10a2 2 0 001.8-2.6L14 8.5V3" />
-          </svg>
-        </div>
-        <span class="text-[15px] font-extrabold tracking-tight text-slate-900">LabTrack</span>
+  <header class="topbar no-print">
+    <div class="wrap topbar-in">
+      <div class="brand" aria-label="LabTrack">
+        <span class="path hide-xs">~/lab</span><span class="c-green">$</span><span class="name">labtrack</span><span class="cursor" aria-hidden="true">▊</span>
       </div>
-      <div class="flex items-center gap-2 shrink-0">
-        <button type="button" data-continue title="Continue a previous run from its export file" aria-label="Continue a previous run" class="h-9 px-2.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 active:bg-slate-100 transition flex items-center gap-1.5">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M17 8l-5-5-5 5M12 3v12" /></svg>
-          <span class="sm:hidden">Open</span><span class="hidden sm:inline">Continue run</span>
-        </button>
-        <button id="btnNewRun" type="button" title="Start a new run" class="h-9 px-3 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 active:bg-slate-100 transition flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-          New<span class="hidden sm:inline"> run</span>
-        </button>
-        <button id="btnOpenExport" type="button" title="Export results" class="h-9 px-3 text-xs font-semibold text-white bg-lab-600 rounded-xl hover:bg-lab-700 active:bg-lab-800 transition shadow-sm shadow-lab-600/30 flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3" /></svg>
-          <span class="hidden min-[400px]:inline">Export</span>
-        </button>
+      <div class="top-actions">
+        <button id="btnTheme" type="button" class="btn icon-btn" title="Switch to dark mode" aria-label="Switch to dark mode">☾</button>
+        <button type="button" data-continue class="btn" title="Continue a previous run from its export file"><span class="k c-cyan">↑</span> open</button>
+        <button id="btnNewRun" type="button" class="btn" title="Start a new run"><span class="k c-green">+</span> new</button>
+        <button id="btnOpenExport" type="button" class="btn btn-primary" title="Export results" aria-label="Export results">↓<span class="hide-xs"> export</span></button>
         <input id="inputContinue" type="file" accept=".csv,.txt,.json,text/csv,text/plain,application/json" class="hidden" />
       </div>
     </div>
   </header>
 
-  <main class="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 pt-5 pb-8 space-y-4">
+  <main class="wrap" style="flex:1">
 
-    <!-- Run title -->
-    <div class="px-1">
-      <label for="runName" class="sr-only">Run name</label>
-      <input id="runName" type="text" class="w-full bg-transparent text-2xl sm:text-[28px] font-extrabold tracking-tight text-slate-900 placeholder-slate-300 outline-none rounded-lg -mx-1 px-1 focus:bg-white focus:ring-2 focus:ring-lab-200" placeholder="Untitled run" />
-      <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-        <span id="runStats">No entries yet</span>
-        <span class="text-slate-300">•</span>
-        <label class="flex items-center gap-1">
-          <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-          <span class="sr-only">Operator</span>
-          <input id="runOperator" type="text" class="bg-transparent outline-none w-36 placeholder-slate-400 focus:text-slate-800" placeholder="Add operator" />
-        </label>
+    <section class="run">
+      <div class="run-title">
+        <span class="hash" aria-hidden="true">#</span>
+        <label for="runName" class="sr-only">Run name</label>
+        <input id="runName" type="text" placeholder="untitled run" autocomplete="off" />
       </div>
-    </div>
+      <div class="run-meta">
+        <span><span class="c-dim">//</span> <span id="runStats">no entries yet</span></span>
+        <label class="op"><span>@</span><span class="sr-only">Operator</span><input id="runOperator" type="text" placeholder="operator" autocomplete="off" /></label>
+      </div>
+    </section>
 
-    <!-- Entry form -->
-    <div class="card overflow-hidden">
-      <div class="p-3 border-b border-slate-100">
-        <div class="grid grid-cols-2 bg-slate-100 p-1 rounded-xl" role="tablist" aria-label="Entry type">
-          <button type="button" data-kind="result" class="kind-btn py-2 text-sm font-semibold rounded-lg transition flex items-center justify-center gap-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3h6m-5 0v5.5L5.2 17.4A2 2 0 007 20h10a2 2 0 001.8-2.6L14 8.5V3" /></svg>
-            Result
-          </button>
-          <button type="button" data-kind="note" class="kind-btn py-2 text-sm font-semibold rounded-lg transition flex items-center justify-center gap-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5M5 4h14a1 1 0 011 1v11l-4 4H5a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>
-            Note
-          </button>
-        </div>
+    <div class="panel" style="margin-top:14px">
+      <div class="panel-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="title">new-entry</span></div>
+      <div class="tabs" role="tablist" aria-label="Entry type">
+        <button type="button" data-kind="result" class="kind-btn tab"><span class="g">▸</span>result</button>
+        <button type="button" data-kind="note" class="kind-btn tab"><span class="g">#</span>note</button>
       </div>
 
-      <form id="entryForm" class="p-4 space-y-3.5" novalidate autocomplete="off">
-        <!-- Result fields -->
-        <div id="resultFields" class="space-y-3.5">
-          <div class="grid grid-cols-2 gap-3">
+      <form id="entryForm" class="form" novalidate autocomplete="off">
+        <div id="resultFields" class="stack">
+          <div class="grid-2">
             <div>
-              <label for="entryType" class="lbl">Type</label>
+              <label for="entryType" class="lbl">type</label>
               <select id="entryType" class="field"></select>
             </div>
             <div>
-              <label for="entrySection" class="lbl">Section</label>
+              <label for="entrySection" class="lbl">section</label>
               <select id="entrySection" class="field section-select"></select>
             </div>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="rec-grid">
             <div>
-              <label for="entryName" class="lbl">Record *</label>
-              <input id="entryName" type="text" enterkeyhint="next" class="field mono" placeholder="e.g. Sample 1" />
+              <label for="entryTube" class="lbl">tube</label>
+              <input id="entryTube" type="text" enterkeyhint="next" autocapitalize="off" class="field" placeholder="4" />
             </div>
             <div>
-              <label for="entryResult" class="lbl">Result *</label>
+              <label for="entryName" class="lbl">record <span class="req">*</span></label>
+              <input id="entryName" type="text" enterkeyhint="next" class="field" placeholder="Blood 2" />
+            </div>
+            <div class="res-col">
+              <label for="entryResult" class="lbl">result <span class="req">*</span></label>
               <div class="field-group">
-                <input id="entryResult" type="text" enterkeyhint="done" class="field mono min-w-0 flex-1" placeholder="e.g. 45.6" />
+                <input id="entryResult" type="text" enterkeyhint="done" class="field" placeholder="45.6" />
                 <select id="entryUnit" class="field" aria-label="Unit"></select>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Note fields -->
-        <div id="noteFields" class="hidden space-y-3.5">
+        <div id="noteFields" class="stack hidden">
           <div>
-            <label for="noteSection" class="lbl">Section</label>
+            <label for="noteSection" class="lbl">section</label>
             <select id="noteSection" class="field section-select"></select>
           </div>
           <div>
-            <label for="noteText" class="lbl">Note *</label>
-            <textarea id="noteText" rows="3" class="field" placeholder="e.g. Recalibrated Qubit with fresh standards"></textarea>
+            <label for="noteText" class="lbl">note <span class="req">*</span></label>
+            <textarea id="noteText" rows="3" class="field" placeholder="Recalibrated Qubit with fresh standards"></textarea>
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <label class="flex items-center gap-1.5 text-xs text-slate-500">
-            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-            <span class="sr-only">Date</span>
-            <input id="entryDate" type="date" class="bg-transparent text-xs font-semibold text-slate-700 outline-none rounded px-1 py-1 hover:bg-slate-100 focus:bg-slate-100" />
-          </label>
-          <button id="btnToggleExtra" type="button" class="text-xs font-semibold text-lab-600 hover:text-lab-800 flex items-center gap-1 py-1">
-            <svg id="extraChevron" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-            Volume, dilution &amp; note
-          </button>
+        <div class="form-row">
+          <label class="date-pick"><span>date</span><input id="entryDate" type="date" /></label>
+          <button id="btnToggleExtra" type="button" class="linkish"><span id="extraChevron" class="chev">▸</span> volume, dilution &amp; note</button>
         </div>
 
-        <div id="extraFields" class="hidden space-y-3 fade-in">
-          <div class="grid grid-cols-2 gap-3">
+        <div id="extraFields" class="stack hidden fade-in">
+          <div class="grid-2">
             <div>
-              <label for="entryVolume" class="lbl">Volume / Quantity</label>
-              <input id="entryVolume" type="text" class="field mono" placeholder="e.g. 20 µL" />
+              <label for="entryVolume" class="lbl">volume</label>
+              <input id="entryVolume" type="text" class="field" placeholder="20 µL" />
             </div>
             <div>
-              <label for="entryDilution" class="lbl">Dilution / Source</label>
-              <input id="entryDilution" type="text" class="field" placeholder="e.g. 1:2" />
+              <label for="entryDilution" class="lbl">dilution</label>
+              <input id="entryDilution" type="text" class="field" placeholder="1:2" />
             </div>
           </div>
           <div>
-            <label for="entryNote" class="lbl">Note</label>
-            <textarea id="entryNote" rows="2" class="field" placeholder="Anything worth remembering about this result"></textarea>
+            <label for="entryNote" class="lbl">note</label>
+            <textarea id="entryNote" rows="2" class="field" placeholder="anything worth remembering"></textarea>
           </div>
         </div>
 
-        <button id="btnSubmitEntry" type="submit" class="w-full h-12 px-4 text-[15px] font-semibold text-white bg-lab-600 rounded-xl hover:bg-lab-700 active:scale-[.99] active:bg-lab-800 transition shadow-sm shadow-lab-600/30">
-          Add Result
-        </button>
+        <button id="btnSubmitEntry" type="submit" class="btn btn-primary btn-block">↵ add result</button>
       </form>
     </div>
 
-    <!-- Log -->
-    <div class="flex items-center justify-between px-1 pt-2">
-      <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Log</h2>
-      <button id="btnAddSection" type="button" class="text-xs font-semibold text-lab-700 hover:text-lab-900 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-lab-50">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-        Section
-      </button>
+    <div class="log-head">
+      <h2><span class="c-green">##</span> log</h2>
+      <button id="btnAddSection" type="button" class="btn btn-ghost"><span class="c-green">+</span> section</button>
     </div>
-    <div id="emptyState" class="hidden card px-6 py-10 text-center">
-      <div class="mx-auto w-12 h-12 rounded-2xl bg-lab-50 text-lab-600 flex items-center justify-center">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3h6m-5 0v5.5L5.2 17.4A2 2 0 007 20h10a2 2 0 001.8-2.6L14 8.5V3" /></svg>
-      </div>
-      <p class="mt-3 text-sm font-semibold text-slate-800">Nothing logged yet</p>
-      <p class="mt-1 text-xs text-slate-500">Pick a type, enter a record and result above, and tap <strong>Add Result</strong>.</p>
-      <button type="button" data-continue class="mt-4 inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-lab-700 bg-lab-50 ring-1 ring-lab-200 rounded-xl hover:bg-lab-100">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M17 8l-5-5-5 5M12 3v12" /></svg>
-        Continue a previous run
-      </button>
-      <p class="mt-2 text-[11px] text-slate-400">Upload a LabTrack .csv or .txt export to pick up where you left off.</p>
+
+    <div id="emptyState" class="panel empty hidden" style="margin-top:10px">
+      <div class="term-line"><span class="c-green">$</span> cat log.txt</div>
+      <div class="term-line c-muted">nothing logged yet<span class="cursor" aria-hidden="true">▊</span></div>
+      <p>pick a type, enter a record and a result above, then hit <span class="c-green">add result</span>.</p>
+      <button type="button" data-continue class="btn btn-accent">↑ continue a previous run</button>
+      <p class="tiny">upload a labtrack .csv or .txt export to pick up where you left off.</p>
     </div>
-    <div id="sectionsContainer" class="space-y-4"></div>
+    <div id="sectionsContainer" class="stack-lg" style="margin-top:10px"></div>
   </main>
 
-  <footer class="text-center text-[11px] text-slate-400 pb-6 no-print">
-    Saved on this device only · <a class="underline hover:text-slate-600" href="https://github.com/AKMARTIAN/labtrack" target="_blank" rel="noopener">About LabTrack</a>
+  <footer class="no-print">
+    <span class="c-dim">//</span> saved on this device only · <a href="https://github.com/AKMARTIAN/labtrack" target="_blank" rel="noopener">about labtrack</a>
   </footer>
 
-  <!-- Record Types Modal -->
-  <div id="typesModal" class="modal hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4 no-print">
-    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] flex flex-col">
-      <div class="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
-        <div>
-          <h3 class="text-base font-bold text-slate-900">Record types</h3>
-          <p class="text-xs text-slate-500 mt-0.5">A type sets the units offered next to Result, so you only type the number.</p>
-        </div>
-        <button type="button" data-close class="icon-btn" aria-label="Close">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
+  <!-- Record types -->
+  <div id="typesModal" class="modal hidden no-print">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h3>record types</h3><p>a type sets the units offered next to result, so you only type the number.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
       </div>
-      <div id="typesList" class="px-5 overflow-y-auto divide-y divide-slate-100 border-y border-slate-100"></div>
-      <form id="typeForm" class="p-5 space-y-3">
-        <div class="text-xs font-bold uppercase tracking-wider text-slate-500">Add your own type</div>
+      <div id="typesList" class="type-list"></div>
+      <form id="typeForm" class="sheet-body" style="padding-top:14px">
+        <div class="lbl" style="color:var(--green)">add your own type</div>
         <div>
-          <label for="typeName" class="lbl">Name *</label>
-          <input id="typeName" type="text" class="field" placeholder="e.g. Qubit RNA HS" />
+          <label for="typeName" class="lbl">name <span class="req">*</span></label>
+          <input id="typeName" type="text" class="field" placeholder="Qubit RNA HS" />
         </div>
         <div>
-          <label for="typeUnits" class="lbl">Units (comma separated, first is the default)</label>
-          <input id="typeUnits" type="text" class="field mono" placeholder="e.g. ng/µL, ng/mL" />
+          <label for="typeUnits" class="lbl">units (comma separated, first is default)</label>
+          <input id="typeUnits" type="text" class="field" placeholder="ng/µL, ng/mL" />
         </div>
-        <button type="submit" class="w-full h-11 text-sm font-semibold text-white bg-lab-600 hover:bg-lab-700 rounded-xl">Add type</button>
+        <button type="submit" class="btn btn-primary btn-block" style="height:44px">+ add type</button>
       </form>
     </div>
   </div>
 
-  <!-- Add / Rename Section Modal -->
-  <div id="sectionModal" class="modal hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center p-4 no-print">
-    <form id="sectionModalForm" class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
-      <div>
-        <h3 id="sectionModalTitle" class="text-base font-bold text-slate-900">Add section</h3>
-        <p class="text-xs text-slate-500 mt-0.5">Group your entries into stages or sections.</p>
+  <!-- Section -->
+  <div id="sectionModal" class="modal hidden no-print">
+    <form id="sectionModalForm" class="sheet">
+      <div class="sheet-head">
+        <div><h3 id="sectionModalTitle">add section</h3><p>group your entries into stages or sections.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
       </div>
-      <div>
-        <label for="sectionNameInput" class="lbl">Section name</label>
-        <input id="sectionNameInput" type="text" required class="field" placeholder="e.g. Library prep" />
-      </div>
-      <div class="flex items-center justify-end gap-2">
-        <button type="button" data-close class="px-4 h-10 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
-        <button type="submit" class="px-4 h-10 text-sm font-semibold text-white bg-lab-600 hover:bg-lab-700 rounded-xl">Save</button>
+      <div class="sheet-body">
+        <div>
+          <label for="sectionNameInput" class="lbl">section name</label>
+          <input id="sectionNameInput" type="text" required class="field" placeholder="Library prep" />
+        </div>
+        <div class="row-2">
+          <button type="button" data-close class="btn">cancel</button>
+          <button type="submit" class="btn btn-primary">save</button>
+        </div>
       </div>
     </form>
   </div>
 
-  <!-- Export Modal -->
-  <div id="exportModal" class="modal hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4 no-print">
-    <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden">
-      <div class="px-5 pt-5 pb-3 flex items-start justify-between">
-        <div>
-          <h3 class="text-base font-bold text-slate-900">Export results</h3>
-          <p class="text-xs text-slate-500">Keep the file: you can upload it later to continue this run</p>
-        </div>
-        <button type="button" data-close class="icon-btn" aria-label="Close">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
+  <!-- Export -->
+  <div id="exportModal" class="modal hidden no-print">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h3>export</h3><p>keep the file: you can upload it later to continue this run.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
       </div>
-      <div class="p-5 pt-2 space-y-2.5">
-        <button id="btnDownloadCsv" type="button" class="w-full p-3.5 rounded-2xl border border-slate-200 hover:border-lab-300 hover:bg-lab-50/50 transition flex items-center gap-3 text-left">
-          <span class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 text-[11px] font-bold flex items-center justify-center shrink-0">CSV</span>
-          <span><span class="block text-sm font-semibold text-slate-900">Download spreadsheet</span><span class="block text-xs text-slate-500">One row per entry, opens in Excel or Sheets</span></span>
-        </button>
-        <button id="btnDownloadTxt" type="button" class="w-full p-3.5 rounded-2xl border border-slate-200 hover:border-lab-300 hover:bg-lab-50/50 transition flex items-center gap-3 text-left">
-          <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 text-[11px] font-bold flex items-center justify-center shrink-0">TXT</span>
-          <span><span class="block text-sm font-semibold text-slate-900">Download text report</span><span class="block text-xs text-slate-500">Readable lab notebook summary</span></span>
-        </button>
-        <button id="btnCopyTxt" type="button" class="w-full p-3.5 rounded-2xl border border-slate-200 hover:border-lab-300 hover:bg-lab-50/50 transition flex items-center gap-3 text-left">
-          <span class="w-10 h-10 rounded-xl bg-lab-50 text-lab-700 flex items-center justify-center shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-          </span>
-          <span><span class="block text-sm font-semibold text-slate-900">Copy summary</span><span class="block text-xs text-slate-500">Paste into an ELN, document or email</span></span>
-        </button>
-        <div class="pt-3 grid grid-cols-2 gap-2.5">
-          <button id="btnDownloadJson" type="button" class="h-10 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Save backup</button>
-          <label class="h-10 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition flex items-center justify-center cursor-pointer">
-            Import backup
-            <input id="inputImportJson" type="file" accept=".json,.csv,.txt,application/json,text/csv,text/plain" class="hidden" />
-          </label>
+      <div class="sheet-body">
+        <button id="btnDownloadCsv" type="button" class="opt"><span class="badge b-green">.csv</span><span><strong>download spreadsheet</strong><small>one row per entry · excel / sheets</small></span></button>
+        <button id="btnDownloadTxt" type="button" class="opt"><span class="badge b-cyan">.txt</span><span><strong>download text report</strong><small>readable lab notebook summary</small></span></button>
+        <button id="btnCopyTxt" type="button" class="opt"><span class="badge b-violet">cp</span><span><strong>copy summary</strong><small>paste into an eln, doc or email</small></span></button>
+        <div class="row-2" style="margin-top:6px">
+          <button id="btnDownloadJson" type="button" class="btn">save backup</button>
+          <label class="btn">import backup<input id="inputImportJson" type="file" accept=".json,.csv,.txt,application/json,text/csv,text/plain" class="hidden" /></label>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- New Run Modal -->
-  <div id="newRunModal" class="modal hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center p-4 no-print">
-    <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-5 space-y-4">
-      <div>
-        <h3 class="text-base font-bold text-slate-900">Start a new run?</h3>
-        <p class="text-xs text-slate-500 mt-1">This clears all current entries. Export or back up your results first if you need them. Your record types are kept.</p>
+  <!-- New run -->
+  <div id="newRunModal" class="modal hidden no-print">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h3>start a new run?</h3><p>this clears all current entries. export or back up first if you need them. your record types are kept.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
       </div>
-      <div class="space-y-2">
-        <button id="btnConfirmBlank" type="button" class="w-full h-11 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition">Clear &amp; start new run</button>
-        <button type="button" data-continue class="w-full h-11 text-sm font-semibold text-lab-700 bg-lab-50 hover:bg-lab-100 ring-1 ring-lab-200 rounded-xl transition">Continue a previous run instead…</button>
-        <button type="button" data-close class="w-full h-11 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Cancel</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Welcome-back Modal (shared-device safeguard) -->
-  <div id="welcomeModal" class="modal hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4 no-print">
-    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl p-5 space-y-4">
-      <div class="flex items-start gap-3">
-        <div class="w-10 h-10 rounded-2xl bg-lab-50 text-lab-600 flex items-center justify-center shrink-0">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
-        </div>
-        <div class="min-w-0">
-          <h3 class="text-base font-bold text-slate-900">A run is already open on this device</h3>
-          <p class="text-xs text-slate-500 mt-0.5">If this isn't your run, start a new one so results don't get mixed.</p>
-        </div>
-      </div>
-      <div class="rounded-2xl bg-slate-50 ring-1 ring-slate-200 p-3.5">
-        <div id="welcomeRunName" class="text-sm font-bold text-slate-900 break-words"></div>
-        <div id="welcomeRunInfo" class="mt-0.5 text-xs text-slate-500"></div>
-      </div>
-      <div class="space-y-2">
-        <button id="btnWelcomeContinue" type="button" class="w-full h-11 text-sm font-semibold text-white bg-lab-600 hover:bg-lab-700 rounded-xl transition">Continue this run</button>
-        <button id="btnWelcomeNew" type="button" class="w-full h-11 text-sm font-semibold text-slate-700 bg-white ring-1 ring-slate-300 hover:bg-slate-50 rounded-xl transition">Start a new run</button>
-        <button id="btnWelcomeExport" type="button" class="w-full h-9 text-xs font-semibold text-lab-700 hover:bg-lab-50 rounded-xl transition">Export this run first</button>
+      <div class="sheet-body">
+        <button id="btnConfirmBlank" type="button" class="btn btn-danger btn-block" style="height:44px">clear &amp; start new run</button>
+        <button type="button" data-continue class="btn btn-accent btn-block" style="height:44px">↑ continue a previous run instead</button>
+        <button type="button" data-close class="btn btn-ghost btn-block" style="height:40px">cancel</button>
       </div>
     </div>
   </div>
 
-  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900/95 text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-lg no-print flex items-center gap-2">
-    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-    <span id="toastText"></span>
+  <!-- Shared-device safeguard -->
+  <div id="welcomeModal" class="modal hidden no-print">
+    <div class="sheet">
+      <div class="sheet-head warn-head">
+        <div><h3>run in progress on this device</h3><p>if this isn't your run, start a new one so results don't get mixed.</p></div>
+      </div>
+      <div class="sheet-body">
+        <div class="runcard">
+          <div id="welcomeRunName" class="nm"></div>
+          <div id="welcomeRunInfo" class="info"></div>
+        </div>
+        <button id="btnWelcomeContinue" type="button" class="btn btn-primary btn-block" style="height:44px">continue this run</button>
+        <button id="btnWelcomeNew" type="button" class="btn btn-block" style="height:44px">start a new run</button>
+        <button id="btnWelcomeExport" type="button" class="btn btn-ghost btn-block" style="height:38px;color:var(--cyan)">export this run first</button>
+      </div>
+    </div>
   </div>
+
+  <div id="toast" class="toast hidden no-print"><span aria-hidden="true">✓</span><span id="toastText"></span></div>
 
   <script>
     (function () {
@@ -400,27 +612,9 @@
 
       /* ---------- Record types ---------- */
 
-      // Tailwind class sets for type chips (full class names so the CDN generates them).
-      const COLORS = {
-        slate:   'bg-slate-100 text-slate-600 ring-slate-200',
-        violet:  'bg-violet-50 text-violet-700 ring-violet-200',
-        teal:    'bg-teal-50 text-teal-700 ring-teal-200',
-        amber:   'bg-amber-50 text-amber-700 ring-amber-200',
-        rose:    'bg-rose-50 text-rose-700 ring-rose-200',
-        sky:     'bg-sky-50 text-sky-700 ring-sky-200',
-        orange:  'bg-orange-50 text-orange-700 ring-orange-200',
-        emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-        pink:    'bg-pink-50 text-pink-700 ring-pink-200',
-        indigo:  'bg-indigo-50 text-indigo-700 ring-indigo-200',
-        cyan:    'bg-cyan-50 text-cyan-700 ring-cyan-200',
-        lime:    'bg-lime-50 text-lime-700 ring-lime-200',
-        fuchsia: 'bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200'
-      };
-      const DOTS = {
-        slate: 'bg-slate-300', violet: 'bg-violet-500', teal: 'bg-teal-500', amber: 'bg-amber-500', rose: 'bg-rose-500',
-        sky: 'bg-sky-500', orange: 'bg-orange-500', emerald: 'bg-emerald-500', pink: 'bg-pink-500', indigo: 'bg-indigo-500',
-        cyan: 'bg-cyan-500', lime: 'bg-lime-500', fuchsia: 'bg-fuchsia-500'
-      };
+      // Type colours come from CSS variables (--t-*) so they adapt to light and dark mode.
+      const TYPE_COLOR_NAMES = ['slate', 'violet', 'teal', 'amber', 'rose', 'sky', 'orange', 'emerald', 'pink', 'indigo', 'cyan', 'lime', 'fuchsia'];
+      const hexOf = (t) => `var(--t-${TYPE_COLOR_NAMES.includes(t && t.color) ? t.color : 'slate'})`;
       const CUSTOM_COLORS = ['indigo', 'cyan', 'lime', 'fuchsia', 'teal', 'orange'];
       const GENERAL_UNITS = ['ng/µL', 'µL', 'mL', 'bp', 'nM', '°C'];
       const BUILTIN_TYPES = [
@@ -540,7 +734,7 @@
           if (i.kind !== 'note') i.kind = 'result';
           if (!i.date) i.date = s.meta.date || todayISO();
           if (i.timestamp && /^\d{1,2}:\d{2}/.test(i.timestamp)) i.timestamp = i.timestamp.slice(0, 5);
-          ['name', 'result', 'unit', 'volume', 'dilution', 'notes', 'text', 'sectionId'].forEach((k) => { if (i[k] == null) i[k] = ''; });
+          ['name', 'tube', 'result', 'unit', 'volume', 'dilution', 'notes', 'text', 'sectionId'].forEach((k) => { if (i[k] == null) i[k] = ''; });
           if (!i.typeId) { i.typeId = 'general'; i.typeName = 'General'; }
         });
         s.version = 3;
@@ -592,14 +786,13 @@
         const opt = (t) => `<option value="${escapeHtml(t.id)}" ${t.id === selectedId ? 'selected' : ''}>${escapeHtml(t.name)}</option>`;
         let html = BUILTIN_TYPES.map(opt).join('');
         if (prefs.customTypes.length) html += `<optgroup label="Your types">${prefs.customTypes.map(opt).join('')}</optgroup>`;
-        if (withManage) html += '<option value="__manage__">＋ Add or edit types…</option>';
+        if (withManage) html += '<option value="__manage__">+ add / edit types…</option>';
         return html;
       }
       function chip(item) {
         if (!item.typeId || item.typeId === 'general') return '';
         const t = typeById(item.typeId);
-        const cls = COLORS[(t && t.color) || 'slate'];
-        return `<span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset ${cls}">${escapeHtml(t ? t.name : item.typeName)}</span>`;
+        return `<span class="tag" style="--c:${hexOf(t)}">${escapeHtml(t ? t.name : item.typeName)}</span>`;
       }
 
       /* ---------- Entry form ---------- */
@@ -611,17 +804,14 @@
       function renderKind() {
         document.querySelectorAll('.kind-btn').forEach((b) => {
           const on = b.dataset.kind === entryKind;
-          b.classList.toggle('bg-white', on);
-          b.classList.toggle('text-slate-900', on);
-          b.classList.toggle('shadow-sm', on);
-          b.classList.toggle('text-slate-500', !on);
+          b.classList.toggle('active', on);
           b.setAttribute('aria-selected', on);
         });
         $('resultFields').classList.toggle('hidden', entryKind !== 'result');
         $('noteFields').classList.toggle('hidden', entryKind !== 'note');
         $('btnToggleExtra').classList.toggle('invisible', entryKind !== 'result');
         if (entryKind !== 'result') $('extraFields').classList.add('hidden');
-        $('btnSubmitEntry').textContent = entryKind === 'note' ? 'Add Note' : 'Add Result';
+        $('btnSubmitEntry').textContent = entryKind === 'note' ? '↵ add note' : '↵ add result';
       }
       let currentSection = null; // shared by the Result and Note forms
       function renderSectionSelects() {
@@ -646,113 +836,109 @@
         const list = want && !units.includes(want) ? [want, ...units] : units;
         $('entryUnit').innerHTML =
           list.map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('') +
-          '<option value="">No unit</option><option value="__custom__">Custom…</option>';
+          '<option value="">no unit</option><option value="__custom__">custom…</option>';
         $('entryUnit').value = want;
         // Numeric keypad for typed measurements; full keyboard for General.
         $('entryResult').setAttribute('inputmode', type && type.id !== 'general' ? 'decimal' : 'text');
-        $('entryResult').placeholder = type && type.id !== 'general' ? 'e.g. 45.6' : 'e.g. 45.6 or text';
+        $('entryResult').placeholder = type && type.id !== 'general' ? '45.6' : '45.6 or text';
       }
 
       /* ---------- Log rendering ---------- */
 
-      const ICON_NOTE = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h8M8 14h5M5 4h14a1 1 0 011 1v11l-4 4H5a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>';
-      const ICON_EDIT = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M4 20h4l10.5-10.5a2.5 2.5 0 00-3.536-3.536L4.5 16.5 4 20z"/></svg>';
-      const ICON_TRASH = '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>';
-
       function editorActions(id) {
         return `
-          <div class="flex justify-end gap-2">
-            <button type="button" data-act="cancel" data-id="${escapeHtml(id)}" class="px-3 h-9 text-xs font-semibold text-slate-600 hover:bg-slate-200/60 rounded-lg">Cancel</button>
-            <button type="button" data-act="save" data-id="${escapeHtml(id)}" class="px-4 h-9 text-xs font-semibold text-white bg-lab-600 hover:bg-lab-700 rounded-lg">Save</button>
+          <div class="editor-actions">
+            <button type="button" data-act="cancel" data-id="${escapeHtml(id)}" class="btn btn-ghost">cancel</button>
+            <button type="button" data-act="save" data-id="${escapeHtml(id)}" class="btn btn-primary">save</button>
           </div>`;
       }
       function renderEditor(item, mode) {
-        const wrap = (inner) => `<div class="mt-3 p-3 bg-slate-50 rounded-2xl ring-1 ring-slate-200 space-y-3 fade-in" data-editor="${escapeHtml(item.id)}">${inner}${editorActions(item.id)}</div>`;
+        const wrap = (inner) => `<div class="editor fade-in" data-editor="${escapeHtml(item.id)}">${inner}${editorActions(item.id)}</div>`;
         if (mode === 'note') {
           return wrap(`
             <div>
-              <label class="lbl">Note for ${escapeHtml(item.name)}</label>
-              <textarea data-f="notes" rows="2" class="field" placeholder="Add a note to this result">${escapeHtml(item.notes)}</textarea>
+              <label class="lbl">note for ${escapeHtml(item.name)}</label>
+              <textarea data-f="notes" rows="2" class="field" placeholder="add a note to this result">${escapeHtml(item.notes)}</textarea>
             </div>`);
         }
         const common = `
-          <div class="grid grid-cols-2 gap-2.5">
-            <div><label class="lbl">Section</label><select data-f="sectionId" class="field">${sectionOptions(item.sectionId)}</select></div>
-            <div><label class="lbl">Date</label><input type="date" data-f="date" value="${escapeHtml(item.date)}" class="field" /></div>
+          <div class="grid-2">
+            <div><label class="lbl">section</label><select data-f="sectionId" class="field">${sectionOptions(item.sectionId)}</select></div>
+            <div><label class="lbl">date</label><input type="date" data-f="date" value="${escapeHtml(item.date)}" class="field" /></div>
           </div>`;
         if (item.kind === 'note') {
           return wrap(`${common}
-            <div><label class="lbl">Note</label><textarea data-f="text" rows="3" class="field">${escapeHtml(item.text)}</textarea></div>`);
+            <div><label class="lbl">note</label><textarea data-f="text" rows="3" class="field">${escapeHtml(item.text)}</textarea></div>`);
         }
         const units = unitsFor(typeById(item.typeId));
         const listId = 'units_' + escapeHtml(item.id);
         return wrap(`
-          <div class="grid grid-cols-2 gap-2.5">
-            <div><label class="lbl">Type</label><select data-f="typeId" class="field">${typeOptions(item.typeId, false)}</select></div>
-            <div><label class="lbl">Record</label><input type="text" data-f="name" value="${escapeHtml(item.name)}" class="field mono" /></div>
-            <div><label class="lbl">Result</label><input type="text" data-f="result" value="${escapeHtml(item.result)}" inputmode="decimal" class="field mono" /></div>
-            <div><label class="lbl">Unit</label><input type="text" data-f="unit" value="${escapeHtml(item.unit)}" list="${listId}" class="field mono" placeholder="none" />
+          <div class="grid-2">
+            <div><label class="lbl">tube</label><input type="text" data-f="tube" value="${escapeHtml(item.tube)}" class="field" placeholder="none" /></div>
+            <div><label class="lbl">record</label><input type="text" data-f="name" value="${escapeHtml(item.name)}" class="field" /></div>
+            <div><label class="lbl">result</label><input type="text" data-f="result" value="${escapeHtml(item.result)}" inputmode="decimal" class="field" /></div>
+            <div><label class="lbl">unit</label><input type="text" data-f="unit" value="${escapeHtml(item.unit)}" list="${listId}" class="field" placeholder="none" />
               <datalist id="${listId}">${units.map((u) => `<option value="${escapeHtml(u)}"></option>`).join('')}</datalist></div>
+            <div><label class="lbl">type</label><select data-f="typeId" class="field">${typeOptions(item.typeId, false)}</select></div>
           </div>
           ${common}
-          <div class="grid grid-cols-2 gap-2.5">
-            <div><label class="lbl">Volume / Quantity</label><input type="text" data-f="volume" value="${escapeHtml(item.volume)}" class="field mono" /></div>
-            <div><label class="lbl">Dilution / Source</label><input type="text" data-f="dilution" value="${escapeHtml(item.dilution)}" class="field" /></div>
+          <div class="grid-2">
+            <div><label class="lbl">volume</label><input type="text" data-f="volume" value="${escapeHtml(item.volume)}" class="field" /></div>
+            <div><label class="lbl">dilution</label><input type="text" data-f="dilution" value="${escapeHtml(item.dilution)}" class="field" /></div>
           </div>
-          <div><label class="lbl">Note</label><textarea data-f="notes" rows="2" class="field">${escapeHtml(item.notes)}</textarea></div>`);
+          <div><label class="lbl">note</label><textarea data-f="notes" rows="2" class="field">${escapeHtml(item.notes)}</textarea></div>`);
       }
+
+      const isNumeric = (v) => /^[<>~≈]?\s*-?[\d.,]+(e-?\d+)?$/i.test(String(v).trim());
 
       function renderItem(item) {
         const id = escapeHtml(item.id);
         const editing = openEditor && openEditor.id === item.id ? openEditor.mode : null;
-        const time = item.timestamp ? `<span class="mono text-[11px] text-slate-400">${escapeHtml(item.timestamp)}</span>` : '';
-        const delBtn = `<button type="button" data-act="delete" data-id="${id}" class="icon-btn danger" title="Delete" aria-label="Delete">${ICON_TRASH}</button>`;
-        const editBtn = `<button type="button" data-act="edit" data-id="${id}" class="icon-btn" title="Edit" aria-label="Edit">${ICON_EDIT}</button>`;
+        const time = `<span class="time">${escapeHtml(item.timestamp || '--:--')}</span>`;
+        const editBtn = `<button type="button" data-act="edit" data-id="${id}" class="act">edit</button>`;
+        const delBtn = `<button type="button" data-act="delete" data-id="${id}" class="act danger">del</button>`;
 
         if (item.kind === 'note') {
           return `
-            <div class="px-4 py-3">
-              <div class="flex items-start gap-3">
-                <div class="mt-0.5 w-8 h-8 rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-100 flex items-center justify-center shrink-0">${ICON_NOTE}</div>
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-amber-700">Note ${time}</div>
-                  <p class="mt-0.5 text-sm text-slate-800 whitespace-pre-wrap break-words">${escapeHtml(item.text)}</p>
+            <div class="entry entry-note">
+              <div class="entry-main">
+                ${time}
+                <div class="entry-body">
+                  <div class="note-label"># note</div>
+                  <p class="note-text">${escapeHtml(item.text)}</p>
                 </div>
-                ${editing ? '' : `<div class="flex items-center -mr-1.5 shrink-0">${editBtn}${delBtn}</div>`}
               </div>
-              ${editing ? renderEditor(item, 'edit') : ''}
+              ${editing ? renderEditor(item, 'edit') : `<div class="entry-actions">${editBtn}${delBtn}</div>`}
             </div>`;
         }
 
         const details = [
-          item.volume ? `<span>Vol <strong class="font-semibold text-slate-600 mono">${escapeHtml(item.volume)}</strong></span>` : '',
-          item.dilution ? `<span>From <strong class="font-semibold text-slate-600">${escapeHtml(item.dilution)}</strong></span>` : ''
-        ].filter(Boolean).join('');
+          item.volume ? `vol <b>${escapeHtml(item.volume)}</b>` : '',
+          item.dilution ? `from <b>${escapeHtml(item.dilution)}</b>` : ''
+        ].filter(Boolean).join(' · ');
 
         return `
-          <div class="px-4 py-3">
-            <div class="flex items-start gap-3">
-              <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span class="text-[15px] font-semibold text-slate-900 mono break-all">${escapeHtml(item.name)}</span>
-                  ${chip(item)}
-                </div>
-                <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">${time}${details}</div>
+          <div class="entry">
+            <div class="entry-main">
+              ${time}
+              <div class="entry-body">
+                <div class="rec-line">${item.tube ? `<span class="tube" title="Tube number">tube ${escapeHtml(item.tube)}</span>` : ''}<span class="rec">${escapeHtml(item.name)}</span>${chip(item)}</div>
+                ${details ? `<div class="details">${details}</div>` : ''}
               </div>
-              <div class="text-right shrink-0 max-w-[45%]">
-                <div class="mono ${/^[<>~≈]?\s*-?[\d.,]+(e-?\d+)?$/i.test(item.result) ? 'text-lg' : 'text-sm'} font-semibold text-lab-700 leading-tight break-words">${escapeHtml(item.result)}${item.unit ? `<span class="ml-1 text-xs font-medium text-slate-400">${escapeHtml(item.unit)}</span>` : ''}</div>
-              </div>
+              <div class="result ${isNumeric(item.result) ? 'num' : 'txt'}">${escapeHtml(item.result)}${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}</div>
             </div>
-            ${item.notes && !editing ? `
-              <div class="mt-2 flex items-start gap-1.5 text-xs text-slate-700 bg-amber-50/70 ring-1 ring-amber-100 rounded-xl px-2.5 py-2">
-                <span class="text-amber-600">${ICON_NOTE}</span><span class="whitespace-pre-wrap break-words pt-px">${escapeHtml(item.notes)}</span>
-              </div>` : ''}
+            ${item.notes && !editing ? `<div class="annot"><span class="branch">└─</span><span>${escapeHtml(item.notes)}</span></div>` : ''}
             ${editing ? renderEditor(item, editing) : `
-              <div class="mt-1.5 -ml-2 flex items-center">
-                <button type="button" data-act="note" data-id="${id}" class="icon-btn">${ICON_NOTE}${item.notes ? 'Edit note' : 'Add note'}</button>
+              <div class="entry-actions">
+                <button type="button" data-act="note" data-id="${id}" class="act amber">${item.notes ? 'edit note' : '+ note'}</button>
                 ${editBtn}${delBtn}
               </div>`}
           </div>`;
+      }
+
+      function dayLabel(iso) {
+        const tag = iso === todayISO() ? 'today' : iso === todayISO(-1) ? 'yesterday' : '';
+        return tag ? `<b>${tag}</b> · ${escapeHtml(iso)}` : escapeHtml(iso);
       }
 
       function renderLog() {
@@ -760,7 +946,7 @@
         const notes = state.quickItems.length - results;
         $('runStats').textContent = state.quickItems.length
           ? [`${results} ${results === 1 ? 'result' : 'results'}`, notes ? `${notes} ${notes === 1 ? 'note' : 'notes'}` : ''].filter(Boolean).join(' · ')
-          : 'No entries yet';
+          : 'no entries yet';
         $('emptyState').classList.toggle('hidden', state.quickItems.length > 0);
         renderSectionSelects();
 
@@ -774,29 +960,27 @@
           const sid = escapeHtml(sec.id);
           let lastDate = null;
           const body = items.length === 0
-            ? '<div class="px-4 py-4 text-xs text-slate-400">Nothing logged here yet.</div>'
+            ? '<div class="sec-empty">// nothing logged here yet</div>'
             : items.map((i) => {
-                const divider = i.date !== lastDate
-                  ? `<div class="px-4 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-50/60">${escapeHtml(friendlyDate(i.date))}</div>`
-                  : '';
+                const divider = i.date !== lastDate ? `<div class="day">${dayLabel(i.date)}</div>` : '';
                 lastDate = i.date;
                 return divider + renderItem(i);
               }).join('');
           return `
-            <section class="card overflow-hidden">
-              <div class="pl-2 pr-1.5 py-2 flex items-center justify-between gap-2 border-b border-slate-100">
-                <button type="button" ${sec.isVirtual ? 'disabled' : `data-act="collapse" data-sec="${sid}"`} class="flex items-center gap-1.5 min-w-0 px-1.5 py-1 rounded-lg hover:bg-slate-50 text-left">
-                  <svg class="w-4 h-4 text-slate-400 transition-transform ${sec.collapsed ? '' : 'rotate-90'} ${sec.isVirtual ? 'invisible' : ''}" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-                  <h3 class="text-sm font-bold text-slate-800 truncate">${escapeHtml(sec.name)}</h3>
-                  <span class="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500">${items.length}</span>
+            <section class="panel ${sec.collapsed ? 'sec-collapsed' : ''}">
+              <div class="sec-head">
+                <button type="button" ${sec.isVirtual ? 'disabled' : `data-act="collapse" data-sec="${sid}"`} class="sec-toggle" aria-expanded="${!sec.collapsed}">
+                  <span class="caret ${sec.isVirtual ? 'invisible' : ''}">${sec.collapsed ? '▸' : '▾'}</span>
+                  <span class="sec-name">${escapeHtml(sec.name)}</span>
+                  <span class="count">${items.length}</span>
                 </button>
                 ${sec.isVirtual ? '' : `
-                <div class="flex items-center shrink-0">
-                  <button type="button" data-act="rename" data-sec="${sid}" class="icon-btn" title="Rename section" aria-label="Rename section">${ICON_EDIT}</button>
-                  <button type="button" data-act="remove-sec" data-sec="${sid}" class="icon-btn danger" title="Remove section" aria-label="Remove section">${ICON_TRASH}</button>
+                <div class="sec-actions">
+                  <button type="button" data-act="rename" data-sec="${sid}" class="act">rename</button>
+                  <button type="button" data-act="remove-sec" data-sec="${sid}" class="act danger">rm</button>
                 </div>`}
               </div>
-              <div class="${sec.collapsed ? 'hidden' : 'divide-y divide-slate-100'}">${body}</div>
+              <div class="${sec.collapsed ? 'hidden' : ''}">${body}</div>
             </section>`;
         }).join('');
       }
@@ -824,12 +1008,12 @@
           row(['Operator', state.meta.operator]),
           row(['Exported', `${todayISO()} ${nowTime()}`]),
           '',
-          row(['#', 'Date', 'Time', 'Section', 'Entry', 'Type', 'Record', 'Result', 'Unit', 'Volume / Quantity', 'Dilution / Source', 'Note'])
+          row(['#', 'Date', 'Time', 'Section', 'Entry', 'Type', 'Tube', 'Record', 'Result', 'Unit', 'Volume / Quantity', 'Dilution / Source', 'Note'])
         ];
         orderedItems().forEach((i, idx) => {
           const isNote = i.kind === 'note';
           lines.push(row([idx + 1, i.date, i.timestamp, sectionName(i.sectionId), isNote ? 'Note' : 'Result',
-            isNote ? '' : typeLabel(i), isNote ? '' : i.name, isNote ? '' : i.result, isNote ? '' : i.unit,
+            isNote ? '' : typeLabel(i), isNote ? '' : i.tube, isNote ? '' : i.name, isNote ? '' : i.result, isNote ? '' : i.unit,
             i.volume, i.dilution, isNote ? i.text : i.notes]));
         });
         return '﻿' + lines.join('\r\n');
@@ -854,7 +1038,7 @@
               lines.push(`${when} NOTE: ${indent(i.text)}`);
             } else {
               const extras = [i.typeId !== 'general' ? typeLabel(i) : '', i.volume ? `Vol: ${i.volume}` : '', i.dilution ? `Dilution: ${i.dilution}` : ''].filter(Boolean).join(' | ');
-              lines.push(`${when} ${i.name} — ${resultText(i)}${extras ? ` (${extras})` : ''}`);
+              lines.push(`${when} ${i.tube ? `tube ${i.tube} | ` : ''}${i.name} — ${resultText(i)}${extras ? ` (${extras})` : ''}`);
               if (i.notes) lines.push(`          Note: ${indent(i.notes)}`);
             }
           });
@@ -895,18 +1079,19 @@
 
       function renderTypesList() {
         $('typesList').innerHTML = allTypes().map((t) => {
-          const units = t.id === 'general' ? 'Any unit' : (t.units.length ? t.units.join(', ') : 'No unit');
+          const units = t.id === 'general' ? 'any unit' : (t.units.length ? t.units.join(', ') : 'no unit');
           const custom = !BUILTIN_TYPES.includes(t);
+          const hex = hexOf(t);
           return `
-            <div class="py-2.5 flex items-center gap-3">
-              <span class="w-2.5 h-2.5 rounded-full ${DOTS[t.color] || DOTS.slate} shrink-0"></span>
-              <div class="min-w-0 flex-1">
-                <div class="text-sm font-semibold text-slate-800">${escapeHtml(t.name)}</div>
-                <div class="text-xs text-slate-500 mono truncate">${escapeHtml(units)}</div>
+            <div class="type-row">
+              <span class="dot" style="background:${hex};color:${hex}"></span>
+              <div class="grow">
+                <div class="nm" style="color:${hex}">${escapeHtml(t.name)}</div>
+                <div class="un">${escapeHtml(units)}</div>
               </div>
               ${custom
-                ? `<button type="button" data-del-type="${escapeHtml(t.id)}" class="icon-btn danger" aria-label="Delete ${escapeHtml(t.name)}">${ICON_TRASH}</button>`
-                : '<span class="text-[10px] font-semibold uppercase tracking-wider text-slate-300 pr-2">Built-in</span>'}
+                ? `<button type="button" data-del-type="${escapeHtml(t.id)}" class="act danger" aria-label="Delete ${escapeHtml(t.name)}">del</button>`
+                : '<span class="builtin">built-in</span>'}
             </div>`;
         }).join('');
       }
@@ -962,6 +1147,9 @@
         prefs.lastUnit[type.id] = e.target.value;
         savePrefs();
       });
+      $('entryTube').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); $('entryName').focus(); }
+      });
       $('entryName').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); $('entryResult').focus(); }
       });
@@ -974,7 +1162,7 @@
           date: $('entryDate').value || todayISO(),
           timestamp: nowTime(),
           typeId: 'general', typeName: 'General',
-          name: '', result: '', unit: '', volume: '', dilution: '', notes: '', text: ''
+          name: '', tube: '', result: '', unit: '', volume: '', dilution: '', notes: '', text: ''
         };
         if (entryKind === 'note') {
           const text = $('noteText').value.trim();
@@ -990,18 +1178,21 @@
           if (!result) { $('entryResult').focus(); showToast('Enter a result'); return; }
           const type = typeById(prefs.lastType) || BUILTIN_TYPES[0];
           const unit = $('entryUnit').value === '__custom__' ? '' : $('entryUnit').value;
+          const tube = $('entryTube').value.trim();
           state.quickItems.push(Object.assign(base, {
-            kind: 'result', typeId: type.id, typeName: type.name, name, result, unit,
+            kind: 'result', typeId: type.id, typeName: type.name, name, tube, result, unit,
             volume: $('entryVolume').value.trim(),
             dilution: $('entryDilution').value.trim(),
             notes: $('entryNote').value.trim()
           }));
           ['entryResult', 'entryVolume', 'entryDilution', 'entryNote'].forEach((id) => { $(id).value = ''; });
           // Get the next record ready: "Sample 1" -> "Sample 2", cursor straight to Result.
+          // Tube numbers count up too: tube 4 -> 5.
           const next = nextRecordName(name);
           $('entryName').value = next;
+          $('entryTube').value = tube ? nextRecordName(tube) : '';
           (next ? $('entryResult') : $('entryName')).focus();
-          showToast(`Logged ${name}: ${result}${unit ? ' ' + unit : ''}`);
+          showToast(`Logged ${tube ? `tube ${tube} · ` : ''}${name}: ${result}${unit ? ' ' + unit : ''}`);
         }
         saveState();
         renderLog();
@@ -1094,7 +1285,7 @@
       // Sections modal
       function openSectionModal(sec) {
         editingSectionId = sec ? sec.id : null;
-        $('sectionModalTitle').textContent = sec ? 'Rename section' : 'Add section';
+        $('sectionModalTitle').textContent = sec ? 'rename section' : 'add section';
         $('sectionNameInput').value = sec ? sec.name : '';
         openModal('sectionModal');
         $('sectionNameInput').focus();
@@ -1132,6 +1323,7 @@
         openEditor = null;
         currentSection = null;
         $('entryName').value = '';
+        $('entryTube').value = '';
         saveState();
         renderAll();
         closeModals();
@@ -1232,7 +1424,7 @@
         entries.forEach((e) => {
           const base = {
             id: newId('qi_'), sectionId: secId(e.section), date: e.date || run.meta.date, timestamp: e.time || '',
-            typeId: 'general', typeName: 'General', name: '', result: '', unit: '',
+            typeId: 'general', typeName: 'General', name: '', tube: '', result: '', unit: '',
             volume: e.volume || '', dilution: e.dilution || '', notes: '', text: ''
           };
           if (e.kind === 'note') {
@@ -1240,7 +1432,7 @@
           } else {
             const t = typeFor(e.typeName, e.unit);
             run.quickItems.push(Object.assign(base, {
-              kind: 'result', typeId: t.id, typeName: t.name, name: e.name || '', result: e.result || '', unit: e.unit || '', notes: e.note || ''
+              kind: 'result', typeId: t.id, typeName: t.name, tube: e.tube || '', name: e.name || '', result: e.result || '', unit: e.unit || '', notes: e.note || ''
             }));
           }
         });
@@ -1264,14 +1456,14 @@
         const c = {
           date: col('Date'), time: col('Time'), section: col('Section'),
           kind: hasEntry ? col('Entry') : col('Type'), type: hasEntry ? col('Type') : -1,
-          name: col('Record', 'Name / Tube'), result: col('Result'), unit: col('Unit'),
+          tube: col('Tube'), name: col('Record', 'Name / Tube'), result: col('Result'), unit: col('Unit'),
           volume: col('Volume / Quantity'), dilution: col('Dilution / Source'), note: col('Note')
         };
         const get = (r, i) => (i >= 0 && r[i] !== undefined ? r[i] : '');
         const entries = rows.slice(hIdx + 1).filter((r) => r.some((x) => x !== '')).map((r) => ({
           kind: get(r, c.kind).toLowerCase() === 'note' ? 'note' : 'result',
           date: get(r, c.date), time: get(r, c.time), section: get(r, c.section), typeName: get(r, c.type),
-          name: get(r, c.name), result: get(r, c.result), unit: get(r, c.unit),
+          tube: get(r, c.tube), name: get(r, c.name), result: get(r, c.result), unit: get(r, c.unit),
           volume: get(r, c.volume), dilution: get(r, c.dilution), note: get(r, c.note)
         }));
         return buildRun(meta, entries);
@@ -1322,8 +1514,11 @@
                   });
                 }
               }
+              let tube = '';
+              const tm = name.match(/^tube (.+?) \| (.*)$/);
+              if (tm) { tube = tm[1]; name = tm[2]; }
               const ru = splitResultUnit(res, typeName);
-              last = { kind: 'result', date: m[1], time: m[2] || '', section, typeName, name, result: ru.result, unit: ru.unit, volume, dilution, note: '' };
+              last = { kind: 'result', date: m[1], time: m[2] || '', section, typeName, tube, name, result: ru.result, unit: ru.unit, volume, dilution, note: '' };
               lastField = null;
             }
             entries.push(last);
@@ -1388,6 +1583,24 @@
       document.querySelectorAll('[data-continue]').forEach((b) => b.addEventListener('click', () => $('inputContinue').click()));
       $('inputContinue').addEventListener('change', (e) => { continueFromFile(e.target.files[0]); e.target.value = ''; });
       $('inputImportJson').addEventListener('change', (e) => { continueFromFile(e.target.files[0]); e.target.value = ''; });
+
+      /* ---------- Light / dark mode ---------- */
+
+      function applyTheme(theme) {
+        const dark = theme === 'dark';
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        $('metaTheme').setAttribute('content', dark ? '#0b0f14' : '#f3f5f8');
+        $('btnTheme').textContent = dark ? '☀\uFE0E' : '☾';
+        const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
+        $('btnTheme').title = label;
+        $('btnTheme').setAttribute('aria-label', label);
+      }
+      $('btnTheme').addEventListener('click', () => {
+        const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+        try { localStorage.setItem('labtrack_theme', next); } catch (e) {}
+        applyTheme(next);
+      });
+      applyTheme(document.documentElement.dataset.theme);
 
       function renderAll() {
         renderMeta();
