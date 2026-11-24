@@ -379,6 +379,12 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
     @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } .sheet, .fade-in { animation: none; } }
     @media print { .no-print { display: none !important; } body { background: #fff; color: #000; } }
+    .fill { width: 82px; height: 32px; padding: 0 8px; border-radius: 7px; text-align: right; font: inherit; font-size: 15px; font-weight: 800; color: var(--green); background: var(--panel-2); border: 1px dashed color-mix(in srgb, var(--amber) 70%, transparent); outline: none; }
+    .fill::placeholder { color: var(--amber); font-weight: 600; font-size: 12px; opacity: .85; }
+    .fill:focus { border-style: solid; border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent); }
+    .fill.filled { border-style: solid; border-color: var(--border-2); }
+    .result.pending { display: flex; align-items: center; justify-content: flex-end; gap: 0; max-width: 60%; }
+    .pending-mark { color: var(--amber); }
   </style>
 </head>
 <body>
@@ -496,6 +502,7 @@
       <div class="term-line"><span class="c-green">$</span> cat log.txt</div>
       <div class="term-line c-muted">nothing logged yet<span class="cursor" aria-hidden="true">▊</span></div>
       <p>pick a type, enter a record and a result above, then hit <span class="c-green">add result</span>.</p>
+      <p class="tiny">prepping a batch? leave the result blank and keep pressing enter. each record is added, ready to fill in from the log.</p>
       <button type="button" data-continue class="btn btn-accent">↑ continue a previous run</button>
       <p class="tiny">upload a labtrack .csv or .txt export to pick up where you left off.</p>
     </div>
@@ -811,7 +818,11 @@
         $('noteFields').classList.toggle('hidden', entryKind !== 'note');
         $('btnToggleExtra').classList.toggle('invisible', entryKind !== 'result');
         if (entryKind !== 'result') $('extraFields').classList.add('hidden');
-        $('btnSubmitEntry').textContent = entryKind === 'note' ? '↵ add note' : '↵ add result';
+        updateSubmitLabel();
+      }
+      function updateSubmitLabel() {
+        $('btnSubmitEntry').textContent = entryKind === 'note' ? '↵ add note'
+          : $('entryResult').value.trim() ? '↵ add result' : '↵ add record · fill result later';
       }
       let currentSection = null; // shared by the Result and Note forms
       function renderSectionSelects() {
@@ -925,7 +936,9 @@
                 <div class="rec-line">${item.tube ? `<span class="tube" title="Tube number">tube ${escapeHtml(item.tube)}</span>` : ''}<span class="rec">${escapeHtml(item.name)}</span>${chip(item)}</div>
                 ${details ? `<div class="details">${details}</div>` : ''}
               </div>
-              <div class="result ${isNumeric(item.result) ? 'num' : 'txt'}">${escapeHtml(item.result)}${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}</div>
+              ${item.result || editing
+                ? `<div class="result ${isNumeric(item.result) ? 'num' : 'txt'}">${escapeHtml(item.result)}${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}</div>`
+                : `<div class="result pending"><input type="text" class="fill" data-fill="${id}" placeholder="result?" inputmode="${item.typeId && item.typeId !== 'general' ? 'decimal' : 'text'}" enterkeyhint="next" autocomplete="off" aria-label="Result for ${escapeHtml([item.tube ? 'tube ' + item.tube : '', item.name].filter(Boolean).join(' '))}" />${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}</div>`}
             </div>
             ${item.notes && !editing ? `<div class="annot"><span class="branch">└─</span><span>${escapeHtml(item.notes)}</span></div>` : ''}
             ${editing ? renderEditor(item, editing) : `
@@ -941,12 +954,17 @@
         return tag ? `<b>${tag}</b> · ${escapeHtml(iso)}` : escapeHtml(iso);
       }
 
-      function renderLog() {
-        const results = state.quickItems.filter((i) => i.kind === 'result').length;
-        const notes = state.quickItems.length - results;
+      function renderStats() {
+        const pending = state.quickItems.filter((i) => i.kind === 'result' && !i.result).length;
+        const results = state.quickItems.filter((i) => i.kind === 'result').length - pending;
+        const notes = state.quickItems.length - results - pending;
         $('runStats').textContent = state.quickItems.length
-          ? [`${results} ${results === 1 ? 'result' : 'results'}`, notes ? `${notes} ${notes === 1 ? 'note' : 'notes'}` : ''].filter(Boolean).join(' · ')
+          ? [`${results} ${results === 1 ? 'result' : 'results'}`, pending ? `${pending} to fill in` : '', notes ? `${notes} ${notes === 1 ? 'note' : 'notes'}` : ''].filter(Boolean).join(' · ')
           : 'no entries yet';
+      }
+
+      function renderLog() {
+        renderStats();
         $('emptyState').classList.toggle('hidden', state.quickItems.length > 0);
         renderSectionSelects();
 
@@ -1038,7 +1056,9 @@
               lines.push(`${when} NOTE: ${indent(i.text)}`);
             } else {
               const extras = [i.typeId !== 'general' ? typeLabel(i) : '', i.volume ? `Vol: ${i.volume}` : '', i.dilution ? `Dilution: ${i.dilution}` : ''].filter(Boolean).join(' | ');
-              lines.push(`${when} ${i.tube ? `tube ${i.tube} | ` : ''}${i.name} — ${resultText(i)}${extras ? ` (${extras})` : ''}`);
+              const who = [i.tube ? `tube ${i.tube}` : '', i.name].filter(Boolean).join(' | ');
+              const res = i.result ? resultText(i) : `(pending)${i.unit ? ' ' + i.unit : ''}`;
+              lines.push(`${when} ${who} — ${res}${extras ? ` (${extras})` : ''}`);
               if (i.notes) lines.push(`          Note: ${indent(i.notes)}`);
             }
           });
@@ -1153,6 +1173,7 @@
       $('entryName').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); $('entryResult').focus(); }
       });
+      $('entryResult').addEventListener('input', updateSubmitLabel);
 
       $('entryForm').addEventListener('submit', (e) => {
         e.preventDefault();
@@ -1174,8 +1195,7 @@
         } else {
           const name = $('entryName').value.trim();
           const result = $('entryResult').value.trim();
-          if (!name) { $('entryName').focus(); showToast('Enter a record name'); return; }
-          if (!result) { $('entryResult').focus(); showToast('Enter a result'); return; }
+          if (!name && !$('entryTube').value.trim()) { $('entryName').focus(); showToast('Enter a record name or tube number'); return; }
           const type = typeById(prefs.lastType) || BUILTIN_TYPES[0];
           const unit = $('entryUnit').value === '__custom__' ? '' : $('entryUnit').value;
           const tube = $('entryTube').value.trim();
@@ -1191,11 +1211,37 @@
           const next = nextRecordName(name);
           $('entryName').value = next;
           $('entryTube').value = tube ? nextRecordName(tube) : '';
-          (next ? $('entryResult') : $('entryName')).focus();
-          showToast(`Logged ${tube ? `tube ${tube} · ` : ''}${name}: ${result}${unit ? ' ' + unit : ''}`);
+          (next || (!name && tube) ? $('entryResult') : $('entryName')).focus();
+          const label = [tube ? `tube ${tube}` : '', name].filter(Boolean).join(' · ');
+          showToast(result ? `Logged ${label}: ${result}${unit ? ' ' + unit : ''}` : `Added ${label} — fill in the result later`);
+          updateSubmitLabel();
         }
         saveState();
         renderLog();
+      });
+
+      // Fill in a prepared record's result straight from the log.
+      function saveFill(input) {
+        const item = state.quickItems.find((i) => i.id === input.dataset.fill);
+        if (!item) return;
+        const v = input.value.trim();
+        if (item.result === v) return;
+        item.result = v;
+        input.classList.toggle('filled', !!v);
+        saveState();
+        renderStats();
+      }
+      $('sectionsContainer').addEventListener('change', (e) => {
+        if (e.target.matches('.fill')) saveFill(e.target);
+      });
+      $('sectionsContainer').addEventListener('keydown', (e) => {
+        if (!e.target.matches('.fill') || e.key !== 'Enter') return;
+        e.preventDefault();
+        saveFill(e.target);
+        const boxes = [...document.querySelectorAll('.fill')];
+        const next = boxes.slice(boxes.indexOf(e.target) + 1).find((b) => !b.value.trim());
+        if (next) { next.focus(); next.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+        else { e.target.blur(); renderLog(); showToast('All prepared records filled in'); }
       });
 
       $('sectionsContainer').addEventListener('click', (e) => {
@@ -1228,18 +1274,20 @@
           return;
         } else if (act === 'save' && item) {
           const ed = document.querySelector(`[data-editor="${CSS.escape(item.id)}"]`);
+          const oldName = item.name;
           ed.querySelectorAll('[data-f]').forEach((f) => {
             const k = f.dataset.f;
             const v = k === 'sectionId' ? f.value : f.value.trim();
-            if ((k === 'name' || k === 'result' || k === 'text' || k === 'date') && !v) return; // keep required fields
+            if ((k === 'text' || k === 'date') && !v) return; // keep required fields
             item[k] = v;
           });
+          if (item.kind === 'result' && !item.name && !item.tube) item.name = oldName; // keep it identifiable
           const t = typeById(item.typeId);
           if (t) item.typeName = t.name;
           openEditor = null;
           showToast('Saved');
         } else if (act === 'delete' && item) {
-          const label = item.kind === 'note' ? 'this note' : `"${item.name}"`;
+          const label = item.kind === 'note' ? 'this note' : `"${[item.tube ? `tube ${item.tube}` : '', item.name].filter(Boolean).join(' · ')}"`;
           if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
           state.quickItems = state.quickItems.filter((i) => i.id !== item.id);
           if (openEditor && openEditor.id === item.id) openEditor = null;
@@ -1515,9 +1563,11 @@
                 }
               }
               let tube = '';
-              const tm = name.match(/^tube (.+?) \| (.*)$/);
+              const tm = name.match(/^tube (.+?) \| (.*)$/) || name.match(/^tube (\S+)()$/);
               if (tm) { tube = tm[1]; name = tm[2]; }
-              const ru = splitResultUnit(res, typeName);
+              const ru = res === '(pending)' || res.startsWith('(pending) ')
+                ? { result: '', unit: res.slice(9).trim() }
+                : splitResultUnit(res, typeName);
               last = { kind: 'result', date: m[1], time: m[2] || '', section, typeName, tube, name, result: ru.result, unit: ru.unit, volume, dilution, note: '' };
               lastField = null;
             }

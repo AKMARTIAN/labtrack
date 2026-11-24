@@ -2,6 +2,17 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.1.0] - 2026-11-24
+
+### Added
+- **Prepare records now, fill in results later.** The Result box can be left blank: the record is added straight away, and the next record and tube number fill in automatically, so pressing Enter repeatedly sets up a whole batch. Blank records show a **result?** box in the log. Type the number and press Enter to jump to the next blank record.
+- The run summary counts records still waiting for a result ("2 to fill in").
+- A record can have only a tube number with no name. You can add the name later with **edit**.
+
+### Changed
+- Blank results are kept in CSV and text exports (the text report shows `(pending)`). They are restored when you continue a run, so you can prepare records on one device and fill them in on another.
+- In **edit**, the result can now be cleared.
+
 ## [3.0.0] - 2026-11-23
 
 A new look, and tube numbers.

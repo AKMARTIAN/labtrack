@@ -33,6 +33,7 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
   - **Add your own types** (e.g. *Qubit RNA HS* with `ng/µL, ng/mL`) from **＋ Add or edit types…** in the Type menu.
   - Your last type and the unit you last used for each type are remembered.
 - **Auto-numbering:** after logging `tube 4 · Blood 2`, the boxes fill in `tube 5 · Blood 3` and jump to Result.
+- **Prepare now, fill in later:** leave Result blank and keep pressing Enter to set up a batch (*tube 1 · Blood 1*, *tube 2 · Blood 2*…). Each record waits in the log with a **result?** box. Type the number and press Enter to move to the next one.
 - **Continue a previous run:** upload a LabTrack `.csv` or `.txt` export (or a `.json` backup) to load that run back in and keep adding to it. Nothing already recorded is lost.
 - **Every entry is dated:** the date defaults to today and can be changed if you're logging something from an earlier day. The time is recorded automatically. The log is grouped by day.
 - **Notes, two ways:**
