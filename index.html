@@ -395,8 +395,8 @@
     button.rec i { font-weight: 500; color: var(--dim); }
     .rename-grid { display: grid; grid-template-columns: 90px 1fr; gap: 12px; }
     @media (max-width: 420px) { .entry-actions .act { padding: 0 5px; font-size: 11px; } .entry-actions { gap: 0; } }
-    .check { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
-    .check input { width: 16px; height: 16px; accent-color: var(--green); }
+    .check { display: flex; align-items: flex-start; line-height: 1.45; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
+    .check input { flex-shrink: 0; margin: 1px 0 0; width: 16px; height: 16px; accent-color: var(--green); }
     .log-tools { display: flex; gap: 4px; }
     .c-violet { color: var(--violet); }
     #btnReorder[aria-pressed="true"] { color: var(--green); border-color: var(--green); }
@@ -622,6 +622,28 @@
   </div>
 
   <datalist id="sectionPresetList"></datalist>
+
+  <!-- Duplicate section -->
+  <div id="dupModal" class="modal hidden no-print">
+    <form id="dupForm" class="sheet">
+      <div class="sheet-head">
+        <div><h3 id="dupTitle">duplicate section</h3><p id="dupSub">copy this section and its records.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div>
+          <label for="dupName" class="lbl">name of the copy</label>
+          <input id="dupName" type="text" class="field" autocomplete="off" list="sectionPresetList" />
+        </div>
+        <label class="check"><input type="checkbox" id="dupResults" /> copy the results too (otherwise each record is left blank, ready to fill in)</label>
+        <label class="check"><input type="checkbox" id="dupNotes" checked /> copy notes</label>
+        <div class="row-2">
+          <button type="button" data-close class="btn">cancel</button>
+          <button type="submit" class="btn btn-primary">⧉ duplicate</button>
+        </div>
+      </div>
+    </form>
+  </div>
 
   <!-- Follow up -->
   <div id="followModal" class="modal hidden no-print">
@@ -966,9 +988,21 @@
           list.map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('') +
           '<option value="">no unit</option><option value="__custom__">custom…</option>';
         $('entryUnit').value = want;
-        // Numeric keypad for typed measurements; full keyboard for General.
-        $('entryResult').setAttribute('inputmode', type && type.id !== 'general' ? 'decimal' : 'text');
-        $('entryResult').placeholder = type && type.id !== 'general' ? '45.6' : '45.6 or text';
+        updateResultMode();
+      }
+      // Numeric keypad when a unit is chosen; full keyboard (text allowed) for "no unit" or General.
+      function updateResultMode() {
+        const type = typeById(prefs.lastType);
+        const unit = $('entryUnit').value;
+        const numeric = type && type.id !== 'general' && unit && unit !== '__custom__';
+        const inp = $('entryResult');
+        const mode = numeric ? 'decimal' : 'text';
+        if (inp.getAttribute('inputmode') !== mode) {
+          inp.setAttribute('inputmode', mode);
+          // Re-focus so a phone swaps its keyboard straight away.
+          if (document.activeElement === inp) { inp.blur(); inp.focus(); }
+        }
+        inp.placeholder = numeric ? '45.6' : (type && type.id !== 'general' ? 'text or number' : '45.6 or text');
       }
 
       /* ---------- Log rendering ---------- */
@@ -1030,7 +1064,7 @@
           <div class="grid-2">
             <div><label class="lbl">tube</label><input type="text" data-f="tube" value="${escapeHtml(item.tube)}" class="field" placeholder="none" /></div>
             <div><label class="lbl">record</label><input type="text" data-f="name" value="${escapeHtml(item.name)}" class="field" /></div>
-            <div><label class="lbl">result</label><input type="text" data-f="result" value="${escapeHtml(item.result)}" inputmode="decimal" class="field" /></div>
+            <div><label class="lbl">result</label><input type="text" data-f="result" value="${escapeHtml(item.result)}" inputmode="${item.unit ? 'decimal' : 'text'}" class="field" /></div>
             <div><label class="lbl">unit</label><input type="text" data-f="unit" value="${escapeHtml(item.unit)}" list="${listId}" class="field" placeholder="none" />
               <datalist id="${listId}">${units.map((u) => `<option value="${escapeHtml(u)}"></option>`).join('')}</datalist></div>
             <div><label class="lbl">type</label><select data-f="typeId" class="field">${typeOptions(item.typeId, false)}</select></div>
@@ -1105,7 +1139,7 @@
               </div>
               ${item.result || editing
                 ? `<div class="result tap ${isNumeric(item.result) ? 'num' : 'txt'}" data-act="edit" data-focus="result" data-id="${id}" title="Change result">${escapeHtml(item.result)}${item.unit ? `<span class="unit" data-act="edit" data-focus="unit" data-id="${id}">${escapeHtml(item.unit)}</span>` : ''}</div>`
-                : `<div class="result pending"><input type="text" class="fill" data-fill="${id}" placeholder="result?" inputmode="${item.typeId && item.typeId !== 'general' ? 'decimal' : 'text'}" enterkeyhint="next" autocomplete="off" aria-label="Result for ${escapeHtml([item.tube ? 'tube ' + item.tube : '', item.name].filter(Boolean).join(' '))}" />${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}</div>`}
+                : `<div class="result pending"><input type="text" class="fill" data-fill="${id}" placeholder="result?" inputmode="${item.unit && item.typeId !== 'general' ? 'decimal' : 'text'}" enterkeyhint="next" autocomplete="off" aria-label="Result for ${escapeHtml([item.tube ? 'tube ' + item.tube : '', item.name].filter(Boolean).join(' '))}" />${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}</div>`}
             </div>
             ${item.notes && !editing ? `<div class="annot tap" data-act="note" data-id="${id}" title="Edit note"><span class="branch">└─</span><span>${escapeHtml(item.notes)}</span></div>` : ''}
             ${reorderMode ? moveBar(item) : editing ? renderEditor(item, editing) : `
@@ -1186,6 +1220,7 @@
                 </div>` : sec.isVirtual ? (items.length ? `<div class="sec-actions"><button type="button" data-act="next-step" data-sec="__general__" class="act violet">↳ next step</button></div>` : '') : `
                 <div class="sec-actions">
                   ${items.some((i) => i.kind === 'result') ? `<button type="button" data-act="next-step" data-sec="${sid}" class="act violet">↳ next step</button>` : ''}
+                  <button type="button" data-act="dup-sec" data-sec="${sid}" class="act" title="Duplicate section">⧉ copy</button>
                   <button type="button" data-act="remove-sec" data-sec="${sid}" class="act danger">rm</button>
                 </div>`}
               </div>
@@ -1462,6 +1497,8 @@
         }
         prefs.lastUnit[type.id] = e.target.value;
         savePrefs();
+        updateResultMode();
+        if (!e.target.value) $('entryResult').focus();
       });
       $('entryTube').addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); $('entryName').focus(); }
@@ -1763,6 +1800,9 @@
           const sorted = slots.map((idx) => state.quickItems[idx]).sort(act === 'sort-name' ? byName : byTube);
           slots.forEach((idx, k) => { state.quickItems[idx] = sorted[k]; });
           showToast(act === 'sort-name' ? 'Sorted by record name' : 'Sorted by tube number');
+        } else if (act === 'dup-sec' && sec) {
+          openDuplicate(sec);
+          return;
         } else if (act === 'follow' && item) {
           openFollow([item], item.sectionId);
           return;
@@ -1882,6 +1922,56 @@
         renderTypesList();
         renderTypeSelect();
         renderLog();
+      });
+
+      // Duplicate a section with its records (results optional), placed right after it.
+      let dupSectionId = null;
+      function openDuplicate(sec) {
+        dupSectionId = sec.id;
+        const n = state.quickItems.filter((i) => i.sectionId === sec.id);
+        const recs = n.filter((i) => i.kind === 'result').length;
+        $('dupTitle').textContent = `duplicate ${sec.name}`;
+        $('dupSub').textContent = `${recs} ${recs === 1 ? 'record' : 'records'}${n.length - recs ? `, ${n.length - recs} ${n.length - recs === 1 ? 'note' : 'notes'}` : ''}`;
+        let name = `${sec.name} (copy)`, k = 2;
+        while (state.quickSections.some((x) => x.name.toLowerCase() === name.toLowerCase())) name = `${sec.name} (copy ${k++})`;
+        $('dupName').value = name;
+        $('dupResults').checked = false;
+        $('dupNotes').checked = true;
+        openModal('dupModal');
+        $('dupName').focus();
+        $('dupName').select();
+      }
+      $('dupForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const src = state.quickSections.find((x) => x.id === dupSectionId);
+        if (!src) { closeModals(); return; }
+        const name = $('dupName').value.trim();
+        if (!name) { $('dupName').focus(); return; }
+        if (state.quickSections.some((x) => x.name.toLowerCase() === name.toLowerCase())) { showToast('A section with that name already exists'); $('dupName').focus(); return; }
+        const keepResults = $('dupResults').checked, keepNotes = $('dupNotes').checked;
+        const copy = { id: newId('qsec_'), name, collapsed: false };
+        state.quickSections.splice(state.quickSections.indexOf(src) + 1, 0, copy);
+        const items = state.quickItems
+          .filter((i) => i.sectionId === src.id && (i.kind === 'result' || keepNotes))
+          .map((i) => Object.assign({}, i, {
+            id: newId('qi_'),
+            sectionId: copy.id,
+            result: keepResults ? i.result : '',
+            notes: keepNotes ? i.notes : '',
+            date: keepResults ? i.date : todayISO(),
+            timestamp: keepResults ? i.timestamp : nowTime(),
+            fromId: keepResults ? i.fromId : undefined
+          }));
+        items.forEach((i) => { if (i.fromId === undefined) delete i.fromId; });
+        state.quickItems.push(...items);
+        rememberSectionName(name);
+        currentSection = copy.id;
+        closeModals();
+        saveState();
+        renderLog();
+        showToast(`Duplicated as "${name}"${keepResults ? '' : ': type the new results'}`);
+        const target = document.querySelector(`[data-section="${CSS.escape(copy.id)}"]`);
+        if (target) target.scrollIntoView({ block: 'start', behavior: 'smooth' });
       });
 
       // Follow up: carry one sample (or every sample in a section) on to its next step.

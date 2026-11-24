@@ -2,6 +2,18 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.9.0] - 2026-11-24
+
+### Added
+- **Duplicate a section with its records:** tap **⧉ copy** in a section's header and name the copy (e.g. *Extraction (copy)*).
+  - By default each record is copied with its name, tube, type and unit but a blank result, ready for a repeat measurement.
+  - Tick **copy the results too** to make an exact copy.
+  - Notes are copied unless you untick them.
+  - The copy goes right below the original section.
+
+### Changed
+- Choosing **no unit** in the result box opens the full keyboard, so you can type text such as *band at 300 bp, faint* as well as numbers. Picking a unit again brings back the number pad. Prepared records with no unit get the full keyboard too, both in the log and in **edit**.
+
 ## [3.8.0] - 2026-11-24
 
 ### Added
