@@ -407,6 +407,18 @@
     .mv:not(:disabled):hover { border-color: var(--violet); }
     .entry-actions.moving { align-items: center; gap: 6px; }
     .sort-lbl { font-size: 11px; color: var(--dim); margin-right: 2px; }
+    .tap { cursor: pointer; }
+    button.tube.tap { font-family: inherit; }
+    .result.tap:hover, .note-text.tap:hover, .annot.tap:hover { opacity: .8; }
+    .sec-title { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1; }
+    .caret-btn { padding: 6px 6px 6px 8px; }
+    .count-btn { padding: 6px 4px; }
+    .sec-name-btn { min-width: 0; padding: 6px 4px; border-radius: 7px; font: inherit; font-weight: 800; color: var(--text); text-align: left; text-decoration: underline dotted transparent; text-underline-offset: 3px; }
+    .sec-name-btn:hover { text-decoration-color: var(--dim); }
+    .sec-rename { display: flex; gap: 8px; flex: 1; min-width: 0; padding: 2px 0; }
+    .sec-rename .field { height: 38px; flex: 1; min-width: 0; font-weight: 700; }
+    .sec-rename .btn { height: 38px; }
+    .type-row .edit-type { flex-shrink: 0; }
   </style>
 </head>
 <body>
@@ -548,7 +560,7 @@
       </div>
       <div id="typesList" class="type-list"></div>
       <form id="typeForm" class="sheet-body" style="padding-top:14px">
-        <div class="lbl" style="color:var(--green)">add your own type</div>
+        <div id="typeFormTitle" class="lbl" style="color:var(--green)">add your own type</div>
         <div>
           <label for="typeName" class="lbl">name <span class="req">*</span></label>
           <input id="typeName" type="text" class="field" placeholder="Qubit RNA HS" />
@@ -557,7 +569,10 @@
           <label for="typeUnits" class="lbl">units (comma separated, first is default)</label>
           <input id="typeUnits" type="text" class="field" placeholder="ng/µL, ng/mL" />
         </div>
-        <button type="submit" class="btn btn-primary btn-block" style="height:44px">+ add type</button>
+        <div class="row-2" id="typeFormBtns">
+          <button type="button" id="btnTypeCancel" class="btn hidden">cancel</button>
+          <button type="submit" id="btnTypeSubmit" class="btn btn-primary" style="height:44px">+ add type</button>
+        </div>
       </form>
     </div>
   </div>
@@ -698,13 +713,24 @@
           customTypes: Array.isArray(p.customTypes) ? p.customTypes : [],
           lastType: p.lastType || 'general',
           lastUnit: p.lastUnit && typeof p.lastUnit === 'object' ? p.lastUnit : {},
-          extraUnits: p.extraUnits && typeof p.extraUnits === 'object' ? p.extraUnits : {}
+          extraUnits: p.extraUnits && typeof p.extraUnits === 'object' ? p.extraUnits : {},
+          typeOverrides: p.typeOverrides && typeof p.typeOverrides === 'object' ? p.typeOverrides : {}
         };
       }
       function savePrefs() {
         try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) {}
       }
       let prefs = loadPrefs();
+      // Built-in types can be renamed / given other units; keep the originals for reference.
+      const BUILTIN_DEFAULTS = Object.fromEntries(BUILTIN_TYPES.map((t) => [t.id, { name: t.name, units: [...t.units] }]));
+      function applyTypeOverrides() {
+        BUILTIN_TYPES.forEach((t) => {
+          const o = prefs.typeOverrides[t.id];
+          t.name = (o && o.name) || BUILTIN_DEFAULTS[t.id].name;
+          t.units = o && Array.isArray(o.units) ? o.units : [...BUILTIN_DEFAULTS[t.id].units];
+        });
+      }
+      applyTypeOverrides();
 
       const allTypes = () => [...BUILTIN_TYPES, ...prefs.customTypes];
       function typeById(id) {
@@ -822,6 +848,16 @@
       let state = loadState();
       let entryKind = 'result';
       let reorderMode = false;
+      let renamingSection = null;
+      function finishSectionRename(save) {
+        if (!renamingSection) return;
+        const inp = document.querySelector(`[data-sec-input="${CSS.escape(renamingSection)}"]`);
+        const sec = state.quickSections.find((x) => x.id === renamingSection);
+        renamingSection = null;
+        const name = inp ? inp.value.trim() : '';
+        if (save && sec && name && name !== sec.name) { sec.name = name; saveState(); showToast('Section renamed'); }
+        renderLog();
+      }
       let openEditor = null; // { id, mode: 'edit' | 'note' }
       let editingSectionId = null;
 
@@ -1021,7 +1057,7 @@
                 ${time}
                 <div class="entry-body">
                   <div class="note-label"># note</div>
-                  <p class="note-text">${escapeHtml(item.text)}</p>
+                  <p class="note-text tap" data-act="edit" data-focus="text" data-id="${id}" title="Edit note">${escapeHtml(item.text)}</p>
                 </div>
               </div>
               ${reorderMode ? moveBar(item) : editing ? renderEditor(item, 'edit') : `<div class="entry-actions">${editBtn}${delBtn}</div>`}
@@ -1038,15 +1074,15 @@
             <div class="entry-main">
               ${time}
               <div class="entry-body">
-                <div class="rec-line">${item.tube ? `<span class="tube" title="Tube number">tube ${escapeHtml(item.tube)}</span>` : ''}<button type="button" data-act="rename-rec" data-id="${id}" class="rec" title="Rename">${escapeHtml(item.name) || '<i>unnamed</i>'}</button>${chip(item)}</div>
+                <div class="rec-line">${item.tube ? `<button type="button" class="tube tap" data-act="rename-rec" data-focus="tube" data-id="${id}" title="Change tube number">tube ${escapeHtml(item.tube)}</button>` : ''}<button type="button" data-act="rename-rec" data-id="${id}" class="rec" title="Rename">${escapeHtml(item.name) || '<i>unnamed</i>'}</button>${chip(item) ? `<span class="tap" data-act="edit" data-focus="typeId" data-id="${id}" title="Change type">${chip(item)}</span>` : ''}</div>
                 ${details ? `<div class="details">${details}</div>` : ''}
                 ${fromLine(item)}
               </div>
               ${item.result || editing
-                ? `<div class="result ${isNumeric(item.result) ? 'num' : 'txt'}">${escapeHtml(item.result)}${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}</div>`
+                ? `<div class="result tap ${isNumeric(item.result) ? 'num' : 'txt'}" data-act="edit" data-focus="result" data-id="${id}" title="Change result">${escapeHtml(item.result)}${item.unit ? `<span class="unit" data-act="edit" data-focus="unit" data-id="${id}">${escapeHtml(item.unit)}</span>` : ''}</div>`
                 : `<div class="result pending"><input type="text" class="fill" data-fill="${id}" placeholder="result?" inputmode="${item.typeId && item.typeId !== 'general' ? 'decimal' : 'text'}" enterkeyhint="next" autocomplete="off" aria-label="Result for ${escapeHtml([item.tube ? 'tube ' + item.tube : '', item.name].filter(Boolean).join(' '))}" />${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}</div>`}
             </div>
-            ${item.notes && !editing ? `<div class="annot"><span class="branch">└─</span><span>${escapeHtml(item.notes)}</span></div>` : ''}
+            ${item.notes && !editing ? `<div class="annot tap" data-act="note" data-id="${id}" title="Edit note"><span class="branch">└─</span><span>${escapeHtml(item.notes)}</span></div>` : ''}
             ${reorderMode ? moveBar(item) : editing ? renderEditor(item, editing) : `
               <div class="entry-actions">
                 <button type="button" data-act="note" data-id="${id}" class="act amber">${item.notes ? 'edit note' : '+ note'}</button>
@@ -1104,12 +1140,19 @@
           return `
             <section class="panel ${sec.collapsed ? 'sec-collapsed' : ''}">
               <div class="sec-head">
-                <button type="button" ${sec.isVirtual ? 'disabled' : `data-act="collapse" data-sec="${sid}"`} class="sec-toggle" aria-expanded="${!sec.collapsed}">
-                  <span class="caret ${sec.isVirtual ? 'invisible' : ''}">${sec.collapsed ? '▸' : '▾'}</span>
-                  <span class="sec-name">${escapeHtml(sec.name)}</span>
-                  <span class="count">${items.length}</span>
-                </button>
-                ${reorderMode ? `
+                ${renamingSection === sec.id ? `
+                <div class="sec-rename">
+                  <input type="text" class="field" data-sec-input="${sid}" value="${escapeHtml(sec.name)}" aria-label="Section name" autocomplete="off" enterkeyhint="done" />
+                  <button type="button" data-act="sec-save" data-sec="${sid}" class="btn btn-primary">save</button>
+                </div>` : `
+                <div class="sec-title">
+                  <button type="button" ${sec.isVirtual ? 'disabled' : `data-act="collapse" data-sec="${sid}"`} class="sec-toggle caret-btn" aria-expanded="${!sec.collapsed}" aria-label="${sec.collapsed ? 'Expand' : 'Collapse'} section">
+                    <span class="caret ${sec.isVirtual ? 'invisible' : ''}">${sec.collapsed ? '▸' : '▾'}</span>
+                  </button>
+                  ${sec.isVirtual ? `<span class="sec-name">${escapeHtml(sec.name)}</span>` : `<button type="button" data-act="rename-sec-inline" data-sec="${sid}" class="sec-name sec-name-btn" title="Rename section">${escapeHtml(sec.name)}</button>`}
+                  <button type="button" ${sec.isVirtual ? 'disabled' : `data-act="collapse" data-sec="${sid}"`} class="sec-toggle count-btn" tabindex="-1" aria-hidden="true"><span class="count">${items.length}</span></button>
+                </div>`}
+                ${renamingSection === sec.id ? '' : reorderMode ? `
                 <div class="sec-actions">
                   ${items.filter((i) => i.kind === 'result').length > 1 ? `<span class="sort-lbl">sort</span><button type="button" data-act="sort-name" data-sec="${sid}" class="act">a→z</button><button type="button" data-act="sort-tube" data-sec="${sid}" class="act">tube</button>` : ''}
                   ${sec.isVirtual ? '' : `<button type="button" class="mv" data-act="sec-up" data-sec="${sid}" aria-label="Move section up" ${state.quickSections.indexOf(sec) > 0 ? '' : 'disabled'}>↑</button>
@@ -1237,13 +1280,23 @@
                 <div class="nm" style="color:${hex}">${escapeHtml(t.name)}</div>
                 <div class="un">${escapeHtml(units)}</div>
               </div>
-              ${custom
-                ? `<button type="button" data-del-type="${escapeHtml(t.id)}" class="act danger" aria-label="Delete ${escapeHtml(t.name)}">del</button>`
-                : '<span class="builtin">built-in</span>'}
+              ${t.id === 'general' ? '<span class="builtin">built-in</span>' : `<button type="button" data-edit-type="${escapeHtml(t.id)}" class="act edit-type" aria-label="Edit ${escapeHtml(t.name)}">edit</button>`}
+              ${custom ? `<button type="button" data-del-type="${escapeHtml(t.id)}" class="act danger" aria-label="Delete ${escapeHtml(t.name)}">del</button>` : ''}
             </div>`;
         }).join('');
       }
+      let editingTypeId = null;
+      function setTypeForm(t) {
+        editingTypeId = t ? t.id : null;
+        $('typeFormTitle').textContent = t ? `edit type: ${t.name}` : 'add your own type';
+        $('typeName').value = t ? t.name : '';
+        $('typeUnits').value = t ? t.units.join(', ') : '';
+        $('btnTypeSubmit').textContent = t ? 'save type' : '+ add type';
+        $('btnTypeCancel').classList.toggle('hidden', !t);
+        $('typeFormBtns').style.gridTemplateColumns = t ? '' : '1fr';
+      }
       function openTypesModal() {
+        setTypeForm(null);
         renderTypesList();
         openModal('typesModal');
       }
@@ -1359,6 +1412,18 @@
         saveState();
         renderStats();
       }
+      // Section name box: Enter saves, Escape cancels, tapping away saves.
+      $('sectionsContainer').addEventListener('keydown', (e) => {
+        if (!e.target.matches('[data-sec-input]')) return;
+        if (e.key === 'Enter') { e.preventDefault(); finishSectionRename(true); }
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finishSectionRename(false); }
+      });
+      $('sectionsContainer').addEventListener('focusout', (e) => {
+        if (!e.target.matches('[data-sec-input]')) return;
+        // Let a tap on the save button land first.
+        setTimeout(() => { if (renamingSection && !document.activeElement.matches('[data-sec-input]')) finishSectionRename(true); }, 120);
+      });
+
       // Enter in an editor's text box saves it.
       $('sectionsContainer').addEventListener('keydown', (e) => {
         if (e.key !== 'Enter' || !e.target.matches('[data-editor] input[type="text"]')) return;
@@ -1383,13 +1448,21 @@
         const btn = e.target.closest('[data-act]');
         if (!btn) return;
         const act = btn.dataset.act;
+        if (reorderMode && btn.classList.contains('tap')) return;
+        if (reorderMode && (act === 'rename-rec' || act === 'edit' || act === 'note' || act === 'rename-sec-inline')) return;
         const item = btn.dataset.id ? state.quickItems.find((i) => i.id === btn.dataset.id) : null;
         const sec = btn.dataset.sec ? state.quickSections.find((s) => s.id === btn.dataset.sec) : null;
 
         if (act === 'collapse' && sec) {
           sec.collapsed = !sec.collapsed;
-        } else if (act === 'rename' && sec) {
-          openSectionModal(sec);
+        } else if ((act === 'rename' || act === 'rename-sec-inline') && sec) {
+          renamingSection = sec.id;
+          renderLog();
+          const inp = document.querySelector(`[data-sec-input="${CSS.escape(sec.id)}"]`);
+          if (inp) { inp.focus(); inp.select(); }
+          return;
+        } else if (act === 'sec-save' && sec) {
+          finishSectionRename(true);
           return;
         } else if (act === 'remove-sec' && sec) {
           const n = state.quickItems.filter((i) => i.sectionId === sec.id).length;
@@ -1443,7 +1516,7 @@
           const mode = act === 'rename-rec' ? 'rename' : act;
           openEditor = { id: item.id, mode };
           renderLog();
-          const field = mode === 'note' ? '[data-f="notes"]' : mode === 'rename' ? '[data-f="name"]' : (item.kind === 'note' ? 'textarea' : '[data-f="result"]');
+          const field = btn.dataset.focus ? `[data-f="${btn.dataset.focus}"]` : mode === 'note' ? '[data-f="notes"]' : mode === 'rename' ? '[data-f="name"]' : (item.kind === 'note' ? 'textarea' : '[data-f="result"]');
           const ed = document.querySelector(`[data-editor="${CSS.escape(item.id)}"] ${field}`);
           if (ed) { ed.focus(); if (ed.setSelectionRange) ed.setSelectionRange(ed.value.length, ed.value.length); }
           return;
@@ -1492,8 +1565,29 @@
         e.preventDefault();
         const name = $('typeName').value.trim();
         if (!name) { $('typeName').focus(); return; }
-        if (allTypes().some((t) => t.name.toLowerCase() === name.toLowerCase())) { showToast('That type already exists'); return; }
+        if (allTypes().some((t) => t.id !== editingTypeId && t.name.toLowerCase() === name.toLowerCase())) { showToast('That type already exists'); return; }
         const units = [...new Set($('typeUnits').value.split(',').map((u) => u.trim()).filter(Boolean))];
+        if (editingTypeId) {
+          const t = typeById(editingTypeId);
+          if (!t) return;
+          if (BUILTIN_TYPES.includes(t)) {
+            prefs.typeOverrides[t.id] = { name, units };
+            applyTypeOverrides();
+          } else {
+            t.name = name;
+            t.units = units;
+          }
+          if (prefs.lastUnit[t.id] && !unitsFor(t).includes(prefs.lastUnit[t.id])) delete prefs.lastUnit[t.id];
+          state.quickItems.forEach((i) => { if (i.typeId === t.id) i.typeName = name; });
+          savePrefs();
+          saveState();
+          setTypeForm(null);
+          renderTypesList();
+          renderTypeSelect();
+          renderLog();
+          showToast(`Saved type "${name}"`);
+          return;
+        }
         const t = { id: newId('type_'), name, units, color: CUSTOM_COLORS[prefs.customTypes.length % CUSTOM_COLORS.length] };
         prefs.customTypes.push(t);
         prefs.lastType = t.id;
@@ -1505,7 +1599,15 @@
         $('entryName').focus();
         showToast(`Added type "${name}"`);
       });
+      $('btnTypeCancel').addEventListener('click', () => setTypeForm(null));
       $('typesList').addEventListener('click', (e) => {
+        const ed = e.target.closest('[data-edit-type]');
+        if (ed) {
+          setTypeForm(typeById(ed.dataset.editType));
+          $('typeName').focus();
+          $('typeForm').scrollIntoView({ block: 'nearest' });
+          return;
+        }
         const btn = e.target.closest('[data-del-type]');
         if (!btn) return;
         const t = typeById(btn.dataset.delType);

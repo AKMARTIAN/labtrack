@@ -2,6 +2,15 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.6.0] - 2026-11-24
+
+Tap anything to change it.
+
+### Added
+- **Rename sections in place:** tap a section's name, or **rename**, and type the new name. Enter saves and Esc cancels. Tap the ▾ arrow to collapse a section.
+- **Tap any value in the log to edit it:** the tube number, result, unit, type tag, note or a standalone note. The edit box opens with that field ready to change.
+- **Rename record types and change their units:** in *+ add / edit types…*, tap **edit** on any type, including built-ins like Qubit or NanoDrop. Records already logged pick up the new name, and so do the exports.
+
 ## [3.5.0] - 2026-11-24
 
 ### Added
