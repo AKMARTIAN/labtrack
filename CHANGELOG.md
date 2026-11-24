@@ -2,6 +2,16 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.3.0] - 2026-11-24
+
+Follow a sample through each step of a workflow.
+
+### Added
+- **↳ follow up** on any record carries that sample on to its next step: extraction → PCR → clean-up, and so on. You choose the section, which can be the same section, another section or a new one, and the reading type. A new record with the same name and tube is added, ready for its result, and the original is left as it is.
+- **↳ next step** on a section does the same for every sample in that section at once, using each sample's latest reading.
+- Follow-up records show where they came from in the log, e.g. *↳ from Extraction: 45.6 ng/µL*.
+- Exports keep the link. The CSV has a new **Follows From** column, the text report adds `From: <section>`, and both are restored when you continue a run.
+
 ## [3.2.0] - 2026-11-24
 
 ### Changed

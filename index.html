@@ -385,6 +385,11 @@
     .fill.filled { border-style: solid; border-color: var(--border-2); }
     .result.pending { display: flex; align-items: center; justify-content: flex-end; gap: 0; max-width: 60%; }
     .pending-mark { color: var(--amber); }
+    .hint { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+    .from { margin-top: 3px; font-size: 11px; color: var(--violet); }
+    .from b { font-weight: 700; }
+    .from .nw { white-space: nowrap; }
+    .act.violet:hover { color: var(--violet); background: color-mix(in srgb, var(--violet) 9%, transparent); }
   </style>
 </head>
 <body>
@@ -551,6 +556,35 @@
         <div class="row-2">
           <button type="button" data-close class="btn">cancel</button>
           <button type="submit" class="btn btn-primary">save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Follow up -->
+  <div id="followModal" class="modal hidden no-print">
+    <form id="followForm" class="sheet">
+      <div class="sheet-head">
+        <div><h3 id="followTitle">follow up</h3><p id="followSub">carry this sample on to its next step.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div>
+          <label for="followSection" class="lbl">next step goes in section</label>
+          <select id="followSection" class="field"></select>
+        </div>
+        <div id="followNewWrap" class="hidden">
+          <label for="followNewName" class="lbl">new section name</label>
+          <input id="followNewName" type="text" class="field" placeholder="e.g. PCR, Clean-up" autocomplete="off" />
+        </div>
+        <div>
+          <label for="followType" class="lbl">reading type</label>
+          <select id="followType" class="field"></select>
+        </div>
+        <p id="followHint" class="hint"></p>
+        <div class="row-2">
+          <button type="button" data-close class="btn">cancel</button>
+          <button type="submit" class="btn btn-primary">↳ follow up</button>
         </div>
       </div>
     </form>
@@ -900,6 +934,14 @@
           <div><label class="lbl">note</label><textarea data-f="notes" rows="2" class="field">${escapeHtml(item.notes)}</textarea></div>`);
       }
 
+      // "↳ from Extraction: 45.6 ng/µL" under a follow-up record.
+      function fromLine(item) {
+        const src = item.fromId && state.quickItems.find((i) => i.id === item.fromId);
+        if (!src) return '';
+        const where = src.sectionId === item.sectionId ? 'earlier' : escapeHtml(sectionName(isOrphan(src) ? '' : src.sectionId));
+        return `<div class="from">↳ from <b>${where}</b>${src.result ? `: <span class="nw">${escapeHtml(resultText(src))}</span>` : ''}</div>`;
+      }
+
       const isNumeric = (v) => /^[<>~≈]?\s*-?[\d.,]+(e-?\d+)?$/i.test(String(v).trim());
 
       function renderItem(item) {
@@ -935,6 +977,7 @@
               <div class="entry-body">
                 <div class="rec-line">${item.tube ? `<span class="tube" title="Tube number">tube ${escapeHtml(item.tube)}</span>` : ''}<span class="rec">${escapeHtml(item.name)}</span>${chip(item)}</div>
                 ${details ? `<div class="details">${details}</div>` : ''}
+                ${fromLine(item)}
               </div>
               ${item.result || editing
                 ? `<div class="result ${isNumeric(item.result) ? 'num' : 'txt'}">${escapeHtml(item.result)}${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}</div>`
@@ -944,6 +987,7 @@
             ${editing ? renderEditor(item, editing) : `
               <div class="entry-actions">
                 <button type="button" data-act="note" data-id="${id}" class="act amber">${item.notes ? 'edit note' : '+ note'}</button>
+                <button type="button" data-act="follow" data-id="${id}" class="act violet">↳ follow up</button>
                 ${editBtn}${delBtn}
               </div>`}
           </div>`;
@@ -1001,8 +1045,9 @@
                   <span class="sec-name">${escapeHtml(sec.name)}</span>
                   <span class="count">${items.length}</span>
                 </button>
-                ${sec.isVirtual ? '' : `
+                ${sec.isVirtual ? (items.length ? `<div class="sec-actions"><button type="button" data-act="next-step" data-sec="__general__" class="act violet">↳ next step</button></div>` : '') : `
                 <div class="sec-actions">
+                  ${items.some((i) => i.kind === 'result') ? `<button type="button" data-act="next-step" data-sec="${sid}" class="act violet">↳ next step</button>` : ''}
                   <button type="button" data-act="rename" data-sec="${sid}" class="act">rename</button>
                   <button type="button" data-act="remove-sec" data-sec="${sid}" class="act danger">rm</button>
                 </div>`}
@@ -1024,6 +1069,11 @@
         out.push(...state.quickItems.filter(isOrphan));
         return out;
       }
+      // Section the record was carried on from (for exports), or ''.
+      function fromSection(i) {
+        const src = i.fromId && state.quickItems.find((x) => x.id === i.fromId);
+        return src ? sectionName(isOrphan(src) ? '' : src.sectionId) : '';
+      }
       function typeLabel(i) {
         const t = typeById(i.typeId);
         return t ? t.name : (i.typeName || 'General');
@@ -1035,13 +1085,13 @@
           row(['Operator', state.meta.operator]),
           row(['Exported', `${todayISO()} ${nowTime()}`]),
           '',
-          row(['#', 'Date', 'Time', 'Section', 'Entry', 'Type', 'Tube', 'Record', 'Result', 'Unit', 'Volume / Quantity', 'Dilution / Source', 'Note'])
+          row(['#', 'Date', 'Time', 'Section', 'Entry', 'Type', 'Tube', 'Record', 'Result', 'Unit', 'Volume / Quantity', 'Dilution / Source', 'Note', 'Follows From'])
         ];
         orderedItems().forEach((i, idx) => {
           const isNote = i.kind === 'note';
           lines.push(row([idx + 1, i.date, i.timestamp, sectionName(i.sectionId), isNote ? 'Note' : 'Result',
             isNote ? '' : typeLabel(i), isNote ? '' : i.tube, isNote ? '' : i.name, isNote ? '' : i.result, isNote ? '' : i.unit,
-            i.volume, i.dilution, isNote ? i.text : i.notes]));
+            i.volume, i.dilution, isNote ? i.text : i.notes, isNote ? '' : fromSection(i)]));
         });
         return '﻿' + lines.join('\r\n');
       }
@@ -1064,7 +1114,7 @@
             if (i.kind === 'note') {
               lines.push(`${when} NOTE: ${indent(i.text)}`);
             } else {
-              const extras = [i.typeId !== 'general' ? typeLabel(i) : '', i.volume ? `Vol: ${i.volume}` : '', i.dilution ? `Dilution: ${i.dilution}` : ''].filter(Boolean).join(' | ');
+              const extras = [i.typeId !== 'general' ? typeLabel(i) : '', i.volume ? `Vol: ${i.volume}` : '', i.dilution ? `Dilution: ${i.dilution}` : '', fromSection(i) ? `From: ${fromSection(i)}` : ''].filter(Boolean).join(' | ');
               const who = [i.tube ? `tube ${i.tube}` : '', i.name].filter(Boolean).join(' | ');
               const res = i.result ? resultText(i) : `(pending)${i.unit ? ' ' + i.unit : ''}`;
               lines.push(`${when} ${who} — ${res}${extras ? ` (${extras})` : ''}`);
@@ -1271,6 +1321,17 @@
           state.quickSections = state.quickSections.filter((s) => s.id !== sec.id);
           state.quickItems.forEach((i) => { if (i.sectionId === sec.id) i.sectionId = ''; });
           showToast('Section removed');
+        } else if (act === 'follow' && item) {
+          openFollow([item], item.sectionId);
+          return;
+        } else if (act === 'next-step') {
+          const sid = btn.dataset.sec;
+          const inSec = state.quickItems.filter((i) => i.kind === 'result' && (sid === '__general__' ? isOrphan(i) : i.sectionId === sid));
+          // One follow-up per sample: the latest record for each name + tube.
+          const latest = new Map();
+          inSec.forEach((i) => latest.set(`${i.tube}\u0000${i.name}`, i));
+          openFollow([...latest.values()], null);
+          return;
         } else if ((act === 'edit' || act === 'note') && item) {
           openEditor = { id: item.id, mode: act };
           renderLog();
@@ -1337,6 +1398,67 @@
         renderTypesList();
         renderTypeSelect();
         renderLog();
+      });
+
+      // Follow up: carry one sample (or every sample in a section) on to its next step.
+      let followItems = [];
+      function openFollow(items, defaultSection) {
+        if (!items.length) return;
+        followItems = items;
+        const one = items.length === 1 ? items[0] : null;
+        const who = one ? [one.tube ? `tube ${one.tube}` : '', one.name].filter(Boolean).join(' · ') : '';
+        $('followTitle').textContent = one ? `follow up ${who}` : `next step for ${items.length} samples`;
+        $('followSub').textContent = one
+          ? 'carry this sample on to its next step.'
+          : `from ${sectionName(isOrphan(items[0]) ? '' : items[0].sectionId)}: ${items.map((i) => i.name || `tube ${i.tube}`).join(', ')}`;
+        $('followSection').innerHTML = sectionOptions(defaultSection === null ? '' : defaultSection) + '<option value="__new__">+ new section…</option>';
+        if (defaultSection === null) $('followSection').value = '__new__';
+        $('followType').innerHTML = '<option value="__same__">same as before</option>' + typeOptions('', false);
+        $('followType').value = '__same__';
+        $('followNewName').value = '';
+        $('followHint').textContent = one
+          ? 'a new record with the same name and tube is added, ready for you to type its result into the log. the original stays as it is.'
+          : 'each sample gets a new record with the same name and tube (carried on from its latest reading), ready for you to fill in. the originals stay as they are.';
+        $('followNewWrap').classList.toggle('hidden', $('followSection').value !== '__new__');
+        openModal('followModal');
+        ($('followSection').value === '__new__' ? $('followNewName') : $('followSection')).focus();
+      }
+      $('followSection').addEventListener('change', () => {
+        const isNew = $('followSection').value === '__new__';
+        $('followNewWrap').classList.toggle('hidden', !isNew);
+        if (isNew) $('followNewName').focus();
+      });
+      $('followForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        let sectionId = $('followSection').value;
+        if (sectionId === '__new__') {
+          const name = $('followNewName').value.trim();
+          if (!name) { $('followNewName').focus(); showToast('Name the new section'); return; }
+          const existing = state.quickSections.find((x) => x.name.toLowerCase() === name.toLowerCase());
+          sectionId = existing ? existing.id : newId('qsec_');
+          if (!existing) state.quickSections.push({ id: sectionId, name, collapsed: false });
+        }
+        const sec = state.quickSections.find((x) => x.id === sectionId);
+        if (sec) sec.collapsed = false;
+        const typeChoice = $('followType').value;
+        const created = followItems.map((src) => {
+          const t = typeChoice === '__same__' ? (typeById(src.typeId) || BUILTIN_TYPES[0]) : (typeById(typeChoice) || BUILTIN_TYPES[0]);
+          const unit = typeChoice === '__same__' ? src.unit : (prefs.lastUnit[t.id] || unitsFor(t)[0] || '');
+          const it = {
+            id: newId('qi_'), kind: 'result', sectionId, date: todayISO(), timestamp: nowTime(),
+            typeId: t.id, typeName: t.name, name: src.name, tube: src.tube, result: '', unit,
+            volume: '', dilution: '', notes: '', text: '', fromId: src.id
+          };
+          state.quickItems.push(it);
+          return it;
+        });
+        currentSection = sectionId;
+        closeModals();
+        saveState();
+        renderLog();
+        showToast(created.length === 1 ? `Follow-up added to ${sectionName(sectionId)}: type its result` : `${created.length} samples carried on to ${sectionName(sectionId)}`);
+        const box = document.querySelector(`[data-fill="${CSS.escape(created[0].id)}"]`);
+        if (box) { box.scrollIntoView({ block: 'center', behavior: 'smooth' }); box.focus({ preventScroll: true }); }
       });
 
       // Sections modal
@@ -1493,6 +1615,16 @@
             }));
           }
         });
+        // Re-link follow-ups: same sample (name + tube) in the section it came from, latest before it.
+        const secName = (id) => { const x = run.quickSections.find((q) => q.id === id); return x ? x.name : 'General'; };
+        entries.forEach((e, idx) => {
+          if (e.kind === 'note' || !e.from) return;
+          const it = run.quickItems[idx];
+          const match = (x) => x !== it && x.kind === 'result' && x.name === it.name && x.tube === it.tube && secName(x.sectionId).toLowerCase() === e.from.toLowerCase();
+          const before = run.quickItems.slice(0, idx).filter(match);
+          const src = before[before.length - 1] || run.quickItems.find(match);
+          if (src) it.fromId = src.id;
+        });
         if (!run.quickSections.length) run.quickSections = defaultSections();
         if (createdTypes) savePrefs();
         return run;
@@ -1514,14 +1646,14 @@
           date: col('Date'), time: col('Time'), section: col('Section'),
           kind: hasEntry ? col('Entry') : col('Type'), type: hasEntry ? col('Type') : -1,
           tube: col('Tube'), name: col('Record', 'Name / Tube'), result: col('Result'), unit: col('Unit'),
-          volume: col('Volume / Quantity'), dilution: col('Dilution / Source'), note: col('Note')
+          volume: col('Volume / Quantity'), dilution: col('Dilution / Source'), note: col('Note'), from: col('Follows From')
         };
         const get = (r, i) => (i >= 0 && r[i] !== undefined ? r[i] : '');
         const entries = rows.slice(hIdx + 1).filter((r) => r.some((x) => x !== '')).map((r) => ({
           kind: get(r, c.kind).toLowerCase() === 'note' ? 'note' : 'result',
           date: get(r, c.date), time: get(r, c.time), section: get(r, c.section), typeName: get(r, c.type),
           tube: get(r, c.tube), name: get(r, c.name), result: get(r, c.result), unit: get(r, c.unit),
-          volume: get(r, c.volume), dilution: get(r, c.dilution), note: get(r, c.note)
+          volume: get(r, c.volume), dilution: get(r, c.dilution), note: get(r, c.note), from: get(r, c.from)
         }));
         return buildRun(meta, entries);
       }
@@ -1557,16 +1689,17 @@
               const sep = rest.indexOf(' — ');
               let name = sep === -1 ? rest : rest.slice(0, sep);
               let res = sep === -1 ? '' : rest.slice(sep + 3);
-              let typeName = '', volume = '', dilution = '';
+              let typeName = '', volume = '', dilution = '', from = '';
               const ex = res.match(/^(.*) \(([^()]*)\)$/);
               if (ex) {
                 const parts = ex[2].split(' | ');
-                const ok = parts.every((p) => p.startsWith('Vol: ') || p.startsWith('Dilution: ') || (parts.indexOf(p) === 0 && allTypes().some((t) => t.name === p)));
+                const ok = parts.every((p) => p.startsWith('Vol: ') || p.startsWith('Dilution: ') || p.startsWith('From: ') || (parts.indexOf(p) === 0 && allTypes().some((t) => t.name === p)));
                 if (ok) {
                   res = ex[1];
                   parts.forEach((p) => {
                     if (p.startsWith('Vol: ')) volume = p.slice(5);
                     else if (p.startsWith('Dilution: ')) dilution = p.slice(10);
+                    else if (p.startsWith('From: ')) from = p.slice(6);
                     else typeName = p;
                   });
                 }
@@ -1577,7 +1710,7 @@
               const ru = res === '(pending)' || res.startsWith('(pending) ')
                 ? { result: '', unit: res.slice(9).trim() }
                 : splitResultUnit(res, typeName);
-              last = { kind: 'result', date: m[1], time: m[2] || '', section, typeName, tube, name, result: ru.result, unit: ru.unit, volume, dilution, note: '' };
+              last = { kind: 'result', date: m[1], time: m[2] || '', section, typeName, tube, name, result: ru.result, unit: ru.unit, volume, dilution, from, note: '' };
               lastField = null;
             }
             entries.push(last);
