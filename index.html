@@ -858,6 +858,8 @@
       // Bring saved data from any version up to the current shape.
       function normalize(s) {
         s.meta = Object.assign({ id: '', operator: '', date: todayISO() }, s.meta || {});
+        // Runs started before v3.0 were auto-named "Run <date>"; bring them in line.
+        s.meta.id = String(s.meta.id || '').replace(/^Run (\d{4}-\d{2}-\d{2})$/, 'New Record $1');
         if (!Array.isArray(s.quickSections)) s.quickSections = [];
         // Drop the old placeholder sections if nothing was ever logged in them.
         s.quickSections = s.quickSections.filter((sec) => !(

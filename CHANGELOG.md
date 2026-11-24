@@ -2,6 +2,11 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.9.1] - 2026-11-24
+
+### Fixed
+- Runs saved by older versions with the automatic name **Run <date>** are now renamed **New Record <date>**, matching new runs. Names you typed yourself are not changed.
+
 ## [3.9.0] - 2026-11-24
 
 ### Added
