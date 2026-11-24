@@ -2,6 +2,15 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.7.0] - 2026-11-24
+
+### Added
+- **Drag and drop**, with a finger or a mouse. Each record has a **⠿** handle under its time, and each section has one at the left of its header.
+  - **Records:** drag one up or down to reorder it, or into another section to move it there. A purple line shows where it will land. Dropping onto a section's header, or onto a collapsed section, adds it to the end of that section.
+  - **Sections:** drag one by its handle to reorder the sections.
+  - The page scrolls automatically when you drag near the top or bottom of the screen.
+  - Only the handles start a drag, so scrolling the log works as before.
+
 ## [3.6.0] - 2026-11-24
 
 Tap anything to change it.

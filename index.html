@@ -419,6 +419,17 @@
     .sec-rename .field { height: 38px; flex: 1; min-width: 0; font-weight: 700; }
     .sec-rename .btn { height: 38px; }
     .type-row .edit-type { flex-shrink: 0; }
+    .time-col { width: 42px; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-start; }
+    .time-col .time { width: auto; }
+    .grip { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; margin: 2px 0 0 -7px; border-radius: 7px; font-size: 16px; line-height: 1; color: var(--dim); opacity: .55; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; transition: opacity .15s, background .15s, color .15s; }
+    .grip:hover { opacity: 1; color: var(--violet); background: var(--panel-2); }
+    .sec-grip { margin: 0 -4px 0 2px; width: 26px; }
+    body.dragging-now, body.dragging-now * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
+    .drag-src { opacity: .3; }
+    .drag-ghost { position: fixed; z-index: 80; pointer-events: none; margin: 0; border-radius: 12px; background: var(--panel); border: 1px solid var(--violet); box-shadow: 0 18px 40px -12px rgba(0,0,0,.35), 0 0 0 4px color-mix(in srgb, var(--violet) 15%, transparent); opacity: .96; transform: rotate(-1deg); overflow: hidden; }
+    .drop-line { height: 3px; margin: -1px 12px; border-radius: 3px; background: var(--violet); box-shadow: 0 0 0 3px color-mix(in srgb, var(--violet) 20%, transparent); }
+    .sec-drop-line { height: 4px; margin: 4px 6px; border-radius: 4px; background: var(--violet); }
+    .panel.drop-into { outline: 2px dashed var(--violet); outline-offset: 2px; }
   </style>
 </head>
 <body>
@@ -534,7 +545,7 @@
         <button id="btnAddSection" type="button" class="btn btn-ghost"><span class="c-green">+</span> section</button>
       </div>
     </div>
-    <div id="reorderBar" class="reorder-bar hidden">use <b>↑ ↓</b> to move sections and records, or sort a section by name or tube. tap <b>done</b> when finished.</div>
+    <div id="reorderBar" class="reorder-bar hidden">use <b>↑ ↓</b> to move sections and records, or sort a section by name or tube. you can also drag the <b>⠿</b> handles at any time. tap <b>done</b> when finished.</div>
 
     <div id="emptyState" class="panel empty hidden" style="margin-top:10px">
       <div class="term-line"><span class="c-green">$</span> cat log.txt</div>
@@ -1046,13 +1057,13 @@
       function renderItem(item) {
         const id = escapeHtml(item.id);
         const editing = openEditor && openEditor.id === item.id ? openEditor.mode : null;
-        const time = `<span class="time">${escapeHtml(item.timestamp || '--:--')}</span>`;
+        const time = `<div class="time-col"><span class="time">${escapeHtml(item.timestamp || '--:--')}</span><span class="grip" data-drag-item="${id}" title="Drag to move" aria-hidden="true">⠿</span></div>`;
         const editBtn = `<button type="button" data-act="edit" data-id="${id}" class="act">edit</button>`;
         const delBtn = `<button type="button" data-act="delete" data-id="${id}" class="act danger">del</button>`;
 
         if (item.kind === 'note') {
           return `
-            <div class="entry entry-note">
+            <div class="entry entry-note" data-entry="${id}">
               <div class="entry-main">
                 ${time}
                 <div class="entry-body">
@@ -1070,7 +1081,7 @@
         ].filter(Boolean).join(' · ');
 
         return `
-          <div class="entry">
+          <div class="entry" data-entry="${id}">
             <div class="entry-main">
               ${time}
               <div class="entry-body">
@@ -1138,7 +1149,7 @@
                 return divider + renderItem(i);
               }).join('');
           return `
-            <section class="panel ${sec.collapsed ? 'sec-collapsed' : ''}">
+            <section class="panel ${sec.collapsed ? 'sec-collapsed' : ''}" data-section="${sid}">
               <div class="sec-head">
                 ${renamingSection === sec.id ? `
                 <div class="sec-rename">
@@ -1146,6 +1157,7 @@
                   <button type="button" data-act="sec-save" data-sec="${sid}" class="btn btn-primary">save</button>
                 </div>` : `
                 <div class="sec-title">
+                  ${sec.isVirtual ? '' : `<span class="grip sec-grip" data-drag-sec="${sid}" title="Drag to move section" aria-hidden="true">⠿</span>`}
                   <button type="button" ${sec.isVirtual ? 'disabled' : `data-act="collapse" data-sec="${sid}"`} class="sec-toggle caret-btn" aria-expanded="${!sec.collapsed}" aria-label="${sec.collapsed ? 'Expand' : 'Collapse'} section">
                     <span class="caret ${sec.isVirtual ? 'invisible' : ''}">${sec.collapsed ? '▸' : '▾'}</span>
                   </button>
@@ -1400,6 +1412,153 @@
         saveState();
         renderLog();
       });
+
+      /* ---------- Drag and drop (mouse and touch, from the ⠿ handles) ---------- */
+      let drag = null;
+      function startDrag(e, kind, id) {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        e.preventDefault();
+        const src = document.querySelector(kind === 'item' ? `[data-entry="${CSS.escape(id)}"]` : `[data-section="${CSS.escape(id)}"]`);
+        if (!src) return;
+        const shown = kind === 'item' ? src : src.querySelector('.sec-head');
+        const rect = shown.getBoundingClientRect();
+        const ghost = shown.cloneNode(true);
+        ghost.classList.add('drag-ghost');
+        ghost.querySelectorAll('[data-fill],[data-act],[data-entry],[data-sec-input],[id]').forEach((el) => {
+          ['data-fill', 'data-act', 'data-entry', 'data-sec-input', 'id'].forEach((a) => el.removeAttribute(a));
+        });
+        ghost.removeAttribute('data-entry');
+        Object.assign(ghost.style, { width: rect.width + 'px', left: rect.left + 'px', top: rect.top + 'px' });
+        drag = { kind, id, src, ghost, offX: e.clientX - rect.left, offY: e.clientY - rect.top, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, moved: false, target: null, key: '', line: null };
+        try { e.target.setPointerCapture(e.pointerId); } catch (err) {}
+        drag.timer = setInterval(autoScrollDrag, 16);
+      }
+      function beginVisualDrag() {
+        drag.moved = true;
+        document.body.appendChild(drag.ghost);
+        drag.src.classList.add('drag-src');
+        document.body.classList.add('dragging-now');
+      }
+      function clearDropMarks() {
+        if (drag && drag.line) { drag.line.remove(); drag.line = null; }
+        document.querySelectorAll('.drop-into').forEach((el) => el.classList.remove('drop-into'));
+      }
+      function moveDrag(x, y) {
+        drag.x = x; drag.y = y;
+        if (!drag.moved) {
+          if (Math.abs(x - drag.x0) + Math.abs(y - drag.y0) < 5) return;
+          beginVisualDrag();
+        }
+        drag.ghost.style.left = (x - drag.offX) + 'px';
+        drag.ghost.style.top = (y - drag.offY) + 'px';
+        const under = document.elementFromPoint(Math.min(Math.max(x, 1), innerWidth - 1), y);
+        const panel = under && under.closest('#sectionsContainer [data-section]');
+        if (!panel) return; // between panels: keep the last target
+        if (drag.kind === 'item') {
+          const entry = under.closest('[data-entry]');
+          let target, key;
+          if (entry === drag.src) { target = null; key = 'self'; }
+          else if (entry && !panel.classList.contains('sec-collapsed')) {
+            const r = entry.getBoundingClientRect();
+            const after = y > r.top + r.height / 2;
+            target = { secId: panel.dataset.section, refId: entry.dataset.entry, after };
+            key = `${target.refId}:${after}`;
+          } else {
+            target = { secId: panel.dataset.section, refId: null };
+            key = `end:${target.secId}`;
+          }
+          if (key === drag.key) return;
+          clearDropMarks();
+          drag.key = key; drag.target = target;
+          if (!target) return;
+          if (target.refId) {
+            drag.line = document.createElement('div');
+            drag.line.className = 'drop-line';
+            entry[target.after ? 'after' : 'before'](drag.line);
+          } else {
+            panel.classList.add('drop-into');
+          }
+        } else {
+          if (panel === drag.src || panel.dataset.section === '__general__') {
+            if (drag.key !== 'self') { clearDropMarks(); drag.key = 'self'; drag.target = null; }
+            return;
+          }
+          const r = panel.getBoundingClientRect();
+          const after = y > r.top + r.height / 2;
+          const key = `${panel.dataset.section}:${after}`;
+          if (key === drag.key) return;
+          clearDropMarks();
+          drag.key = key;
+          drag.target = { refId: panel.dataset.section, after };
+          drag.line = document.createElement('div');
+          drag.line.className = 'sec-drop-line';
+          panel[after ? 'after' : 'before'](drag.line);
+        }
+      }
+      function autoScrollDrag() {
+        if (!drag || !drag.moved) return;
+        const top = 90, bottom = innerHeight - 70;
+        let dy = 0;
+        if (drag.y < top) dy = -Math.ceil((top - drag.y) / 4);
+        else if (drag.y > bottom) dy = Math.ceil((drag.y - bottom) / 4);
+        if (!dy) return;
+        const before = scrollY;
+        scrollBy(0, dy);
+        if (scrollY !== before) { drag.key = ''; moveDrag(drag.x, drag.y); }
+      }
+      function endDrag(commit) {
+        if (!drag) return;
+        const d = drag;
+        clearInterval(d.timer);
+        clearDropMarks();
+        d.ghost.remove();
+        d.src.classList.remove('drag-src');
+        document.body.classList.remove('dragging-now');
+        drag = null;
+        if (!commit || !d.moved || !d.target) return;
+        const t = d.target;
+        if (d.kind === 'item') {
+          const it = state.quickItems.find((i) => i.id === d.id);
+          if (!it) return;
+          const oldSec = isOrphan(it) ? '__general__' : it.sectionId;
+          state.quickItems.splice(state.quickItems.indexOf(it), 1);
+          it.sectionId = t.secId === '__general__' ? '' : t.secId;
+          let idx;
+          if (t.refId) {
+            const ref = state.quickItems.find((i) => i.id === t.refId);
+            idx = state.quickItems.indexOf(ref) + (t.after ? 1 : 0);
+          } else {
+            const inSec = state.quickItems.filter((i) => (t.secId === '__general__' ? isOrphan(i) : i.sectionId === t.secId));
+            idx = inSec.length ? state.quickItems.indexOf(inSec[inSec.length - 1]) + 1 : state.quickItems.length;
+          }
+          state.quickItems.splice(idx, 0, it);
+          if (oldSec !== t.secId) {
+            const sec = state.quickSections.find((x) => x.id === t.secId);
+            if (sec) sec.collapsed = false;
+            showToast(`Moved to ${sectionName(it.sectionId)}`);
+          }
+        } else {
+          const sec = state.quickSections.find((x) => x.id === d.id);
+          if (!sec) return;
+          state.quickSections.splice(state.quickSections.indexOf(sec), 1);
+          const ref = state.quickSections.findIndex((x) => x.id === t.refId);
+          state.quickSections.splice(ref + (t.after ? 1 : 0), 0, sec);
+        }
+        openEditor = null;
+        saveState();
+        renderLog();
+      }
+      $('sectionsContainer').addEventListener('pointerdown', (e) => {
+        const g = e.target.closest('[data-drag-item],[data-drag-sec]');
+        if (!g || drag) return;
+        if (renamingSection) return;
+        if (g.dataset.dragItem) startDrag(e, 'item', g.dataset.dragItem);
+        else startDrag(e, 'sec', g.dataset.dragSec);
+      });
+      window.addEventListener('pointermove', (e) => { if (drag) { e.preventDefault(); moveDrag(e.clientX, e.clientY); } }, { passive: false });
+      window.addEventListener('pointerup', () => endDrag(true));
+      window.addEventListener('pointercancel', () => endDrag(false));
+      document.addEventListener('keydown', (e) => { if (drag && e.key === 'Escape') endDrag(false); });
 
       // Fill in a prepared record's result straight from the log.
       function saveFill(input) {
