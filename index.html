@@ -397,6 +397,16 @@
     @media (max-width: 420px) { .entry-actions .act { padding: 0 5px; font-size: 11px; } .entry-actions { gap: 0; } }
     .check { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
     .check input { width: 16px; height: 16px; accent-color: var(--green); }
+    .log-tools { display: flex; gap: 4px; }
+    .c-violet { color: var(--violet); }
+    #btnReorder[aria-pressed="true"] { color: var(--green); border-color: var(--green); }
+    .reorder-bar { margin-top: 8px; padding: 8px 12px; border-radius: 9px; font-size: 11.5px; line-height: 1.5; color: var(--muted); border: 1px dashed color-mix(in srgb, var(--violet) 55%, transparent); background: color-mix(in srgb, var(--violet) 6%, transparent); }
+    .reorder-bar b { color: var(--violet); }
+    .mv { width: 34px; height: 30px; border-radius: 7px; font-size: 14px; font-weight: 800; color: var(--violet); border: 1px solid var(--border-2); background: var(--panel-2); }
+    .mv:disabled { opacity: .3; }
+    .mv:not(:disabled):hover { border-color: var(--violet); }
+    .entry-actions.moving { align-items: center; gap: 6px; }
+    .sort-lbl { font-size: 11px; color: var(--dim); margin-right: 2px; }
   </style>
 </head>
 <body>
@@ -507,8 +517,12 @@
 
     <div class="log-head">
       <h2><span class="c-green">##</span> log</h2>
-      <button id="btnAddSection" type="button" class="btn btn-ghost"><span class="c-green">+</span> section</button>
+      <div class="log-tools">
+        <button id="btnReorder" type="button" class="btn btn-ghost" aria-pressed="false"><span class="c-violet">⇅</span> reorder</button>
+        <button id="btnAddSection" type="button" class="btn btn-ghost"><span class="c-green">+</span> section</button>
+      </div>
     </div>
+    <div id="reorderBar" class="reorder-bar hidden">use <b>↑ ↓</b> to move sections and records, or sort a section by name or tube. tap <b>done</b> when finished.</div>
 
     <div id="emptyState" class="panel empty hidden" style="margin-top:10px">
       <div class="term-line"><span class="c-green">$</span> cat log.txt</div>
@@ -807,6 +821,7 @@
 
       let state = loadState();
       let entryKind = 'result';
+      let reorderMode = false;
       let openEditor = null; // { id, mode: 'edit' | 'note' }
       let editingSectionId = null;
 
@@ -978,6 +993,20 @@
 
       const isNumeric = (v) => /^[<>~≈]?\s*-?[\d.,]+(e-?\d+)?$/i.test(String(v).trim());
 
+      // Neighbouring entry in the same section (as shown in the log), or null.
+      function sameSection(a, b) { return isOrphan(a) ? isOrphan(b) : a.sectionId === b.sectionId; }
+      function neighbour(item, dir) {
+        const list = state.quickItems.filter((x) => sameSection(x, item));
+        return list[list.indexOf(item) + dir] || null;
+      }
+      function moveBar(item) {
+        const id = escapeHtml(item.id);
+        return `<div class="entry-actions moving">
+          <button type="button" class="mv" data-act="item-up" data-id="${id}" aria-label="Move up" ${neighbour(item, -1) ? '' : 'disabled'}>↑</button>
+          <button type="button" class="mv" data-act="item-down" data-id="${id}" aria-label="Move down" ${neighbour(item, 1) ? '' : 'disabled'}>↓</button>
+        </div>`;
+      }
+
       function renderItem(item) {
         const id = escapeHtml(item.id);
         const editing = openEditor && openEditor.id === item.id ? openEditor.mode : null;
@@ -995,7 +1024,7 @@
                   <p class="note-text">${escapeHtml(item.text)}</p>
                 </div>
               </div>
-              ${editing ? renderEditor(item, 'edit') : `<div class="entry-actions">${editBtn}${delBtn}</div>`}
+              ${reorderMode ? moveBar(item) : editing ? renderEditor(item, 'edit') : `<div class="entry-actions">${editBtn}${delBtn}</div>`}
             </div>`;
         }
 
@@ -1018,7 +1047,7 @@
                 : `<div class="result pending"><input type="text" class="fill" data-fill="${id}" placeholder="result?" inputmode="${item.typeId && item.typeId !== 'general' ? 'decimal' : 'text'}" enterkeyhint="next" autocomplete="off" aria-label="Result for ${escapeHtml([item.tube ? 'tube ' + item.tube : '', item.name].filter(Boolean).join(' '))}" />${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}</div>`}
             </div>
             ${item.notes && !editing ? `<div class="annot"><span class="branch">└─</span><span>${escapeHtml(item.notes)}</span></div>` : ''}
-            ${editing ? renderEditor(item, editing) : `
+            ${reorderMode ? moveBar(item) : editing ? renderEditor(item, editing) : `
               <div class="entry-actions">
                 <button type="button" data-act="note" data-id="${id}" class="act amber">${item.notes ? 'edit note' : '+ note'}</button>
                 <button type="button" data-act="follow" data-id="${id}" class="act violet">↳ follow up</button>
@@ -1080,7 +1109,12 @@
                   <span class="sec-name">${escapeHtml(sec.name)}</span>
                   <span class="count">${items.length}</span>
                 </button>
-                ${sec.isVirtual ? (items.length ? `<div class="sec-actions"><button type="button" data-act="next-step" data-sec="__general__" class="act violet">↳ next step</button></div>` : '') : `
+                ${reorderMode ? `
+                <div class="sec-actions">
+                  ${items.filter((i) => i.kind === 'result').length > 1 ? `<span class="sort-lbl">sort</span><button type="button" data-act="sort-name" data-sec="${sid}" class="act">a→z</button><button type="button" data-act="sort-tube" data-sec="${sid}" class="act">tube</button>` : ''}
+                  ${sec.isVirtual ? '' : `<button type="button" class="mv" data-act="sec-up" data-sec="${sid}" aria-label="Move section up" ${state.quickSections.indexOf(sec) > 0 ? '' : 'disabled'}>↑</button>
+                  <button type="button" class="mv" data-act="sec-down" data-sec="${sid}" aria-label="Move section down" ${state.quickSections.indexOf(sec) < state.quickSections.length - 1 ? '' : 'disabled'}>↓</button>`}
+                </div>` : sec.isVirtual ? (items.length ? `<div class="sec-actions"><button type="button" data-act="next-step" data-sec="__general__" class="act violet">↳ next step</button></div>` : '') : `
                 <div class="sec-actions">
                   ${items.some((i) => i.kind === 'result') ? `<button type="button" data-act="next-step" data-sec="${sid}" class="act violet">↳ next step</button>` : ''}
                   <button type="button" data-act="rename" data-sec="${sid}" class="act">rename</button>
@@ -1363,6 +1397,37 @@
           state.quickSections = state.quickSections.filter((s) => s.id !== sec.id);
           state.quickItems.forEach((i) => { if (i.sectionId === sec.id) i.sectionId = ''; });
           showToast('Section removed');
+        } else if ((act === 'item-up' || act === 'item-down') && item) {
+          const other = neighbour(item, act === 'item-up' ? -1 : 1);
+          if (!other) return;
+          const a = state.quickItems.indexOf(item), b = state.quickItems.indexOf(other);
+          state.quickItems[a] = other; state.quickItems[b] = item;
+          saveState(); renderLog();
+          const again = document.querySelector(`[data-act="${act}"][data-id="${CSS.escape(item.id)}"]`);
+          if (again && !again.disabled) again.focus({ preventScroll: true });
+          again && again.closest('.entry').scrollIntoView({ block: 'nearest' });
+          return;
+        } else if (act === 'sec-up' || act === 'sec-down') {
+          const i = state.quickSections.findIndex((x) => x.id === btn.dataset.sec);
+          const j = i + (act === 'sec-up' ? -1 : 1);
+          if (i < 0 || j < 0 || j >= state.quickSections.length) return;
+          [state.quickSections[i], state.quickSections[j]] = [state.quickSections[j], state.quickSections[i]];
+          saveState(); renderLog();
+          const again = document.querySelector(`[data-act="${act}"][data-sec="${CSS.escape(btn.dataset.sec)}"]`);
+          if (again) { again.closest('section').scrollIntoView({ block: 'nearest' }); if (!again.disabled) again.focus({ preventScroll: true }); }
+          return;
+        } else if (act === 'sort-name' || act === 'sort-tube') {
+          // Sort the section's records; notes keep their places.
+          const sid = btn.dataset.sec;
+          const inSec = (x) => (sid === '__general__' ? isOrphan(x) : x.sectionId === sid);
+          const slots = [];
+          state.quickItems.forEach((x, idx) => { if (inSec(x) && x.kind === 'result') slots.push(idx); });
+          const cmp = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+          const byName = (a, b) => cmp(a.name, b.name) || cmp(a.tube, b.tube);
+          const byTube = (a, b) => (!a.tube - !b.tube) || cmp(a.tube, b.tube) || cmp(a.name, b.name);
+          const sorted = slots.map((idx) => state.quickItems[idx]).sort(act === 'sort-name' ? byName : byTube);
+          slots.forEach((idx, k) => { state.quickItems[idx] = sorted[k]; });
+          showToast(act === 'sort-name' ? 'Sorted by record name' : 'Sorted by tube number');
         } else if (act === 'follow' && item) {
           openFollow([item], item.sectionId);
           return;
@@ -1525,6 +1590,14 @@
         $('sectionNameInput').focus();
       }
       $('btnAddSection').addEventListener('click', () => openSectionModal(null));
+      $('btnReorder').addEventListener('click', () => {
+        reorderMode = !reorderMode;
+        openEditor = null;
+        $('btnReorder').setAttribute('aria-pressed', reorderMode);
+        $('btnReorder').innerHTML = reorderMode ? '<span class="c-green">✓</span> done' : '<span class="c-violet">⇅</span> reorder';
+        $('reorderBar').classList.toggle('hidden', !reorderMode);
+        renderLog();
+      });
       $('sectionModalForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const name = $('sectionNameInput').value.trim();

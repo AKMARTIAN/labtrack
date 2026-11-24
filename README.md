@@ -36,6 +36,7 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 - **Prepare now, fill in later:** leave Result blank and keep pressing Enter to set up a batch (*tube 1 · Blood 1*, *tube 2 · Blood 2*…). Each record waits in the log with a **result?** box. Type the number and press Enter to move to the next one.
 - **Follow a sample through a workflow:** tap **↳ follow up** on a record, or **↳ next step** on a whole section, to carry samples on to their next step (e.g. Extraction → PCR → Clean-up) in the same section or a new one. Each new record shows where it came from (*↳ from Extraction: 45.6 ng/µL*) and is ready for its next reading.
 - **Fix mistakes:** tap a record's name (or **rename**) to change its name or tube number. You can also apply the change to the same sample in its linked steps. Use **edit** for everything else, including result, unit, section and date.
+- **Rearrange:** tap **⇅ reorder** to move sections and records with ↑ ↓, or sort a section by record name (natural order) or tube number. Exports follow the order you set.
 - **Continue a previous run:** upload a LabTrack `.csv` or `.txt` export (or a `.json` backup) to load that run back in and keep adding to it. Nothing already recorded is lost.
 - **Every entry is dated:** the date defaults to today and can be changed if you're logging something from an earlier day. The time is recorded automatically. The log is grouped by day.
 - **Notes, two ways:**

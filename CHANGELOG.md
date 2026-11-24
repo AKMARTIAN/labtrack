@@ -2,6 +2,17 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.5.0] - 2026-11-24
+
+### Added
+- **⇅ reorder** mode in the log header. While it's on:
+  - **↑ ↓** buttons move sections up and down the log, and move records up and down within their section.
+  - **sort a→z** sorts a section's records by name in natural order (*Record 2* before *Record 10*).
+  - **sort tube** sorts a section's records by tube number.
+  - Notes stay where they are when you sort.
+  - Tap **✓ done** to go back to the normal log.
+- CSV and text exports follow the new order.
+
 ## [3.4.0] - 2026-11-24
 
 ### Added
