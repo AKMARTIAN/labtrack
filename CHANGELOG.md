@@ -2,6 +2,16 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.4.0] - 2026-11-24
+
+### Added
+- **Rename a record** after adding it: tap its name in the log, or tap **rename**. This opens a small box with the tube number and record name. Press Enter or **save**.
+- If the sample has follow-up steps, there's an option (on by default) to **rename it in its linked steps too**, so *Blood 1* becomes *Blood 1A* in Extraction, PCR and Clean-up at once. The same option appears in **edit**.
+
+### Changed
+- Pressing Enter in an edit box now saves it.
+- Tighter action buttons on phones, so they fit on one line.
+
 ## [3.3.0] - 2026-11-24
 
 Follow a sample through each step of a workflow.

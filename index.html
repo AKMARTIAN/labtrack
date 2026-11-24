@@ -390,6 +390,13 @@
     .from b { font-weight: 700; }
     .from .nw { white-space: nowrap; }
     .act.violet:hover { color: var(--violet); background: color-mix(in srgb, var(--violet) 9%, transparent); }
+    button.rec { padding: 0; text-align: left; font: inherit; font-weight: 700; color: var(--text); background: none; border: 0; cursor: pointer; text-decoration: underline dotted transparent; text-underline-offset: 3px; transition: text-decoration-color .15s; }
+    button.rec:hover { text-decoration-color: var(--dim); }
+    button.rec i { font-weight: 500; color: var(--dim); }
+    .rename-grid { display: grid; grid-template-columns: 90px 1fr; gap: 12px; }
+    @media (max-width: 420px) { .entry-actions .act { padding: 0 5px; font-size: 11px; } .entry-actions { gap: 0; } }
+    .check { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
+    .check input { width: 16px; height: 16px; accent-color: var(--green); }
   </style>
 </head>
 <body>
@@ -897,6 +904,24 @@
             <button type="button" data-act="save" data-id="${escapeHtml(id)}" class="btn btn-primary">save</button>
           </div>`;
       }
+      // Every record linked to this one through follow-ups (both directions), including itself.
+      function linkedGroup(item) {
+        const seen = new Set([item.id]);
+        const queue = [item];
+        while (queue.length) {
+          const cur = queue.shift();
+          state.quickItems.forEach((x) => {
+            if (seen.has(x.id)) return;
+            if (x.fromId === cur.id || cur.fromId === x.id) { seen.add(x.id); queue.push(x); }
+          });
+        }
+        return state.quickItems.filter((x) => seen.has(x.id));
+      }
+      function linkedToggle(item) {
+        const n = linkedGroup(item).length - 1;
+        return n ? `<label class="check"><input type="checkbox" data-linked checked /> also rename it in its ${n} linked ${n === 1 ? 'step' : 'steps'}</label>` : '';
+      }
+
       function renderEditor(item, mode) {
         const wrap = (inner) => `<div class="editor fade-in" data-editor="${escapeHtml(item.id)}">${inner}${editorActions(item.id)}</div>`;
         if (mode === 'note') {
@@ -905,6 +930,14 @@
               <label class="lbl">note for ${escapeHtml(item.name)}</label>
               <textarea data-f="notes" rows="2" class="field" placeholder="add a note to this result">${escapeHtml(item.notes)}</textarea>
             </div>`);
+        }
+        if (mode === 'rename') {
+          return wrap(`
+            <div class="rename-grid">
+              <div><label class="lbl">tube</label><input type="text" data-f="tube" value="${escapeHtml(item.tube)}" class="field" placeholder="none" autocomplete="off" /></div>
+              <div><label class="lbl">record</label><input type="text" data-f="name" value="${escapeHtml(item.name)}" class="field" autocomplete="off" /></div>
+            </div>
+            ${linkedToggle(item)}`);
         }
         const common = `
           <div class="grid-2">
@@ -931,7 +964,8 @@
             <div><label class="lbl">volume</label><input type="text" data-f="volume" value="${escapeHtml(item.volume)}" class="field" /></div>
             <div><label class="lbl">dilution</label><input type="text" data-f="dilution" value="${escapeHtml(item.dilution)}" class="field" /></div>
           </div>
-          <div><label class="lbl">note</label><textarea data-f="notes" rows="2" class="field">${escapeHtml(item.notes)}</textarea></div>`);
+          <div><label class="lbl">note</label><textarea data-f="notes" rows="2" class="field">${escapeHtml(item.notes)}</textarea></div>
+          ${linkedToggle(item)}`);
       }
 
       // "↳ from Extraction: 45.6 ng/µL" under a follow-up record.
@@ -975,7 +1009,7 @@
             <div class="entry-main">
               ${time}
               <div class="entry-body">
-                <div class="rec-line">${item.tube ? `<span class="tube" title="Tube number">tube ${escapeHtml(item.tube)}</span>` : ''}<span class="rec">${escapeHtml(item.name)}</span>${chip(item)}</div>
+                <div class="rec-line">${item.tube ? `<span class="tube" title="Tube number">tube ${escapeHtml(item.tube)}</span>` : ''}<button type="button" data-act="rename-rec" data-id="${id}" class="rec" title="Rename">${escapeHtml(item.name) || '<i>unnamed</i>'}</button>${chip(item)}</div>
                 ${details ? `<div class="details">${details}</div>` : ''}
                 ${fromLine(item)}
               </div>
@@ -988,6 +1022,7 @@
               <div class="entry-actions">
                 <button type="button" data-act="note" data-id="${id}" class="act amber">${item.notes ? 'edit note' : '+ note'}</button>
                 <button type="button" data-act="follow" data-id="${id}" class="act violet">↳ follow up</button>
+                <button type="button" data-act="rename-rec" data-id="${id}" class="act">rename</button>
                 ${editBtn}${delBtn}
               </div>`}
           </div>`;
@@ -1290,6 +1325,13 @@
         saveState();
         renderStats();
       }
+      // Enter in an editor's text box saves it.
+      $('sectionsContainer').addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' || !e.target.matches('[data-editor] input[type="text"]')) return;
+        e.preventDefault();
+        const save = e.target.closest('[data-editor]').querySelector('[data-act="save"]');
+        if (save) save.click();
+      });
       $('sectionsContainer').addEventListener('change', (e) => {
         if (e.target.matches('.fill')) saveFill(e.target);
       });
@@ -1332,10 +1374,12 @@
           inSec.forEach((i) => latest.set(`${i.tube}\u0000${i.name}`, i));
           openFollow([...latest.values()], null);
           return;
-        } else if ((act === 'edit' || act === 'note') && item) {
-          openEditor = { id: item.id, mode: act };
+        } else if ((act === 'edit' || act === 'note' || act === 'rename-rec') && item) {
+          const mode = act === 'rename-rec' ? 'rename' : act;
+          openEditor = { id: item.id, mode };
           renderLog();
-          const ed = document.querySelector(`[data-editor="${CSS.escape(item.id)}"] ${act === 'note' ? '[data-f="notes"]' : (item.kind === 'note' ? 'textarea' : '[data-f="result"]')}`);
+          const field = mode === 'note' ? '[data-f="notes"]' : mode === 'rename' ? '[data-f="name"]' : (item.kind === 'note' ? 'textarea' : '[data-f="result"]');
+          const ed = document.querySelector(`[data-editor="${CSS.escape(item.id)}"] ${field}`);
           if (ed) { ed.focus(); if (ed.setSelectionRange) ed.setSelectionRange(ed.value.length, ed.value.length); }
           return;
         } else if (act === 'cancel') {
@@ -1344,7 +1388,9 @@
           return;
         } else if (act === 'save' && item) {
           const ed = document.querySelector(`[data-editor="${CSS.escape(item.id)}"]`);
-          const oldName = item.name;
+          const oldName = item.name, oldTube = item.tube;
+          const linked = ed.querySelector('[data-linked]');
+          const group = linked && linked.checked ? linkedGroup(item) : [];
           ed.querySelectorAll('[data-f]').forEach((f) => {
             const k = f.dataset.f;
             const v = k === 'sectionId' ? f.value : f.value.trim();
@@ -1354,8 +1400,17 @@
           if (item.kind === 'result' && !item.name && !item.tube) item.name = oldName; // keep it identifiable
           const t = typeById(item.typeId);
           if (t) item.typeName = t.name;
+          // Same sample in its other steps: update the ones that still carry the old name / tube.
+          let also = 0;
+          group.forEach((x) => {
+            if (x === item) return;
+            let changed = false;
+            if (item.name !== oldName && x.name === oldName) { x.name = item.name; changed = true; }
+            if (item.tube !== oldTube && x.tube === oldTube) { x.tube = item.tube; changed = true; }
+            if (changed) also++;
+          });
           openEditor = null;
-          showToast('Saved');
+          showToast(also ? `Saved, and updated ${also} linked ${also === 1 ? 'step' : 'steps'}` : 'Saved');
         } else if (act === 'delete' && item) {
           const label = item.kind === 'note' ? 'this note' : `"${[item.tube ? `tube ${item.tube}` : '', item.name].filter(Boolean).join(' · ')}"`;
           if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
