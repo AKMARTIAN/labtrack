@@ -410,7 +410,10 @@
     .tap { cursor: pointer; }
     button.tube.tap { font-family: inherit; }
     .result.tap:hover, .note-text.tap:hover, .annot.tap:hover { opacity: .8; }
-    .sec-title { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1; }
+    .sec-title { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1 1 160px; }
+    .sec-head { flex-wrap: wrap; row-gap: 0; }
+    .sec-title .sec-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
+    .sec-actions { margin-left: auto; }
     .caret-btn { padding: 6px 6px 6px 8px; }
     .count-btn { padding: 6px 4px; }
     .sec-name-btn { min-width: 0; padding: 6px 4px; border-radius: 7px; font: inherit; font-weight: 800; color: var(--text); text-align: left; text-decoration: underline dotted transparent; text-underline-offset: 3px; }
@@ -430,6 +433,16 @@
     .drop-line { height: 3px; margin: -1px 12px; border-radius: 3px; background: var(--violet); box-shadow: 0 0 0 3px color-mix(in srgb, var(--violet) 20%, transparent); }
     .sec-drop-line { height: 4px; margin: 4px 6px; border-radius: 4px; background: var(--violet); }
     .panel.drop-into { outline: 2px dashed var(--violet); outline-offset: 2px; }
+    .combo { position: relative; }
+    .combo .section-input { padding-right: 30px; text-overflow: ellipsis; }
+    .combo-caret { position: absolute; right: 11px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--muted); pointer-events: none; }
+    .combo-list { position: absolute; z-index: 40; top: calc(100% + 4px); right: 0; min-width: 100%; width: max-content; max-width: min(300px, calc(100vw - 32px)); max-height: 280px; overflow-y: auto; padding: 4px; border-radius: 10px; background: var(--panel); border: 1px solid var(--border-2); box-shadow: 0 14px 34px -12px rgba(0,0,0,.3); }
+    .combo-head { padding: 8px 10px 3px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+    .combo-opt { display: flex; justify-content: space-between; gap: 10px; width: 100%; min-height: 36px; padding: 7px 10px; border-radius: 7px; text-align: left; font: inherit; font-size: 13px; color: var(--text); }
+    .combo-opt:hover { background: var(--panel-2); }
+    .combo-opt.cur { color: var(--green); font-weight: 700; }
+    .combo-opt.preset { color: var(--muted); }
+    .combo-opt.new { color: var(--violet); font-weight: 700; }
   </style>
 </head>
 <body>
@@ -479,7 +492,7 @@
             </div>
             <div>
               <label for="entrySection" class="lbl">section</label>
-              <select id="entrySection" class="field section-select"></select>
+              <div class="combo"><input id="entrySection" type="text" class="field section-input" placeholder="general · type or pick" autocomplete="off" autocapitalize="words" enterkeyhint="done" role="combobox" aria-expanded="false" aria-autocomplete="list" /><span class="combo-caret" aria-hidden="true">▾</span><div class="combo-list hidden" role="listbox"></div></div>
             </div>
           </div>
           <div class="rec-grid">
@@ -504,7 +517,7 @@
         <div id="noteFields" class="stack hidden">
           <div>
             <label for="noteSection" class="lbl">section</label>
-            <select id="noteSection" class="field section-select"></select>
+            <div class="combo"><input id="noteSection" type="text" class="field section-input" placeholder="general · type or pick" autocomplete="off" autocapitalize="words" enterkeyhint="done" role="combobox" aria-expanded="false" aria-autocomplete="list" /><span class="combo-caret" aria-hidden="true">▾</span><div class="combo-list hidden" role="listbox"></div></div>
           </div>
           <div>
             <label for="noteText" class="lbl">note <span class="req">*</span></label>
@@ -598,7 +611,7 @@
       <div class="sheet-body">
         <div>
           <label for="sectionNameInput" class="lbl">section name</label>
-          <input id="sectionNameInput" type="text" required class="field" placeholder="Library prep" />
+          <input id="sectionNameInput" type="text" required class="field" placeholder="Library prep" list="sectionPresetList" autocomplete="off" />
         </div>
         <div class="row-2">
           <button type="button" data-close class="btn">cancel</button>
@@ -607,6 +620,8 @@
       </div>
     </form>
   </div>
+
+  <datalist id="sectionPresetList"></datalist>
 
   <!-- Follow up -->
   <div id="followModal" class="modal hidden no-print">
@@ -622,7 +637,7 @@
         </div>
         <div id="followNewWrap" class="hidden">
           <label for="followNewName" class="lbl">new section name</label>
-          <input id="followNewName" type="text" class="field" placeholder="e.g. PCR, Clean-up" autocomplete="off" />
+          <input id="followNewName" type="text" class="field" placeholder="e.g. PCR, Clean-up" autocomplete="off" list="sectionPresetList" />
         </div>
         <div>
           <label for="followType" class="lbl">reading type</label>
@@ -725,7 +740,8 @@
           lastType: p.lastType || 'general',
           lastUnit: p.lastUnit && typeof p.lastUnit === 'object' ? p.lastUnit : {},
           extraUnits: p.extraUnits && typeof p.extraUnits === 'object' ? p.extraUnits : {},
-          typeOverrides: p.typeOverrides && typeof p.typeOverrides === 'object' ? p.typeOverrides : {}
+          typeOverrides: p.typeOverrides && typeof p.typeOverrides === 'object' ? p.typeOverrides : {},
+          recentSections: Array.isArray(p.recentSections) ? p.recentSections : []
         };
       }
       function savePrefs() {
@@ -800,18 +816,11 @@
 
       /* ---------- State ---------- */
 
-      function defaultSections() {
-        return [
-          { id: 'qsec_start', name: 'Start', collapsed: false },
-          { id: 'qsec_1', name: 'First Section', collapsed: false },
-          { id: 'qsec_2', name: '2nd Section', collapsed: false }
-        ];
-      }
       function createBlankState() {
         return {
           version: 3,
           meta: { id: `New Record ${todayISO()}`, operator: '', date: todayISO() },
-          quickSections: defaultSections(),
+          quickSections: [],
           quickItems: []
         };
       }
@@ -827,7 +836,11 @@
       // Bring saved data from any version up to the current shape.
       function normalize(s) {
         s.meta = Object.assign({ id: '', operator: '', date: todayISO() }, s.meta || {});
-        if (!Array.isArray(s.quickSections) || s.quickSections.length === 0) s.quickSections = defaultSections();
+        if (!Array.isArray(s.quickSections)) s.quickSections = [];
+        // Drop the old placeholder sections if nothing was ever logged in them.
+        s.quickSections = s.quickSections.filter((sec) => !(
+          ((sec.id === 'qsec_1' && sec.name === 'First Section') || (sec.id === 'qsec_2' && sec.name === '2nd Section') || (sec.id === 'qsec_start' && sec.name === 'Start')) &&
+          !(s.quickItems || []).some((i) => i.sectionId === sec.id)));
         if (!Array.isArray(s.quickItems)) s.quickItems = [];
         s.quickItems.forEach((i) => {
           if (i.kind !== 'note') i.kind = 'result';
@@ -932,10 +945,11 @@
         if (currentSection === null || (currentSection !== '' && !state.quickSections.some((s) => s.id === currentSection))) {
           currentSection = state.quickSections.length ? state.quickSections[0].id : '';
         }
-        document.querySelectorAll('.section-select').forEach((sel) => {
-          sel.innerHTML = sectionOptions(currentSection);
-          sel.value = currentSection;
+        document.querySelectorAll('.section-input').forEach((inp) => {
+          if (inp !== document.activeElement) inp.value = currentSection ? sectionName(currentSection) : '';
         });
+        $('sectionPresetList').innerHTML = presetNames().filter((n) => !state.quickSections.some((x) => x.name.toLowerCase() === n.toLowerCase()))
+          .map((n) => `<option value="${escapeHtml(n)}"></option>`).join('');
       }
       function renderTypeSelect() {
         if (!typeById(prefs.lastType)) prefs.lastType = 'general';
@@ -1172,7 +1186,6 @@
                 </div>` : sec.isVirtual ? (items.length ? `<div class="sec-actions"><button type="button" data-act="next-step" data-sec="__general__" class="act violet">↳ next step</button></div>` : '') : `
                 <div class="sec-actions">
                   ${items.some((i) => i.kind === 'result') ? `<button type="button" data-act="next-step" data-sec="${sid}" class="act violet">↳ next step</button>` : ''}
-                  <button type="button" data-act="rename" data-sec="${sid}" class="act">rename</button>
                   <button type="button" data-act="remove-sec" data-sec="${sid}" class="act danger">rm</button>
                 </div>`}
               </div>
@@ -1328,10 +1341,100 @@
         const hidden = $('extraFields').classList.toggle('hidden');
         $('extraChevron').classList.toggle('rotate-90', !hidden);
       });
-      document.querySelectorAll('.section-select').forEach((sel) => sel.addEventListener('change', (e) => {
-        currentSection = e.target.value;
-        document.querySelectorAll('.section-select').forEach((s) => { s.value = currentSection; });
-      }));
+      /* ---------- Section box: type a name or pick one ---------- */
+      const SECTION_PRESETS = ['Sample receipt', 'Extraction', 'Quantification', 'PCR', 'Clean-up', 'Library prep', 'Normalisation', 'Pooling', 'QC', 'Sequencing'];
+      function presetNames() {
+        const seen = new Set();
+        return [...prefs.recentSections, ...SECTION_PRESETS].filter((n) => {
+          const k = n.toLowerCase();
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+      }
+      function rememberSectionName(name) {
+        prefs.recentSections = [name, ...prefs.recentSections.filter((n) => n.toLowerCase() !== name.toLowerCase())].slice(0, 12);
+        savePrefs();
+      }
+      // Pick a section by name: an existing one, General, or a new one.
+      function useSectionNamed(raw) {
+        const name = raw.trim();
+        const sync = () => document.querySelectorAll('.section-input').forEach((x) => { x.value = currentSection ? sectionName(currentSection) : ''; });
+        if (!name || name.toLowerCase() === 'general') { currentSection = ''; renderLog(); sync(); return; }
+        let sec = state.quickSections.find((x) => x.name.toLowerCase() === name.toLowerCase());
+        if (!sec) {
+          sec = { id: newId('qsec_'), name, collapsed: false };
+          state.quickSections.push(sec);
+          saveState();
+          showToast(`New section "${name}"`);
+        }
+        rememberSectionName(sec.name);
+        currentSection = sec.id;
+        renderLog();
+        sync();
+      }
+      function comboRows(inp) {
+        const q = inp.dataset.typed === '1' ? inp.value.trim().toLowerCase() : '';
+        const match = (n) => !q || n.toLowerCase().includes(q);
+        const inRun = state.quickSections.map((x) => x.name);
+        const rows = [];
+        const exact = q && [...inRun, 'General', ...presetNames()].some((n) => n.toLowerCase() === q);
+        if (q && !exact) rows.push({ name: inp.value.trim(), label: `+ new section "${inp.value.trim()}"`, cls: 'new' });
+        const runRows = [...inRun, 'General'].filter(match);
+        if (runRows.length) rows.push({ head: 'in this run' }, ...runRows.map((n) => ({ name: n, cur: (n === 'General' ? '' : sectionName(currentSection)) === n && (n !== 'General' || !currentSection) })));
+        const pre = presetNames().filter((n) => match(n) && !inRun.some((r) => r.toLowerCase() === n.toLowerCase()));
+        if (pre.length) rows.push({ head: 'presets' }, ...pre.map((n) => ({ name: n, cls: 'preset' })));
+        return rows;
+      }
+      function openCombo(inp) {
+        const list = inp.parentElement.querySelector('.combo-list');
+        const rows = comboRows(inp);
+        list.innerHTML = rows.map((r) => r.head
+          ? `<div class="combo-head">${r.head}</div>`
+          : `<button type="button" class="combo-opt ${r.cls || ''} ${r.cur ? 'cur' : ''}" data-pick="${escapeHtml(r.name)}" role="option">${escapeHtml(r.label || r.name)}${r.cur ? ' <span>✓</span>' : ''}</button>`).join('');
+        list.classList.toggle('hidden', !rows.length);
+        inp.setAttribute('aria-expanded', rows.length ? 'true' : 'false');
+      }
+      function closeCombo(inp) {
+        inp.parentElement.querySelector('.combo-list').classList.add('hidden');
+        inp.setAttribute('aria-expanded', 'false');
+        inp.dataset.typed = '';
+      }
+      document.querySelectorAll('.section-input').forEach((inp) => {
+        inp.addEventListener('focus', () => { inp.dataset.typed = ''; inp.select(); openCombo(inp); });
+        inp.addEventListener('input', () => { inp.dataset.typed = '1'; openCombo(inp); });
+        inp.addEventListener('click', () => { if (inp.parentElement.querySelector('.combo-list').classList.contains('hidden')) openCombo(inp); });
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const typed = inp.dataset.typed === '1';
+            closeCombo(inp);
+            if (typed) useSectionNamed(inp.value);
+            inp.blur();
+          } else if (e.key === 'Escape') {
+            e.stopPropagation();
+            inp.dataset.typed = '';
+            closeCombo(inp);
+            inp.blur();
+          }
+        });
+        inp.addEventListener('blur', () => {
+          const typed = inp.dataset.typed === '1';
+          closeCombo(inp);
+          if (typed) useSectionNamed(inp.value);
+          else renderSectionSelects();
+        });
+        // pointerdown (not click) so the choice lands before the box loses focus
+        inp.parentElement.querySelector('.combo-list').addEventListener('pointerdown', (e) => {
+          const opt = e.target.closest('[data-pick]');
+          if (!opt) { e.preventDefault(); return; }
+          e.preventDefault();
+          inp.dataset.typed = '';
+          closeCombo(inp);
+          useSectionNamed(opt.dataset.pick);
+          inp.blur();
+        });
+      });
 
       $('entryType').addEventListener('change', (e) => {
         if (e.target.value === '__manage__') {
@@ -1818,6 +1921,7 @@
           const existing = state.quickSections.find((x) => x.name.toLowerCase() === name.toLowerCase());
           sectionId = existing ? existing.id : newId('qsec_');
           if (!existing) state.quickSections.push({ id: sectionId, name, collapsed: false });
+          rememberSectionName(name);
         }
         const sec = state.quickSections.find((x) => x.id === sectionId);
         if (sec) sec.collapsed = false;
@@ -1870,6 +1974,7 @@
         } else {
           const id = newId('qsec_');
           state.quickSections.push({ id, name, collapsed: false });
+          rememberSectionName(name);
           currentSection = id;
           showToast(`Added section "${name}"`);
         }
@@ -2014,7 +2119,7 @@
           const src = before[before.length - 1] || run.quickItems.find(match);
           if (src) it.fromId = src.id;
         });
-        if (!run.quickSections.length) run.quickSections = defaultSections();
+
         if (createdTypes) savePrefs();
         return run;
       }

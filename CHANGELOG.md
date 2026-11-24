@@ -2,6 +2,19 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.8.0] - 2026-11-24
+
+### Added
+- **Type or pick a section** in the entry form. The section box is now a text box with a list:
+  - Type a new name and press Enter (or tap away) to create that section.
+  - Or pick from the run's sections, *General*, or **presets**: Sample receipt, Extraction, Quantification, PCR, Clean-up, Library prep, Normalisation, Pooling, QC and Sequencing.
+  - Typing filters the list. Typing an existing name, in any case, reuses that section instead of making a duplicate.
+- Section names you use are remembered on the device and offered as presets in later runs. The *+ section* and *follow up → new section* boxes suggest them too.
+
+### Changed
+- New runs start without the placeholder sections ("Start", "First Section", "2nd Section"). Entries go to *General* until you name a section. Empty placeholder sections are cleared from existing runs.
+- Long section names wrap instead of being cut off on phones. The separate *rename* button in the section header is gone: tap the name to rename it.
+
 ## [3.7.0] - 2026-11-24
 
 ### Added
