@@ -443,11 +443,11 @@
               <input id="entryTube" type="text" enterkeyhint="next" autocapitalize="off" class="field" placeholder="4" />
             </div>
             <div>
-              <label for="entryName" class="lbl">record <span class="req">*</span></label>
-              <input id="entryName" type="text" enterkeyhint="next" class="field" placeholder="Blood 2" />
+              <label for="entryName" class="lbl">record</label>
+              <input id="entryName" type="text" enterkeyhint="next" class="field" placeholder="Record 1" autocomplete="off" />
             </div>
             <div class="res-col">
-              <label for="entryResult" class="lbl">result <span class="req">*</span></label>
+              <label for="entryResult" class="lbl">result</label>
               <div class="field-group">
                 <input id="entryResult" type="text" enterkeyhint="done" class="field" placeholder="45.6" />
                 <select id="entryUnit" class="field" aria-label="Unit"></select>
@@ -954,6 +954,14 @@
         return tag ? `<b>${tag}</b> · ${escapeHtml(iso)}` : escapeHtml(iso);
       }
 
+      // Suggested name for the next record: continues the last one ("Blood 3" -> "Blood 4"),
+      // otherwise counts on from the records already logged ("Record 4" when there are 3).
+      function suggestName() {
+        const recs = state.quickItems.filter((i) => i.kind === 'result');
+        const last = recs[recs.length - 1];
+        return (last && nextRecordName(last.name)) || `Record ${recs.length + 1}`;
+      }
+
       function renderStats() {
         const pending = state.quickItems.filter((i) => i.kind === 'result' && !i.result).length;
         const results = state.quickItems.filter((i) => i.kind === 'result').length - pending;
@@ -965,6 +973,7 @@
 
       function renderLog() {
         renderStats();
+        $('entryName').placeholder = suggestName();
         $('emptyState').classList.toggle('hidden', state.quickItems.length > 0);
         renderSectionSelects();
 
@@ -1149,7 +1158,7 @@
         prefs.lastType = e.target.value;
         savePrefs();
         renderUnitSelect();
-        $('entryName').value ? $('entryResult').focus() : $('entryName').focus();
+        $('entryResult').focus();
       });
       $('entryUnit').addEventListener('change', (e) => {
         const type = typeById(prefs.lastType);
@@ -1193,9 +1202,9 @@
           $('noteText').focus();
           showToast('Note added');
         } else {
-          const name = $('entryName').value.trim();
+          // Left blank, the record takes the greyed-out suggestion (e.g. "Record 4").
+          const name = $('entryName').value.trim() || $('entryName').placeholder;
           const result = $('entryResult').value.trim();
-          if (!name && !$('entryTube').value.trim()) { $('entryName').focus(); showToast('Enter a record name or tube number'); return; }
           const type = typeById(prefs.lastType) || BUILTIN_TYPES[0];
           const unit = $('entryUnit').value === '__custom__' ? '' : $('entryUnit').value;
           const tube = $('entryTube').value.trim();
@@ -1208,10 +1217,10 @@
           ['entryResult', 'entryVolume', 'entryDilution', 'entryNote'].forEach((id) => { $(id).value = ''; });
           // Get the next record ready: "Sample 1" -> "Sample 2", cursor straight to Result.
           // Tube numbers count up too: tube 4 -> 5.
-          const next = nextRecordName(name);
-          $('entryName').value = next;
+          // The next name shows as a greyed-out suggestion; type over it to change it.
+          $('entryName').value = '';
           $('entryTube').value = tube ? nextRecordName(tube) : '';
-          (next || (!name && tube) ? $('entryResult') : $('entryName')).focus();
+          $('entryResult').focus();
           const label = [tube ? `tube ${tube}` : '', name].filter(Boolean).join(' · ');
           showToast(result ? `Logged ${label}: ${result}${unit ? ' ' + unit : ''}` : `Added ${label} — fill in the result later`);
           updateSubmitLabel();
@@ -1616,10 +1625,8 @@
           const lastItem = [...state.quickItems].reverse().find((i) => i.kind === 'result');
           const lastAny = state.quickItems[state.quickItems.length - 1];
           if (lastAny) currentSection = lastAny.sectionId || '';
-          if (lastItem) {
-            if (typeById(lastItem.typeId)) { prefs.lastType = lastItem.typeId; if (lastItem.unit) prefs.lastUnit[lastItem.typeId] = lastItem.unit; savePrefs(); }
-            $('entryName').value = nextRecordName(lastItem.name);
-          }
+          $('entryName').value = '';
+          if (lastItem && typeById(lastItem.typeId)) { prefs.lastType = lastItem.typeId; if (lastItem.unit) prefs.lastUnit[lastItem.typeId] = lastItem.unit; savePrefs(); }
           entryKind = 'result';
           saveState();
           renderAll();

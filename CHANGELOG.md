@@ -2,6 +2,13 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.2.0] - 2026-11-24
+
+### Changed
+- The **record** box now shows a greyed-out suggested name instead of pre-filling one. Leave it blank and the record takes the suggestion; start typing to use your own name.
+- Suggestions count on from the records already in the run (*Record 1*, *Record 2*… or *Record 4* when there are already 3). If the last record you named ends in a number, the next one continues it (*Blood 7* → *Blood 8*).
+- Neither Record nor Result has to be typed any more, so pressing Enter repeatedly prepares *Record 1, Record 2, Record 3*… ready to fill in.
+
 ## [3.1.0] - 2026-11-24
 
 ### Added
