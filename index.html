@@ -225,6 +225,18 @@
     .grid-2-sm { display: grid; grid-template-columns: 1fr; gap: 12px; }
     .rec-grid { display: grid; grid-template-columns: 88px 1fr; gap: 12px; }
     .rec-grid .res-col { grid-column: 1 / -1; }
+    .rep-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: -2px; }
+    .rep-row .lbl { margin: 0; }
+    .stepper { display: inline-flex; align-items: center; border: 1px solid var(--border-2); border-radius: 9px; overflow: hidden; background: var(--input); }
+    .stepper button { width: 34px; height: 32px; font-size: 16px; font-weight: 800; color: var(--muted); }
+    .stepper button:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+    .stepper button:disabled { opacity: .35; }
+    .stepper output { min-width: 38px; text-align: center; font-weight: 800; font-size: 13px; color: var(--text); }
+    .stepper.on { border-color: var(--violet); }
+    .stepper.on output { color: var(--violet); }
+    .rep-hint { font-size: 11.5px; color: var(--muted); }
+    .rep-hint b { color: var(--violet); }
+    .rep { display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 5px; font-size: 10.5px; font-weight: 800; line-height: 17px; vertical-align: 1px; color: var(--violet); border: 1px solid color-mix(in srgb, var(--violet) 40%, transparent); background: color-mix(in srgb, var(--violet) 10%, transparent); }
     @media (min-width: 640px) { .rec-grid { grid-template-columns: 88px 1fr 1fr; } .rec-grid .res-col { grid-column: auto; } }
     @media (min-width: 640px) { .grid-2-sm { grid-template-columns: 1fr 1fr; } }
     .lbl { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
@@ -343,7 +355,8 @@
     .jwhat { min-width: 0; }
     .jstepname { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 800; color: var(--text); overflow-wrap: anywhere; }
     .jstepname .ic { width: 14px; height: 14px; color: var(--cyan); }
-    .jstepname .jn { color: var(--cyan); font-size: 10.5px; }
+    .jstepname .jn { color: var(--cyan); font-size: 10.5px; white-space: nowrap; flex-shrink: 0; }
+    .jstepname .ic { flex-shrink: 0; }
     .jtype { font-size: 10.5px; color: var(--dim); margin-top: 1px; display: flex; align-items: center; gap: 4px; }
     .jtype .ic { width: 11px; height: 11px; }
     .jres { text-align: right; font-weight: 800; font-size: 17px; color: var(--green); text-shadow: var(--num-glow); white-space: nowrap; }
@@ -356,6 +369,18 @@
     .jtrend .cap b { color: var(--text); }
     .jtrend .up { color: var(--green); font-weight: 800; }
     .jtrend .down { color: var(--amber); font-weight: 800; }
+    .jgroup .jsteps::before { left: 20px; width: 5px; }
+    .jgroup .jstep { grid-template-columns: 43px minmax(0, 1fr) auto; row-gap: 3px; }
+    .jtubes { display: flex; gap: 1px; padding: 2px 3px; border-radius: 7px; background: var(--panel); }
+    .jtubes svg { width: 10px; height: 25px; }
+    .jtubes .more { font-size: 9.5px; font-weight: 800; color: var(--muted); align-self: center; margin-left: 1px; }
+    .jsd { display: block; font-size: 10.5px; font-weight: 700; color: var(--muted); text-shadow: none; margin-top: 1px; }
+    .jreps { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; color: var(--muted); }
+    .jreps .jr { display: inline-flex; align-items: center; gap: 4px; }
+    .jreps .jr i { font-style: normal; font-size: 10px; font-weight: 800; color: var(--violet); }
+    .jreps .jr b { color: var(--text); font-weight: 700; }
+    .jreps .jr.none { color: var(--dim); }
+    .jreps .fill { width: 64px; height: 26px; font-size: 13px; }
     .jflash { animation: jflash 1.6s ease-out; }
     @keyframes jflash { 0%, 30% { background: color-mix(in srgb, var(--cyan) 18%, transparent); } 100% { background: transparent; } }
 
@@ -449,7 +474,7 @@
     button.rec:hover { text-decoration-color: var(--dim); }
     button.rec i { font-weight: 500; color: var(--dim); }
     .rename-grid { display: grid; grid-template-columns: 90px 1fr; gap: 12px; }
-    @media (max-width: 420px) { .entry-actions .act { padding: 0 5px; font-size: 11px; } .entry-actions { gap: 0; } }
+    @media (max-width: 420px) { .entry-actions .act { padding: 0 5px; font-size: 11px; } .entry-actions { gap: 0; } .entry-actions .act-rename { display: none; } }
     .check { display: flex; align-items: flex-start; line-height: 1.45; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
     .check input { flex-shrink: 0; margin: 1px 0 0; width: 16px; height: 16px; accent-color: var(--green); }
     .log-tools { display: flex; gap: 4px; }
@@ -566,6 +591,15 @@
                 <select id="entryUnit" class="field" aria-label="Unit"></select>
               </div>
             </div>
+          </div>
+          <div class="rep-row">
+            <span class="lbl">replicates</span>
+            <div class="stepper" id="repStepper">
+              <button type="button" id="repMinus" aria-label="Fewer replicates">−</button>
+              <output id="repCount" aria-live="polite">×1</output>
+              <button type="button" id="repPlus" aria-label="More replicates">+</button>
+            </div>
+            <span id="repHint" class="rep-hint">one record</span>
           </div>
         </div>
 
@@ -921,6 +955,25 @@
         return m[1] + String(Number(m[2]) + 1).padStart(m[2].length, '0');
       }
       const resultText = (i) => `${i.result}${i.unit ? ' ' + i.unit : ''}`;
+      // Replicates are named "<sample> R1", "<sample> R2"… (also "rep 2", "replicate 2").
+      function repParse(name) {
+        const m = String(name || '').trim().match(/^(.*\S)[\s_-]+(?:R|rep\.?|replicate)\s*0*(\d+)$/i);
+        return m ? { base: m[1], n: Number(m[2]) } : null;
+      }
+      const repName = (base, n) => `${base} R${n}`;
+      function nameHtml(name) {
+        const r = repParse(name);
+        return r ? `${escapeHtml(r.base)}<span class="rep">R${r.n}</span>` : escapeHtml(name);
+      }
+      // Next free tube after the highest numbered tube in the run (or '' if tubes aren't numbers).
+      function nextFreeTube(after) {
+        const nums = state.quickItems.map((i) => String(i.tube || '').match(/^(\D*)(\d+)$/)).filter(Boolean);
+        const m = String(after || '').match(/^(\D*)(\d+)$/);
+        if (!m) return '';
+        const same = nums.filter((x) => x[1] === m[1]).map((x) => Number(x[2]));
+        const n = Math.max(Number(m[2]), ...same) + 1;
+        return m[1] + String(n).padStart(m[2].length, '0');
+      }
 
       /* ---------- State ---------- */
 
@@ -1081,9 +1134,24 @@
         if (entryKind !== 'result') $('extraFields').classList.add('hidden');
         updateSubmitLabel();
       }
+      let repCount = 1;
       function updateSubmitLabel() {
         $('btnSubmitEntry').textContent = entryKind === 'note' ? '↵ add note'
+          : repCount > 1 ? `↵ add ${repCount} replicates`
           : $('entryResult').value.trim() ? '↵ add result' : '↵ add record · fill result later';
+      }
+      function updateRepHint() {
+        $('repCount').textContent = `×${repCount}`;
+        $('repMinus').disabled = repCount <= 1;
+        $('repPlus').disabled = repCount >= 24;
+        $('repStepper').classList.toggle('on', repCount > 1);
+        if (repCount <= 1) { $('repHint').textContent = 'one record'; return; }
+        const name = $('entryName').value.trim() || $('entryName').placeholder;
+        const sample = (repParse(name) || { base: name }).base;
+        const tube = $('entryTube').value.trim();
+        let last = tube;
+        for (let n = 2; n <= repCount; n++) last = last ? nextRecordName(last) : '';
+        $('repHint').innerHTML = `<b>${escapeHtml(sample)}</b> R1–R${repCount}${tube && last ? ` · tubes ${escapeHtml(tube)}–${escapeHtml(last)}` : ''}`;
       }
       let currentSection = null; // shared by the Result and Note forms
       function renderSectionSelects() {
@@ -1256,7 +1324,7 @@
             <div class="entry-main">
               ${time}
               <div class="entry-body">
-                <div class="rec-line">${item.tube ? `<button type="button" class="tube tap" data-act="rename-rec" data-focus="tube" data-id="${id}" title="Change tube number">tube ${escapeHtml(item.tube)}</button>` : ''}<button type="button" data-act="rename-rec" data-id="${id}" class="rec" title="Rename">${escapeHtml(item.name) || '<i>unnamed</i>'}</button>${chip(item) ? `<span class="tap" data-act="edit" data-focus="typeId" data-id="${id}" title="Change type">${chip(item)}</span>` : ''}</div>
+                <div class="rec-line">${item.tube ? `<button type="button" class="tube tap" data-act="rename-rec" data-focus="tube" data-id="${id}" title="Change tube number">tube ${escapeHtml(item.tube)}</button>` : ''}<button type="button" data-act="rename-rec" data-id="${id}" class="rec" title="Rename">${nameHtml(item.name) || '<i>unnamed</i>'}</button>${chip(item) ? `<span class="tap" data-act="edit" data-focus="typeId" data-id="${id}" title="Change type">${chip(item)}</span>` : ''}</div>
                 ${details ? `<div class="details">${details}</div>` : ''}
                 ${fromLine(item)}
               </div>
@@ -1269,7 +1337,8 @@
               <div class="entry-actions">
                 <button type="button" data-act="note" data-id="${id}" class="act amber">${item.notes ? 'edit note' : '+ note'}</button>
                 <button type="button" data-act="follow" data-id="${id}" class="act violet">↳ follow up</button>
-                <button type="button" data-act="rename-rec" data-id="${id}" class="act">rename</button>
+                <button type="button" data-act="add-rep" data-id="${id}" class="act" title="Add a replicate of this sample">+ rep</button>
+                <button type="button" data-act="rename-rec" data-id="${id}" class="act act-rename">rename</button>
                 ${editBtn}${delBtn}
               </div>`}
           </div>`;
@@ -1285,6 +1354,8 @@
       function suggestName() {
         const recs = state.quickItems.filter((i) => i.kind === 'result');
         const last = recs[recs.length - 1];
+        const r = last && repParse(last.name);
+        if (r) return nextRecordName(r.base) || `Record ${new Set(recs.map((i) => (repParse(i.name) || { base: i.name }).base.toLowerCase())).size + 1}`;
         return (last && nextRecordName(last.name)) || `Record ${recs.length + 1}`;
       }
 
@@ -1629,6 +1700,9 @@
         if (e.key === 'Enter') { e.preventDefault(); $('entryResult').focus(); }
       });
       $('entryResult').addEventListener('input', updateSubmitLabel);
+      $('repMinus').addEventListener('click', () => { repCount = Math.max(1, repCount - 1); updateRepHint(); updateSubmitLabel(); });
+      $('repPlus').addEventListener('click', () => { repCount = Math.min(24, repCount + 1); updateRepHint(); updateSubmitLabel(); });
+      ['entryName', 'entryTube'].forEach((id) => $(id).addEventListener('input', () => { if (repCount > 1) updateRepHint(); }));
 
       $('entryForm').addEventListener('submit', (e) => {
         e.preventDefault();
@@ -1654,22 +1728,41 @@
           const type = typeById(prefs.lastType) || BUILTIN_TYPES[0];
           const unit = $('entryUnit').value === '__custom__' ? '' : $('entryUnit').value;
           const tube = $('entryTube').value.trim();
-          state.quickItems.push(Object.assign(base, {
-            kind: 'result', typeId: type.id, typeName: type.name, name, tube, result, unit,
+          const fields = {
+            kind: 'result', typeId: type.id, typeName: type.name, unit,
             volume: $('entryVolume').value.trim(),
             dilution: $('entryDilution').value.trim(),
             notes: $('entryNote').value.trim()
-          }));
+          };
+          let lastTube = tube;
+          if (repCount > 1) {
+            // One sample, several replicates: "<name> R1…Rn", tubes counting up. A typed
+            // result goes to R1; the rest wait in the log for theirs.
+            const sample = (repParse(name) || { base: name }).base;
+            for (let n = 1; n <= repCount; n++) {
+              const t = n === 1 ? tube : (lastTube ? nextRecordName(lastTube) : '');
+              state.quickItems.push(Object.assign({}, base, fields, { id: newId('qi_'), name: repName(sample, n), tube: t, result: n === 1 ? result : '' }));
+              lastTube = t;
+            }
+          } else {
+            state.quickItems.push(Object.assign(base, fields, { name, tube, result }));
+          }
           ['entryResult', 'entryVolume', 'entryDilution', 'entryNote'].forEach((id) => { $(id).value = ''; });
           // Get the next record ready: "Sample 1" -> "Sample 2", cursor straight to Result.
           // Tube numbers count up too: tube 4 -> 5.
           // The next name shows as a greyed-out suggestion; type over it to change it.
           $('entryName').value = '';
-          $('entryTube').value = tube ? nextRecordName(tube) : '';
+          $('entryTube').value = lastTube ? nextRecordName(lastTube) : '';
           $('entryResult').focus();
-          const label = [tube ? `tube ${tube}` : '', name].filter(Boolean).join(' · ');
-          showToast(result ? `Logged ${label}: ${result}${unit ? ' ' + unit : ''}` : `Added ${label} — fill in the result later`);
+          if (repCount > 1) {
+            const sample = (repParse(name) || { base: name }).base;
+            showToast(`Added ${sample} × ${repCount} replicates (R1–R${repCount})${tube ? `, tubes ${tube}–${lastTube}` : ''}`);
+          } else {
+            const label = [tube ? `tube ${tube}` : '', name].filter(Boolean).join(' · ');
+            showToast(result ? `Logged ${label}: ${result}${unit ? ' ' + unit : ''}` : `Added ${label} — fill in the result later`);
+          }
           updateSubmitLabel();
+          updateRepHint();
         }
         saveState();
         renderLog();
@@ -1935,6 +2028,32 @@
           return;
         } else if (act === 'follow' && item) {
           openFollow([item], item.sectionId);
+          return;
+        } else if (act === 'add-rep' && item) {
+          // Add one more replicate of this sample at this step. A record that isn't a
+          // replicate yet becomes R1 (in its linked steps too) and the new one R2.
+          const r = repParse(item.name);
+          const sample = r ? r.base : item.name || 'Sample';
+          const sameStep = (x) => x.kind === 'result' && sameSection(x, item);
+          if (!r) {
+            const old = item.name;
+            linkedGroup(item).forEach((x) => { if (x.name === old) x.name = repName(sample, 1); });
+          }
+          const group = state.quickItems.filter((x) => sameStep(x) && (repParse(x.name) || {}).base?.toLowerCase() === sample.toLowerCase());
+          const n = Math.max(...group.map((x) => repParse(x.name).n)) + 1;
+          const lastRep = group[group.length - 1] || item;
+          const copy = Object.assign({}, item, {
+            id: newId('qi_'), name: repName(sample, n), result: '', notes: '',
+            tube: item.tube ? nextFreeTube(group.map((x) => x.tube).filter(Boolean).pop() || item.tube) : '',
+            date: todayISO(), timestamp: nowTime()
+          });
+          delete copy.fromId; // a new replicate starts here; it has no earlier steps of its own
+          state.quickItems.splice(state.quickItems.indexOf(lastRep) + 1, 0, copy);
+          saveState();
+          renderLog();
+          showToast(`Added ${sample} R${n}${copy.tube ? ` (tube ${copy.tube})` : ''}: type its result`);
+          const box = document.querySelector(`[data-fill="${CSS.escape(copy.id)}"]`);
+          if (box) { box.scrollIntoView({ block: 'center', behavior: 'smooth' }); box.focus({ preventScroll: true }); }
           return;
         } else if (act === 'next-step') {
           const sid = btn.dataset.sec;
@@ -2749,20 +2868,87 @@
         return { journeys, steps, secOf };
       }
 
+      /* ----- Replicate groups (shared by the journey view and picture) ----- */
+      // Samples named "<name> R1", "<name> R2"… become one group; anything else stays on its own.
+      function journeyEntries(journeys) {
+        const out = [], byBase = new Map();
+        journeys.forEach((j) => {
+          const r = repParse(j.name);
+          if (!r) { out.push({ j }); return; }
+          const key = r.base.toLowerCase();
+          if (!byBase.has(key)) { const g = { base: r.base, members: [] }; byBase.set(key, g); out.push(g); }
+          j.rep = r.n;
+          byBase.get(key).members.push(j);
+        });
+        return out.map((e) => {
+          if (!e.members) return e;
+          if (e.members.length === 1) return { j: e.members[0] };
+          e.members.sort((a, b) => a.rep - b.rep);
+          return e;
+        });
+      }
+      // One row per measurement (step + type + unit), with each replicate's record in it.
+      function measureRows(g, secOf, stepIndex) {
+        const rows = [], map = new Map();
+        g.members.forEach((m, mi) => {
+          const seen = {};
+          m.items.forEach((it) => {
+            const sid = secOf(it);
+            const base = `${sid}|${it.typeId}|${it.unit || ''}`;
+            const c = (seen[base] = (seen[base] || 0) + 1);
+            const key = `${base}|${c}`;
+            let row = map.get(key);
+            if (!row) { row = { key, sid, item: it, vals: new Array(g.members.length).fill(null) }; map.set(key, row); rows.push(row); }
+            row.vals[mi] = it;
+          });
+        });
+        rows.sort((a, b) => stepIndex(a.sid) - stepIndex(b.sid));
+        return rows;
+      }
+      const numOf = (it) => (it && isNumeric(it.result) ? parseFloat(String(it.result).replace(/[^\d.eE+-]/g, '')) : NaN);
+      function repStats(vals) {
+        const its = vals.filter((v) => v && isFinite(numOf(v)));
+        const nums = its.map(numOf);
+        if (!nums.length) return null;
+        const dec = Math.min(3, Math.max(0, ...its.map((v) => ((String(v.result).split('.')[1] || '').replace(/\D.*$/, '')).length)));
+        const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+        const sd = nums.length > 1 ? Math.sqrt(nums.reduce((a, b) => a + (b - mean) ** 2, 0) / (nums.length - 1)) : 0;
+        return { n: nums.length, mean, sd, fmt: (v) => v.toFixed(dec), sdFmt: sd.toFixed(Math.min(3, dec + 1)) };
+      }
+      function groupTrend(rows) {
+        const count = {};
+        rows.forEach((r) => { if (r.item.unit && repStats(r.vals)) count[r.item.unit] = (count[r.item.unit] || 0) + 1; });
+        const unit = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
+        if (!unit) return null;
+        const pts = rows.filter((r) => r.item.unit === unit).map((r) => ({ r, st: repStats(r.vals) })).filter((p) => p.st);
+        return pts.length >= 2 ? { unit, pts } : null;
+      }
+
       function drawJourneyPicture(theme) {
         const C = themeColors(theme);
         const F = (wt, px) => `${wt} ${px}px 'JetBrains Mono', ui-monospace, Menlo, monospace`;
         const { journeys, steps, secOf } = sampleJourneys();
-        const PAD = 44, LABEL = 250, COLW = 214, HEADH = 84, BLOCK = 70, TRENDH = 168;
-        const W = Math.max(1080, PAD * 2 + LABEL + journeys.length * COLW);
+        const entries = journeyEntries(journeys);
+        const stepIndex = (sid) => steps.findIndex((x) => x.id === sid);
+        const PAD = 44, LABEL = 250, COLW = 214, HEADH = 84, BLOCK = 70, GBLOCK = 84, TRENDH = 168;
+        const weight = (e) => (e.j ? 1 : 1.45);
+        const totalW = entries.reduce((a, e) => a + weight(e), 0) || 1;
+        const W = Math.max(1080, Math.round(PAD * 2 + LABEL + totalW * COLW));
         const gridX = PAD, gridW = W - PAD * 2;
         const colsX = gridX + LABEL;
-        const colW = (gridW - LABEL) / Math.max(1, journeys.length);
+        const unitW = (gridW - LABEL) / totalW;
         const palette = ['cyan', 'violet', 'orange', 'pink', 'teal', 'sky', 'lime', 'rose', 'indigo', 'amber', 'emerald', 'fuchsia'];
-        const colorOf = (k) => C.type[palette[k % palette.length]];
+        let acc = 0;
+        const cols = entries.map((e, k) => {
+          const c = { e, x: colsX + acc * unitW, w: weight(e) * unitW, col: C.type[palette[k % palette.length]] };
+          acc += weight(e);
+          if (e.members) c.rows = measureRows(e, secOf, stepIndex);
+          return c;
+        });
         const meas = document.createElement('canvas').getContext('2d');
         const ops = [], back = [], front = [];
         let y;
+        const nSamples = journeys.length;
 
         // Window bar and title
         ops.push((ctx) => {
@@ -2786,8 +2972,10 @@
         y += titleLines.length * 44;
         const dates = state.quickItems.map((i) => i.date).filter(Boolean).sort();
         const span = dates.length ? (dates[0] === dates[dates.length - 1] ? dates[0] : `${dates[0]} → ${dates[dates.length - 1]}`) : todayISO();
+        const groups = entries.filter((e) => e.members).length;
         const meta = ['sample journey', span, state.meta.operator ? `by ${state.meta.operator}` : '',
-          `${journeys.length} ${journeys.length === 1 ? 'sample' : 'samples'}`, `${steps.length} ${steps.length === 1 ? 'step' : 'steps'}`].filter(Boolean).join('  ·  ');
+          groups ? `${entries.length} ${entries.length === 1 ? 'sample' : 'samples'} (${nSamples} incl. replicates)` : `${nSamples} ${nSamples === 1 ? 'sample' : 'samples'}`,
+          `${steps.length} ${steps.length === 1 ? 'step' : 'steps'}`].filter(Boolean).join('  ·  ');
         const my = y;
         ops.push((ctx) => { ctx.font = F(500, 17); ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.fillText(fitText(ctx, meta, W - PAD * 2 - 34), PAD + 34, my + 14); });
         y += 50;
@@ -2797,27 +2985,56 @@
         ops.push((ctx) => {
           ctx.font = F(800, 13); ctx.fillStyle = C.dim; ctx.textAlign = 'left';
           ctx.fillText('STEP', gridX + 20, gridTop + 48);
-          journeys.forEach((j, k) => {
-            const cx = colsX + k * colW, col = colorOf(k);
-            ctx.fillStyle = col; rrect(ctx, cx + 14, gridTop + 18, 6, 46, 3); ctx.fill();
-            ctx.font = F(800, 19); ctx.fillStyle = C.text;
-            ctx.fillText(fitText(ctx, j.name, colW - 44), cx + 30, gridTop + 38);
-            const done = j.items.filter((i) => String(i.result).trim()).length;
-            ctx.font = F(500, 13); ctx.fillStyle = C.muted;
-            ctx.fillText(fitText(ctx, [j.tube ? `tube ${j.tube}` : '', `${done}/${j.items.length} done`].filter(Boolean).join(' · '), colW - 44), cx + 30, gridTop + 60);
+          cols.forEach(({ e, x, w, col }) => {
+            ctx.fillStyle = col; rrect(ctx, x + 14, gridTop + 18, 6, 46, 3); ctx.fill();
+            const items = e.j ? e.j.items : e.members.flatMap((m) => m.items);
+            const done = items.filter((i) => String(i.result).trim()).length;
+            if (e.j) {
+              const r = repParse(e.j.name);
+              const full = r ? r.base : e.j.name, room = w - 44 - (r ? 40 : 0);
+              ctx.font = F(800, 19);
+              if (ctx.measureText(full).width > room) ctx.font = F(800, 16);
+              ctx.fillStyle = C.text;
+              const nm = fitText(ctx, full, room);
+              ctx.fillText(nm, x + 30, gridTop + 38);
+              if (r) {
+                const px = x + 30 + ctx.measureText(nm).width + 8;
+                ctx.font = F(800, 12); const tw = ctx.measureText(`R${r.n}`).width + 12;
+                rrect(ctx, px, gridTop + 23, tw, 19, 5); ctx.fillStyle = rgba(C.violet, 0.12); ctx.fill(); ctx.strokeStyle = rgba(C.violet, 0.4); ctx.lineWidth = 1; ctx.stroke();
+                ctx.fillStyle = C.violet; ctx.fillText(`R${r.n}`, px + 6, gridTop + 37);
+              }
+              ctx.font = F(500, 13); ctx.fillStyle = C.muted;
+              ctx.fillText(fitText(ctx, [e.j.tube ? `tube ${e.j.tube}` : '', `${done}/${items.length} done`].filter(Boolean).join(' · '), w - 44), x + 30, gridTop + 60);
+            } else {
+              const n = e.members.length;
+              ctx.font = F(800, 19);
+              if (ctx.measureText(e.base).width > w - 90) ctx.font = F(800, 16);
+              ctx.fillStyle = C.text;
+              const nm = fitText(ctx, e.base, w - 44 - 46);
+              ctx.fillText(nm, x + 30, gridTop + 38);
+              const px = x + 30 + ctx.measureText(nm).width + 8;
+              ctx.font = F(800, 12); const tw = ctx.measureText(`×${n}`).width + 12;
+              rrect(ctx, px, gridTop + 23, tw, 19, 5); ctx.fillStyle = rgba(C.violet, 0.12); ctx.fill(); ctx.strokeStyle = rgba(C.violet, 0.4); ctx.lineWidth = 1; ctx.stroke();
+              ctx.fillStyle = C.violet; ctx.fillText(`×${n}`, px + 6, gridTop + 37);
+              const tubes = e.members.map((m) => m.tube).filter(Boolean);
+              ctx.font = F(500, 13); ctx.fillStyle = C.muted;
+              ctx.fillText(fitText(ctx, [`R${e.members[0].rep}–R${e.members[n - 1].rep}`, tubes.length ? `tubes ${tubes[0]}–${tubes[tubes.length - 1]}` : '', `${done}/${items.length} done`].filter(Boolean).join(' · '), w - 44), x + 30, gridTop + 60);
+            }
           });
         });
         y = gridTop + HEADH;
 
         // Rows
-        const nodes = journeys.map(() => []);
+        const nodes = cols.map(() => []);
         steps.forEach((sec, r) => {
           const rowTop = y;
-          const cells = journeys.map((j) => j.items.filter((i) => secOf(i) === sec.id));
+          const cellH = cols.map((c) => (c.e.j
+            ? c.e.j.items.filter((i) => secOf(i) === sec.id).length * BLOCK
+            : c.rows.filter((row) => row.sid === sec.id).length * GBLOCK) + 16);
           meas.font = F(800, 18);
           const nameLines = wrapLines(meas, sec.name, LABEL - 80).slice(0, 3);
           const labelH = 28 + nameLines.length * 23 + 18;
-          const rowH = Math.max(labelH, ...cells.map((c) => c.length * BLOCK + 16), BLOCK + 16);
+          const rowH = Math.max(labelH, ...cellH, BLOCK + 16);
           const sk = sectionIcon(sec);
           back.push((ctx) => {
             if (r % 2 === 0) { ctx.fillStyle = rgba(C.text, theme === 'dark' ? 0.02 : 0.018); ctx.fillRect(gridX + 1, rowTop, gridW - 2, rowH); }
@@ -2835,72 +3052,142 @@
             ctx.font = F(800, 18); ctx.fillStyle = C.text;
             nameLines.forEach((ln, k) => ctx.fillText(ln, lx, rowTop + 54 + k * 23));
           });
-          cells.forEach((items, k) => {
-            const cx = colsX + k * colW, col = colorOf(k), lineX = cx + 34;
-            items.forEach((it, m) => {
-              const by = rowTop + 8 + m * BLOCK, ny = by + BLOCK / 2;
-              nodes[k].push(ny);
-              const has = String(it.result).trim() !== '';
-              const num = has && isNumeric(it.result);
-              front.push((ctx) => {
-                const tx = lineX + 28, tw = colW - (tx - cx) - 12;
-                if (it.tube) {
-                  ctx.save(); ctx.translate(lineX, ny); ctx.scale(0.78, 0.78);
-                  drawTube(ctx, -13, -36, col, has, C);
-                  ctx.restore();
-                } else {
-                  ctx.beginPath(); ctx.arc(lineX, ny, 17, 0, Math.PI * 2);
-                  ctx.fillStyle = has ? rgba(col, 0.18) : C.panel; ctx.fill();
-                  ctx.lineWidth = 2.5; ctx.strokeStyle = col; ctx.stroke();
-                  const ik = typeIcon(it);
-                  if (ik) drawIcon(ctx, ik, lineX - 10, ny - 10, 20, col);
-                  else { ctx.beginPath(); ctx.arc(lineX, ny, 4.5, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); }
-                }
-                ctx.textAlign = 'left';
-                let yy = by + 30;
-                if (has) {
-                  ctx.font = num ? F(800, 23) : F(700, 15); ctx.fillStyle = num ? C.green : C.text;
-                  if (num && theme === 'dark') { ctx.shadowColor = rgba(C.green, 0.4); ctx.shadowBlur = 12; }
-                  const lines = num ? [fitText(ctx, it.result, tw)] : wrapLines(ctx, it.result, tw).slice(0, 2);
-                  let endX = tx;
-                  lines.forEach((ln) => { ctx.fillText(ln, tx, yy); endX = tx + ctx.measureText(ln).width; yy += num ? 22 : 18; });
-                  ctx.shadowBlur = 0;
-                  if (it.unit) {
-                    ctx.font = F(500, 13); ctx.fillStyle = C.muted;
-                    const uw = ctx.measureText(it.unit).width;
-                    if (endX + 7 + uw <= tx + tw) ctx.fillText(it.unit, endX + 7, yy - (num ? 22 : 18));
-                    else { ctx.fillText(fitText(ctx, it.unit, tw), tx, yy); yy += 17; }
-                  }
-                } else {
-                  ctx.font = F(700, 14);
-                  const label = it.unit ? `pending · ${it.unit}` : 'pending';
-                  const pw = Math.min(ctx.measureText(label).width + 16, tw);
-                  rrect(ctx, tx, yy - 17, pw, 24, 6);
-                  ctx.setLineDash([4, 4]); ctx.strokeStyle = C.amber; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
-                  ctx.fillStyle = C.amber; ctx.fillText(fitText(ctx, label, pw - 16), tx + 8, yy);
-                  yy += 24;
-                }
-                const t = typeById(it.typeId);
-                const tag = it.typeId && it.typeId !== 'general' ? (t ? t.name : it.typeName) : '';
-                if (tag) { ctx.font = F(600, 12); ctx.fillStyle = C.dim; ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2); }
+          cols.forEach((c, k) => {
+            const { x, w, col } = c;
+            const lineX = x + 34;
+            if (c.e.j) {
+              c.e.j.items.filter((i) => secOf(i) === sec.id).forEach((it, m) => {
+                const by = rowTop + 8 + m * BLOCK, ny = by + BLOCK / 2;
+                nodes[k].push(ny);
+                front.push((ctx) => drawSingleCell(ctx, it, lineX, ny, by, x, w, col));
               });
-            });
+            } else {
+              c.rows.filter((row) => row.sid === sec.id).forEach((row, m) => {
+                const by = rowTop + 8 + m * GBLOCK, ny = by + GBLOCK / 2;
+                nodes[k].push(ny);
+                front.push((ctx) => drawGroupCell(ctx, row, c, lineX, ny, by));
+              });
+            }
           });
           y += rowH;
         });
 
-        // Trend row: the main numeric reading of each sample across the steps
+        function resultLines(ctx, it, tx, yy, tw) {
+          const has = String(it.result).trim() !== '';
+          const num = has && isNumeric(it.result);
+          if (has) {
+            ctx.font = num ? F(800, 23) : F(700, 15); ctx.fillStyle = num ? C.green : C.text;
+            if (num && theme === 'dark') { ctx.shadowColor = rgba(C.green, 0.4); ctx.shadowBlur = 12; }
+            const lines = num ? [fitText(ctx, it.result, tw)] : wrapLines(ctx, it.result, tw).slice(0, 2);
+            let endX = tx;
+            lines.forEach((ln) => { ctx.fillText(ln, tx, yy); endX = tx + ctx.measureText(ln).width; yy += num ? 22 : 18; });
+            ctx.shadowBlur = 0;
+            if (it.unit) {
+              ctx.font = F(500, 13); ctx.fillStyle = C.muted;
+              const uw = ctx.measureText(it.unit).width;
+              if (endX + 7 + uw <= tx + tw) ctx.fillText(it.unit, endX + 7, yy - (num ? 22 : 18));
+              else { ctx.fillText(fitText(ctx, it.unit, tw), tx, yy); yy += 17; }
+            }
+          } else {
+            ctx.font = F(700, 14);
+            const label = it.unit ? `pending · ${it.unit}` : 'pending';
+            const pw = Math.min(ctx.measureText(label).width + 16, tw);
+            rrect(ctx, tx, yy - 17, pw, 24, 6);
+            ctx.setLineDash([4, 4]); ctx.strokeStyle = C.amber; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = C.amber; ctx.fillText(fitText(ctx, label, pw - 16), tx + 8, yy);
+            yy += 24;
+          }
+          return yy;
+        }
+        function typeTag(it) {
+          const t = typeById(it.typeId);
+          return it.typeId && it.typeId !== 'general' ? (t ? t.name : it.typeName) : '';
+        }
+        function drawSingleCell(ctx, it, lineX, ny, by, x, w, col) {
+          const has = String(it.result).trim() !== '';
+          const tx = lineX + 28, tw = w - (tx - x) - 12;
+          if (it.tube) {
+            ctx.save(); ctx.translate(lineX, ny); ctx.scale(0.78, 0.78); drawTube(ctx, -13, -36, col, has, C); ctx.restore();
+          } else {
+            ctx.beginPath(); ctx.arc(lineX, ny, 17, 0, Math.PI * 2);
+            ctx.fillStyle = has ? rgba(col, 0.18) : C.panel; ctx.fill();
+            ctx.lineWidth = 2.5; ctx.strokeStyle = col; ctx.stroke();
+            const ik = typeIcon(it);
+            if (ik) drawIcon(ctx, ik, lineX - 10, ny - 10, 20, col);
+            else { ctx.beginPath(); ctx.arc(lineX, ny, 4.5, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); }
+          }
+          ctx.textAlign = 'left';
+          const yy = resultLines(ctx, it, tx, by + 30, tw);
+          const tag = typeTag(it);
+          if (tag) { ctx.font = F(600, 12); ctx.fillStyle = C.dim; ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2); }
+        }
+        function drawGroupCell(ctx, row, c, lineX, ny, by) {
+          const { x, w, col } = c;
+          const n = row.vals.length, shown = Math.min(n, 4);
+          // A small rack of tubes, one per replicate (filled once its result is in)
+          const gap = 15, startX = lineX - ((shown - 1) * gap) / 2;
+          ctx.fillStyle = C.panel;
+          rrect(ctx, startX - 12, ny - 26, (shown - 1) * gap + 24, 52, 8); ctx.fill();
+          row.vals.slice(0, shown).forEach((it, m) => {
+            const has = it && String(it.result).trim() !== '';
+            ctx.save(); ctx.translate(startX + m * gap, ny); ctx.scale(0.55, 0.55);
+            if (it) drawTube(ctx, -13, -36, col, has, C);
+            else { ctx.globalAlpha = 0.25; drawTube(ctx, -13, -36, C.dim, false, C); }
+            ctx.restore();
+          });
+          if (n > shown) { ctx.font = F(800, 11); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.fillText(`+${n - shown}`, lineX, ny + 34); }
+          const tx = startX + (shown - 1) * gap + 22, tw = w - (tx - x) - 12;
+          ctx.textAlign = 'left';
+          const st = repStats(row.vals);
+          const it = row.item;
+          let yy = by + 28;
+          if (st) {
+            ctx.font = F(800, 23); ctx.fillStyle = C.green;
+            if (theme === 'dark') { ctx.shadowColor = rgba(C.green, 0.4); ctx.shadowBlur = 12; }
+            const mean = fitText(ctx, st.fmt(st.mean), tw);
+            ctx.fillText(mean, tx, yy); ctx.shadowBlur = 0;
+            const endX = tx + ctx.measureText(mean).width;
+            if (it.unit) { ctx.font = F(500, 13); ctx.fillStyle = C.muted; if (endX + 7 + ctx.measureText(it.unit).width <= tx + tw) ctx.fillText(it.unit, endX + 7, yy); }
+            yy += 19;
+            ctx.font = F(700, 13); ctx.fillStyle = C.text;
+            ctx.fillText(fitText(ctx, st.n > 1 ? `± ${st.sdFmt} SD · n=${st.n}` : `n=1`, tw), tx, yy);
+            yy += 17;
+          } else {
+            const texts = row.vals.filter((v) => v && String(v.result).trim());
+            if (texts.length) {
+              ctx.font = F(700, 15); ctx.fillStyle = C.text;
+              ctx.fillText(fitText(ctx, texts[0].result, tw), tx, yy); yy += 19;
+            } else {
+              ctx.font = F(700, 14); const label = it.unit ? `pending · ${it.unit}` : 'pending';
+              const pw = Math.min(ctx.measureText(label).width + 16, tw);
+              rrect(ctx, tx, yy - 17, pw, 24, 6); ctx.setLineDash([4, 4]); ctx.strokeStyle = C.amber; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+              ctx.fillStyle = C.amber; ctx.fillText(fitText(ctx, label, pw - 16), tx + 8, yy); yy += 24;
+            }
+          }
+          // Individual replicate values
+          const parts = row.vals.map((v) => (v ? (String(v.result).trim() || '?') : '–'));
+          ctx.font = F(500, 12); ctx.fillStyle = C.dim;
+          const tag = typeTag(it);
+          ctx.fillText(fitText(ctx, parts.join(' · ') + (tag ? `  ${tag}` : ''), tw), tx, yy + 1);
+        }
+
+        // Trend row: each sample's main reading across the steps (replicates: mean ± SD)
         const trendTop = y;
-        const trends = journeys.map((j) => {
-          const pts = j.items.filter((i) => isNumeric(i.result) && i.unit).map((i) => ({ i, v: parseFloat(String(i.result).replace(/[^\d.eE+-]/g, '')), step: steps.findIndex((x) => x.id === secOf(i)) + 1 })).filter((p) => isFinite(p.v));
+        const trends = cols.map((c) => {
+          if (c.e.members) {
+            const g = groupTrend(c.rows);
+            return g ? { unit: g.unit, vs: g.pts.map((p) => p.st.mean), sds: g.pts.map((p) => p.st.sd), steps: g.pts.map((p) => stepIndex(p.r.sid) + 1), first: g.pts[0].st.fmt(g.pts[0].st.mean), last: g.pts[g.pts.length - 1].st.fmt(g.pts[g.pts.length - 1].st.mean),
+              lines: c.e.members.map((m, mi) => g.pts.map((p) => numOf(p.r.vals[mi]))) } : null;
+          }
+          const j = c.e.j;
+          const pts = j.items.filter((i) => isNumeric(i.result) && i.unit).map((i) => ({ i, v: numOf(i), step: stepIndex(secOf(i)) + 1 })).filter((p) => isFinite(p.v));
           const count = {};
           pts.forEach((p) => { count[p.i.unit] = (count[p.i.unit] || 0) + 1; });
           const unit = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
           const use = unit ? pts.filter((p) => p.i.unit === unit) : [];
-          return use.length >= 2 ? { unit, pts: use } : null;
+          return use.length >= 2 ? { unit, vs: use.map((p) => p.v), steps: use.map((p) => p.step), first: use[0].i.result, last: use[use.length - 1].i.result } : null;
         });
-        const anyTrend = trends.some(Boolean);
-        if (anyTrend) {
+        if (trends.some(Boolean)) {
           front.push((ctx) => {
             ctx.strokeStyle = C['border-2']; ctx.lineWidth = 1.5;
             ctx.beginPath(); ctx.moveTo(gridX, trendTop + 0.5); ctx.lineTo(gridX + gridW, trendTop + 0.5); ctx.stroke();
@@ -2911,33 +3198,53 @@
             ctx.font = F(800, 18); ctx.fillStyle = C.text; ctx.fillText('through steps', gridX + 68, trendTop + 54);
             ctx.font = F(500, 13); ctx.fillStyle = C.muted; ctx.fillText('main reading,', gridX + 68, trendTop + 76);
             ctx.fillText('numbers = step', gridX + 68, trendTop + 94);
+            if (cols.some((c) => c.e.members)) ctx.fillText('replicates: mean ± SD', gridX + 68, trendTop + 112);
             trends.forEach((tr, k) => {
-              const cx = colsX + k * colW + 14, cw = colW - 28, col = colorOf(k);
-              const top = trendTop + 18, ch = 70;
+              const { x, w, col } = cols[k];
+              const cx = x + 14, cw = w - 28, top = trendTop + 18, ch = 70;
               if (!tr) { ctx.font = F(500, 13); ctx.fillStyle = C.dim; ctx.fillText('—', cx + 6, top + 40); return; }
               rrect(ctx, cx, top, cw, ch + 38, 8);
               ctx.fillStyle = C.panel; ctx.fill(); ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.stroke();
-              const vs = tr.pts.map((p) => p.v), lo = Math.min(...vs), hi = Math.max(...vs), rng = hi - lo || 1;
-              const px = (n) => cx + 14 + (n / (vs.length - 1)) * (cw - 28);
+              const vs = tr.vs, sds = tr.sds || vs.map(() => 0);
+              const lows = vs.map((v, n) => v - sds[n]), highs = vs.map((v, n) => v + sds[n]);
+              const allV = [...lows, ...highs, ...(tr.lines ? tr.lines.flat().filter(isFinite) : [])];
+              const lo = Math.min(...allV), hi = Math.max(...allV), rng = hi - lo || 1;
+              const px = (n) => cx + 16 + (n / (vs.length - 1)) * (cw - 32);
               const py = (v) => top + 12 + (1 - (v - lo) / rng) * (ch - 10);
-              ctx.beginPath();
-              vs.forEach((v, n) => (n ? ctx.lineTo(px(n), py(v)) : ctx.moveTo(px(n), py(v))));
-              ctx.lineTo(px(vs.length - 1), top + ch + 10); ctx.lineTo(px(0), top + ch + 10); ctx.closePath();
-              ctx.fillStyle = rgba(col, 0.12); ctx.fill();
+              // faint individual replicate lines
+              (tr.lines || []).forEach((ln) => {
+                ctx.beginPath(); let started = false;
+                ln.forEach((v, n) => { if (!isFinite(v)) return; if (started) ctx.lineTo(px(n), py(v)); else { ctx.moveTo(px(n), py(v)); started = true; } });
+                ctx.strokeStyle = rgba(col, 0.28); ctx.lineWidth = 1.5; ctx.stroke();
+              });
+              if (!tr.lines) {
+                ctx.beginPath();
+                vs.forEach((v, n) => (n ? ctx.lineTo(px(n), py(v)) : ctx.moveTo(px(n), py(v))));
+                ctx.lineTo(px(vs.length - 1), top + ch + 10); ctx.lineTo(px(0), top + ch + 10); ctx.closePath();
+                ctx.fillStyle = rgba(col, 0.12); ctx.fill();
+              }
+              // error bars
+              sds.forEach((sd, n) => {
+                if (!sd) return;
+                ctx.strokeStyle = col; ctx.lineWidth = 1.6;
+                ctx.beginPath(); ctx.moveTo(px(n), py(lows[n])); ctx.lineTo(px(n), py(highs[n]));
+                ctx.moveTo(px(n) - 5, py(lows[n])); ctx.lineTo(px(n) + 5, py(lows[n]));
+                ctx.moveTo(px(n) - 5, py(highs[n])); ctx.lineTo(px(n) + 5, py(highs[n])); ctx.stroke();
+              });
               ctx.beginPath();
               vs.forEach((v, n) => (n ? ctx.lineTo(px(n), py(v)) : ctx.moveTo(px(n), py(v))));
               ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
               vs.forEach((v, n) => { ctx.beginPath(); ctx.arc(px(n), py(v), 3.8, 0, Math.PI * 2); ctx.fillStyle = C.panel; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.stroke(); });
               ctx.font = F(700, 11); ctx.fillStyle = C.dim; ctx.textAlign = 'center';
-              tr.pts.forEach((p, n) => ctx.fillText(String(p.step).padStart(2, '0'), px(n), top + ch + 32));
+              tr.steps.forEach((sn, n) => ctx.fillText(String(sn).padStart(2, '0'), px(n), top + ch + 32));
               const a = vs[0], b = vs[vs.length - 1];
               const pct = a ? Math.round(((b - a) / Math.abs(a)) * 100) : 0;
               ctx.font = F(700, 13); ctx.fillStyle = C.text; ctx.textAlign = 'left';
-              ctx.fillText(fitText(ctx, `${tr.pts[0].i.result} → ${tr.pts[tr.pts.length - 1].i.result} ${tr.unit}`, cw), cx, top + ch + 60);
+              ctx.fillText(fitText(ctx, `${tr.lines ? 'mean ' : ''}${tr.first} → ${tr.last} ${tr.unit}`, cw), cx, top + ch + 60);
               ctx.font = F(800, 13); ctx.fillStyle = pct < 0 ? C.amber : C.green;
               ctx.fillText(`${pct > 0 ? '+' : ''}${pct}%`, cx, top + ch + 78);
               ctx.font = F(500, 12); ctx.fillStyle = C.dim; ctx.textAlign = 'right';
-              ctx.fillText(`at steps ${tr.pts.map((p) => p.step).join(', ')}`.length < 22 ? `steps ${tr.pts.map((p) => p.step).join(', ')}` : `${vs.length} readings`, cx + cw, top + ch + 78);
+              ctx.fillText(`steps ${tr.steps.join(', ')}`.length < Math.floor(cw / 8) ? `steps ${tr.steps.join(', ')}` : `${vs.length} readings`, cx + cw, top + ch + 78);
             });
           });
           y += TRENDH + 10;
@@ -2955,12 +3262,14 @@
           ctx.strokeStyle = C.border; ctx.lineWidth = 1;
           ctx.beginPath(); ctx.moveTo(colsX + 0.5, gridTop); ctx.lineTo(colsX + 0.5, gridBottom); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(gridX, gridTop + HEADH + 0.5); ctx.lineTo(gridX + gridW, gridTop + HEADH + 0.5); ctx.stroke();
+          // light separators between replicate groups and other samples
+          cols.forEach((c, k) => { if (k && (c.e.members || cols[k - 1].e.members)) { ctx.beginPath(); ctx.moveTo(c.x + 0.5, gridTop + 10); ctx.lineTo(c.x + 0.5, gridBottom - 10); ctx.stroke(); } });
         };
         const lines = (ctx) => {
           nodes.forEach((ys, k) => {
             if (!ys.length) return;
-            const lineX = colsX + k * colW + 34, col = colorOf(k);
-            ctx.strokeStyle = rgba(col, 0.5); ctx.lineWidth = 4; ctx.lineCap = 'round';
+            const lineX = cols[k].x + 34;
+            ctx.strokeStyle = rgba(cols[k].col, 0.5); ctx.lineWidth = cols[k].e.members ? 6 : 4; ctx.lineCap = 'round';
             ctx.beginPath(); ctx.moveTo(lineX, gridTop + HEADH + 4); ctx.lineTo(lineX, ys[ys.length - 1]); ctx.stroke();
           });
         };
@@ -2969,7 +3278,7 @@
           ctx.font = F(500, 14); ctx.fillStyle = C.dim; ctx.textAlign = 'left';
           ctx.fillText(`exported ${todayISO()} ${nowTime()}`, PAD, footY);
           ctx.textAlign = 'right'; ctx.fillStyle = C.muted;
-          ctx.fillText('each column is one sample, followed through its steps', W - PAD, footY);
+          ctx.fillText(groups ? 'each column is one sample · replicates shown as mean ± SD with their values' : 'each column is one sample, followed through its steps', W - PAD, footY);
         });
         const H = Math.ceil(footY + PAD - 10);
         return paintPicture(W, H, [grid, ...ops, ...back, lines, ...front], C, theme);
@@ -3289,12 +3598,16 @@
           <path d="M5.5 11v13" stroke="#fff" stroke-opacity=".35" stroke-width="1.4" stroke-linecap="round"/>
         </svg>`;
       }
-      function sparkSvg(vs) {
-        const lo = Math.min(...vs), hi = Math.max(...vs), rng = hi - lo || 1, w = 100, h = 40;
-        const pts = vs.map((v, n) => [(n / (vs.length - 1)) * w, 4 + (1 - (v - lo) / rng) * (h - 8)]);
+      function sparkSvg(vs, sds) {
+        sds = sds || vs.map(() => 0);
+        const lo = Math.min(...vs.map((v, n) => v - sds[n])), hi = Math.max(...vs.map((v, n) => v + sds[n])), rng = hi - lo || 1, w = 100, h = 40;
+        const Y = (v) => 4 + (1 - (v - lo) / rng) * (h - 8);
+        const pts = vs.map((v, n) => [(n / (vs.length - 1)) * w, Y(v)]);
+        const bars = sds.map((sd, n) => (sd ? `<path d="M${pts[n][0].toFixed(1)} ${Y(vs[n] - sd).toFixed(1)}V${Y(vs[n] + sd).toFixed(1)}" stroke="var(--sc)" stroke-width="1.6" vector-effect="non-scaling-stroke"/><path d="M${(pts[n][0] - 1.6).toFixed(1)} ${Y(vs[n] - sd).toFixed(1)}h3.2M${(pts[n][0] - 1.6).toFixed(1)} ${Y(vs[n] + sd).toFixed(1)}h3.2" stroke="var(--sc)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>` : '')).join('');
         const line = pts.map((p, n) => `${n ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join('');
         return `<svg viewBox="-4 0 108 ${h}" preserveAspectRatio="none" aria-hidden="true">
           <path d="${line}L${w} ${h}L0 ${h}Z" fill="var(--sc)" opacity=".13"/>
+          ${bars}
           <path d="${line}" fill="none" stroke="var(--sc)" stroke-width="2.2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
           ${pts.map((p) => `<path d="M${p[0].toFixed(1)} ${p[1].toFixed(1)}h0" stroke="var(--sc)" stroke-width="8" stroke-linecap="round" vector-effect="non-scaling-stroke"/><path d="M${p[0].toFixed(1)} ${p[1].toFixed(1)}h0" stroke="var(--panel)" stroke-width="4" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`).join('')}
         </svg>`;
@@ -3308,7 +3621,8 @@
         }
         const stepNo = new Map(steps.map((x, k) => [x.id, k + 1]));
         const focusId = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fill : null;
-        box.innerHTML = journeys.map((j, k) => {
+        const stepIndex = (sid) => steps.findIndex((x) => x.id === sid);
+        const cardHtml = (j, k) => {
           const done = j.items.filter((i) => String(i.result).trim()).length;
           const rows = j.items.map((it) => {
             const sid = secOf(it), sec = steps.find((x) => x.id === sid) || GENERAL;
@@ -3344,12 +3658,65 @@
               <div class="cap"><span><b>${escapeHtml(use[0].i.result)} → ${escapeHtml(use[use.length - 1].i.result)}</b> ${escapeHtml(unit)}</span><span class="${pct < 0 ? 'down' : 'up'}">${pct > 0 ? '+' : ''}${pct}%</span></div></div>`;
           }
           return `<section class="panel jcard" style="--sc:var(--t-${J_PALETTE[k % J_PALETTE.length]})">
-              <div class="jhead"><span class="jbar"></span><div><div class="jname">${escapeHtml(j.name)}</div>
+              <div class="jhead"><span class="jbar"></span><div><div class="jname">${nameHtml(j.name)}</div>
                 <div class="jsub">${[j.tube ? `tube ${escapeHtml(j.tube)}` : '', `${j.items.length} ${j.items.length === 1 ? 'step' : 'steps'}`, done < j.items.length ? `<b>${j.items.length - done} to fill in</b>` : 'all done'].filter(Boolean).join(' · ')}</div></div></div>
               <ol class="jsteps">${rows}</ol>
               ${trend}
             </section>`;
-        }).join('');
+        };
+        // Replicates: one card for the sample, mean ± SD at each step and every replicate's value.
+        const groupHtml = (g, k) => {
+          const rowsData = measureRows(g, secOf, stepIndex);
+          const items = g.members.flatMap((m) => m.items);
+          const done = items.filter((i) => String(i.result).trim()).length;
+          const tubes = g.members.map((m) => m.tube).filter(Boolean);
+          const rows = rowsData.map((row) => {
+            const sec = steps.find((x) => x.id === row.sid) || GENERAL;
+            const it = row.item, st = repStats(row.vals);
+            const shown = row.vals.slice(0, 5);
+            const tubesHtml = `<span class="jtubes">${shown.map((v) => (v ? tubeSvg(String(v.result).trim() !== '') : '<svg viewBox="0 0 17 42" style="opacity:.2"><path d="M3 8.5h11v24a5.5 5.5 0 0 1-11 0z" fill="none" stroke="var(--dim)" stroke-width="1.5"/></svg>')).join('')}${row.vals.length > 5 ? `<span class="more">+${row.vals.length - 5}</span>` : ''}</span>`;
+            const t = typeById(it.typeId);
+            const tag = it.typeId && it.typeId !== 'general' ? (t ? t.name : it.typeName) : '';
+            const texts = row.vals.filter((v) => v && String(v.result).trim() && !isNumeric(v.result));
+            const res = st
+              ? `<div class="jres">${escapeHtml(st.fmt(st.mean))}${it.unit ? `<span class="unit">${escapeHtml(it.unit)}</span>` : ''}<span class="jsd">${st.n > 1 ? `± ${escapeHtml(st.sdFmt)} SD · n=${st.n}` : 'n=1'}</span></div>`
+              : texts.length ? `<div class="jres txt">${escapeHtml(texts[0].result)}</div>`
+              : '<div class="jres txt" style="color:var(--amber)">pending</div>';
+            const reps = row.vals.map((v, mi) => {
+              const label = `<i>R${g.members[mi].rep}</i>`;
+              if (!v) return `<span class="jr none">${label}–</span>`;
+              if (!String(v.result).trim()) return `<span class="jr">${label}<input type="text" class="fill" data-fill="${escapeHtml(v.id)}" placeholder="?" inputmode="${v.unit && v.typeId !== 'general' ? 'decimal' : 'text'}" enterkeyhint="next" autocomplete="off" aria-label="Result for ${escapeHtml(g.base)} R${g.members[mi].rep} at ${escapeHtml(sec.name)}" /></span>`;
+              return `<span class="jr">${label}<b>${escapeHtml(v.result)}</b></span>`;
+            }).join('');
+            const target = row.vals.find((v) => v && !String(v.result).trim()) || row.vals.find(Boolean);
+            return `<li class="jstep" data-goto="${escapeHtml(target.id)}" title="Show in log">
+                <div class="jnode">${tubesHtml}</div>
+                <div class="jwhat">
+                  <div class="jstepname"><span class="jn">${String(stepIndex(row.sid) + 1).padStart(2, '0')}</span>${iconSvg(sectionIcon(sec))}<span>${escapeHtml(sec.name)}</span></div>
+                  ${tag ? `<div class="jtype">${iconSvg(typeIcon(it))}${escapeHtml(tag)}</div>` : ''}
+                </div>
+                ${res}
+                <div class="jreps">${reps}</div>
+              </li>`;
+          }).join('');
+          const tr = groupTrend(rowsData);
+          let trend = '';
+          if (tr) {
+            const vs = tr.pts.map((p) => p.st.mean), sds = tr.pts.map((p) => p.st.sd);
+            const a = vs[0], b = vs[vs.length - 1];
+            const pct = a ? Math.round(((b - a) / Math.abs(a)) * 100) : 0;
+            trend = `<div class="jtrend">${sparkSvg(vs, sds)}
+              <div class="cap"><span>mean <b>${escapeHtml(tr.pts[0].st.fmt(a))} → ${escapeHtml(tr.pts[tr.pts.length - 1].st.fmt(b))}</b> ${escapeHtml(tr.unit)}</span><span class="${pct < 0 ? 'down' : 'up'}">${pct > 0 ? '+' : ''}${pct}%</span></div></div>`;
+          }
+          const first = g.members[0].rep, last = g.members[g.members.length - 1].rep;
+          return `<section class="panel jcard jgroup" style="--sc:var(--t-${J_PALETTE[k % J_PALETTE.length]})">
+              <div class="jhead"><span class="jbar"></span><div><div class="jname">${escapeHtml(g.base)}<span class="rep">×${g.members.length}</span></div>
+                <div class="jsub">${[`replicates R${first}–R${last}`, tubes.length ? `tubes ${escapeHtml(tubes[0])}–${escapeHtml(tubes[tubes.length - 1])}` : '', done < items.length ? `<b>${items.length - done} to fill in</b>` : 'all done'].filter(Boolean).join(' · ')}</div></div></div>
+              <ol class="jsteps">${rows}</ol>
+              ${trend}
+            </section>`;
+        };
+        box.innerHTML = journeyEntries(journeys).map((e, k) => (e.j ? cardHtml(e.j, k) : groupHtml(e, k))).join('');
         if (focusId) { const again = box.querySelector(`[data-fill="${CSS.escape(focusId)}"]`); if (again) again.focus({ preventScroll: true }); }
       }
       function setJourneyMode(on) {

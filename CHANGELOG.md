@@ -2,6 +2,21 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.14.0] - 2026-11-25
+
+### Added
+- **Replicates:** set **× replicates** under the record name (e.g. ×3) to add one sample as several replicates in one go. Type the name once; the replicates are named *Elephant blood R1, R2, R3*, tubes count up, and a hint shows what will be added.
+- **+ rep** on any record adds one more replicate at that step, with the next free tube number. A record that isn't a replicate yet becomes R1, in its linked steps too.
+- Replicates show an **R1 / R2 / R3** tag in the log. Each is still its own record, so follow it up, rename it or edit it as usual.
+- **Replicates in the journey:** in the app and in the picture, a sample's replicates are grouped into one card or column.
+  - Each step shows the **mean ± SD (n)**, every replicate's own value, and a small rack of tubes (filled once each result is in).
+  - The trend shows the mean with SD error bars.
+  - Pending replicates can be filled in straight from the journey card.
+  - Grouping is by name (*<sample> R1*, *rep 2*, *replicate 3*), so it survives CSV/text export and continuing a run.
+
+### Changed
+- On narrow phones the separate **rename** button is hidden in record actions (tap the record name to rename) so the actions fit on one line.
+
 ## [3.13.0] - 2026-11-25
 
 ### Added
