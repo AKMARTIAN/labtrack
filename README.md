@@ -23,6 +23,22 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 
 **Use it now:** <https://akmartian.github.io/labtrack/>
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="Examples_and_screenshots/10_app_entry_form_replicates.jpg" width="230" alt="Entry form with three replicates set" /><br /><sub>Log a sample once, as replicates</sub></td>
+    <td align="center"><img src="Examples_and_screenshots/11_app_log_replicates_and_readings.jpg" width="230" alt="Log showing replicates and a second TapeStation reading" /><br /><sub>The log, with replicates and extra readings</sub></td>
+    <td align="center"><img src="Examples_and_screenshots/13_app_journey_view_light.jpg" width="230" alt="Journey view with mean and SD per step" /><br /><sub>Follow each sample through its steps</sub></td>
+  </tr>
+</table>
+
+**Picture export:** share or present a run as an image, as a sample journey (below) or step by step.
+
+<img src="Examples_and_screenshots/05_picture_journey_replicates_light.png" alt="Sample journey picture: replicates as mean ± SD at each step with a trend chart" />
+
+More examples, in light and dark, are in [`Examples_and_screenshots`](Examples_and_screenshots/README.md).
+
 ## Features
 
 - **Log results fast:** enter a **Record** (e.g. `Blood 2`) and a **Result**, then tap **add result**.
