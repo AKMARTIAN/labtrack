@@ -2,6 +2,16 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.21.0] - 2026-11-25
+
+### Added
+- **Three more protocol presets:**
+  - **ONT · Ligation Sequencing Kit V14** (SQK-LSK114): input QC → repair & end-prep → end-prep clean-up → adapter ligation → ligation clean-up → flow cell loading, one library per sample.
+  - **Illumina · 16S rRNA amplicon (V3–V4)** (16S Metagenomic Library Prep): input QC → amplicon PCR → PCR clean-up → amplicon check (~550 bp) → index PCR (type each sample's index pair) → clean-up → library QC → normalisation → pooling.
+  - **ONT · 16S Barcoding Kit 24 V14** (SQK-16S114.24): input QC → barcoded 16S PCR (type each sample's barcode) → PCR clean-up → pooling → rapid adapter attachment → flow cell loading, with a single **Pool** record from pooling.
+- **Change a protocol's steps before you start:** open **▸ steps** in the protocol window to untick a step you skip, rename a step, move it up or down, or repeat it (**⧉**, e.g. *PCR clean-up (repeat)*). **↺ back to the kit's steps** undoes it. Skipped steps are listed in the run's protocol note.
+- **Help guide:** a *Change the steps first* part in *Start from a protocol*.
+
 ## [3.20.0] - 2026-11-25
 
 ### Added

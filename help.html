@@ -138,7 +138,7 @@
 
     <section id="protocol">
       <h2>Start from a protocol</h2>
-      <p>Running a kit you know, like <b>NEBNext Ultra II DNA</b> (Illumina) or the <b>ONT Native Barcoding Kit 24 V14</b>? Let LabTrack lay out every step and quantification checkpoint for your samples, so you only fill in the numbers as you go.</p>
+      <p>Running a kit you know, like <b>NEBNext Ultra II DNA</b> or <b>16S rRNA amplicon (V3–V4)</b> on Illumina, or the ONT <b>Ligation Sequencing Kit V14</b>, <b>Native Barcoding Kit 24 V14</b> or <b>16S Barcoding Kit 24 V14</b>? Let LabTrack lay out every step and quantification checkpoint for your samples, so you only fill in the numbers as you go.</p>
       <p>Tap <span class="k">+ new</span> → <span class="k">▤ start from a protocol</span> (or the same button on an empty run).</p>
       <img class="shot" src="Examples_and_screenshots/help_guide/15_protocol.jpg" alt="Start from a protocol window with the protocol, samples, first tube, sample names and start button numbered 1 to 5" loading="lazy" />
       <ol class="steps">
@@ -152,8 +152,17 @@
       <ul>
         <li><b>Checkpoints</b> (Qubit after extraction and after each clean-up, fragment size, molarity…) become empty records, waiting for you to fill in their results, linked from step to step so the <a href="#journey">journey</a> and trends work straight away.</li>
         <li><b>Steps without a reading</b> (end prep, ligation…) get a short note, so the flow is still visible.</li>
-        <li><b>ONT:</b> after native barcode ligation the samples are pooled, so from there on there's one <b>Pool</b> record. At the barcode step, type the barcode each sample got (e.g. NB01).</li>
+        <li><b>Barcoded kits</b> (ONT native barcoding and 16S barcoding): once the samples are pooled there's one <b>Pool</b> record from there on. At the barcode step, type the barcode each sample got (e.g. NB01 or 16S01). Illumina 16S has the same box at index PCR for the index pair.</li>
       </ul>
+      <h3>Change the steps first</h3>
+      <p>Did something twice, or skipped a step? Open <span class="k">▸ steps</span> in the same window before you start:</p>
+      <ul>
+        <li><b>Untick</b> a step to skip it. Skipped steps are listed in the protocol note, so the record shows what you left out.</li>
+        <li><b>Tap a name</b> to rename it.</li>
+        <li><span class="k">↑</span> <span class="k">↓</span> move a step. <span class="k">⧉</span> repeats it straight after (e.g. <i>PCR clean-up (repeat)</i>), and <span class="k">✕</span> removes a repeat.</li>
+        <li><span class="k">↺ back to the kit's steps</span> undoes your changes.</li>
+      </ul>
+      <p>After the run is made you can still change anything in the log: rename, <a href="#sections">⧉ copy, reorder or remove</a> a step, or add a <a href="#readings">reading</a>.</p>
       <div class="tip warn">Protocols change between kit versions. The presets follow each kit's main steps; check them against your kit's protocol, and add, rename or remove steps as you need.</div>
     </section>
 
@@ -348,7 +357,7 @@
       <details><summary>Something looks wrong or I have an idea.</summary><p>Open an issue on <a href="https://github.com/AKMARTIAN/labtrack/issues" target="_blank" rel="noopener">GitHub</a>.</p></details>
     </section>
 
-    <p class="foot"><a href="./">← back to labtrack</a> · LabTrack v3.20.0 · free and open source (MIT)</p>
+    <p class="foot"><a href="./">← back to labtrack</a> · LabTrack v3.21.0 · free and open source (MIT)</p>
   </main>
 </body>
 </html>
