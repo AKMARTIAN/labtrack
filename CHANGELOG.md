@@ -2,6 +2,11 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.17.3] - 2026-11-25
+
+### Added
+- **Version number on the page:** the bottom of the app (and of the help guide) shows the version you're running, e.g. **v3.17.3**. Tap it to see what's new in that version.
+
 ## [3.17.2] - 2026-11-25
 
 ### Changed
