@@ -33,18 +33,7 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
   </tr>
 </table>
 
-**Picture export:** share or present a run as an image, as a sample journey (below) or step by step.
-
-<img src="Examples_and_screenshots/05_picture_journey_replicates_light.png" alt="Sample journey picture: replicates as mean ± SD at each step with a trend chart" />
-
-**Instrument results:** add a TapeStation export to your samples. Pick which well belongs to which sample, and the DIN, concentration, peak size, average fragment size and electropherogram join that sample's journey.
-
-<table>
-  <tr>
-    <td align="center"><img src="Examples_and_screenshots/help_guide/13_tapestation_match.jpg" width="260" alt="TapeStation import window matching each well to a sample" /><br /><sub>Match each well to your sample</sub></td>
-    <td align="center"><img src="Examples_and_screenshots/help_guide/14_tapestation_result.jpg" width="320" alt="TapeStation result in the log with DIN, redrawn electropherogram and average fragment size" /><br /><sub>DIN, trace and average fragment size in the log</sub></td>
-  </tr>
-</table>
+**Picture export:** share or present a run as an image, here as a sample journey with a TapeStation result (DIN, average fragment size and electropherogram) imported onto Blood 1.
 
 <img src="Examples_and_screenshots/07_picture_journey_tapestation_light.png" alt="Sample journey of three samples through Illumina library prep, with a TapeStation genomic DNA result and electropherogram on Blood 1 at extraction" />
 
