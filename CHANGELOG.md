@@ -2,6 +2,11 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.17.4] - 2026-11-25
+
+### Changed
+- The help guide's screenshots moved to `Examples_and_screenshots/help_guide/`, next to the other examples. The help page and README now point there.
+
 ## [3.17.3] - 2026-11-25
 
 ### Added

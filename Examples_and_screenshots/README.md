@@ -26,3 +26,25 @@ Example pictures exported from LabTrack and screenshots of the app at phone size
 | `15_app_export_options_dark.jpg` | The export menu: CSV, picture, text report, copy summary and backups. |
 | `16_app_picture_window_journey.jpg` | The picture window with the steps/journey and light/dark switches and a live preview. |
 | `17_app_log_dark.jpg` | The log in dark mode: section icon, tubes, replicates and record actions. |
+
+## Help guide screenshots (`help_guide/`)
+
+The annotated screenshots used by the in-app help guide (**?** in LabTrack, or [help.html](https://akmartian.github.io/labtrack/help.html)). The orange numbered rings show where to tap, in order. If you rename or move these files, update `help.html` too.
+
+| File | What it shows |
+|---|---|
+| `00_top_bar.jpg` | The top bar: help, light/dark, open, new, export. |
+| `01_log_a_result.jpg` | Logging a result: type, section, tube, record, result, add. |
+| `02_record_actions.jpg` | A record: tap the name or result to change it, the action row, the drag handle. |
+| `03_fill_later.jpg` | A prepared record waiting for its result. |
+| `04_replicates.jpg` | Adding a sample as ×3 replicates. |
+| `05_add_reading.jpg` | The **+ reading** window. |
+| `06_section_header.jpg` | A section header: drag, rename, next step, copy, remove. |
+| `07_next_step.jpg` | Carrying every sample on to the next step. |
+| `08_log_tools.jpg` | journey, reorder and + section. |
+| `09_journey.jpg` | A replicate group in the journey view. |
+| `10_export.jpg` | The export menu. |
+| `11_picture.jpg` | The picture window. |
+| `12_open.jpg` | The open menu: continue a run or add instrument results. |
+| `13_tapestation_match.jpg` | Matching TapeStation wells to samples. |
+| `14_tapestation_result.jpg` | A TapeStation result in the log: DIN, trace, average size, warnings. |

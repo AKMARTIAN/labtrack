@@ -41,8 +41,8 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 
 <table>
   <tr>
-    <td align="center"><img src="assets/help/13_tapestation_match.jpg" width="260" alt="TapeStation import window matching each well to a sample" /><br /><sub>Match each well to your sample</sub></td>
-    <td align="center"><img src="assets/help/14_tapestation_result.jpg" width="320" alt="TapeStation result in the log with DIN, redrawn electropherogram and average fragment size" /><br /><sub>DIN, trace and average fragment size in the log</sub></td>
+    <td align="center"><img src="Examples_and_screenshots/help_guide/13_tapestation_match.jpg" width="260" alt="TapeStation import window matching each well to a sample" /><br /><sub>Match each well to your sample</sub></td>
+    <td align="center"><img src="Examples_and_screenshots/help_guide/14_tapestation_result.jpg" width="320" alt="TapeStation result in the log with DIN, redrawn electropherogram and average fragment size" /><br /><sub>DIN, trace and average fragment size in the log</sub></td>
   </tr>
 </table>
 
