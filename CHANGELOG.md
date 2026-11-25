@@ -2,6 +2,11 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.17.1] - 2026-11-25
+
+### Changed
+- The picture export shows the average fragment size note, including when it's an estimate, under TapeStation results, as the app already does. The note is shorter so it fits.
+
 ## [3.17.0] - 2026-11-25
 
 ### Added

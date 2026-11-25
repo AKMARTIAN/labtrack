@@ -2590,7 +2590,7 @@
       const avgNote = (inst) => {
         const a = avgFragmentSize(inst);
         if (!a) return '';
-        return `average fragment size over ${a.from.toLocaleString('en')}–${a.to.toLocaleString('en')} bp${a.estimated ? `; above the top ladder band (${a.top.toLocaleString('en')} bp) sizes are estimated` : ''}`;
+        return `avg size over ${a.from.toLocaleString('en')}–${a.to.toLocaleString('en')} bp${a.estimated ? ` · estimated above the ${a.top.toLocaleString('en')} bp ladder top` : ''}`;
       };
       const instWarn = (inst) => [inst.notes, inst.expired && !/expired/i.test(inst.notes || '') ? 'expired ScreenTape' : ''].filter(Boolean).join('; ').replace(/Caution!\s*/gi, '');
       // A small electropherogram as inline SVG (app) — the same drawing as the picture export.
@@ -3641,7 +3641,8 @@
         cols.forEach((c) => { if (c.e.j) c.measures = measuresOf(c.e.j.items, secOf); });
         const READ_LINE = 17;
         const TRACE_H = 104;
-        const instH = (it) => (it.inst && it.inst.trace ? TRACE_H + 20 + (instWarn(it.inst) ? 16 : 0) : 0);
+        const instLines = (inst) => (avgNote(inst) ? 1 : 0) + (instWarn(inst) ? 1 : 0);
+        const instH = (it) => (it.inst && it.inst.trace ? TRACE_H + 20 + instLines(it.inst) * 16 : 0);
         const singleH = (m) => (m.reads.length > 1 ? BLOCK + 22 : BLOCK) + instH(m.reads[0]);
         const groupH = (row) => (row.shared ? BLOCK + instH(row.item) : GBLOCK + (row.multi ? row.reads.length * READ_LINE + 4 : 0));
         // A small electropherogram, drawn like the one in the app.
@@ -3676,8 +3677,10 @@
         function drawInstFooter(ctx, inst, tx, yy, tw) {
           ctx.font = F(500, 12); ctx.fillStyle = C.muted;
           ctx.fillText(fitText(ctx, instSummary(inst), tw), tx, yy);
+          const an = avgNote(inst);
+          if (an) { yy += 15; ctx.fillStyle = C.dim; ctx.fillText(fitText(ctx, an, tw), tx, yy); }
           const wn = instWarn(inst);
-          if (wn) { ctx.fillStyle = C.amber; ctx.fillText(fitText(ctx, `⚠ ${wn}`, tw), tx, yy + 15); }
+          if (wn) { yy += 15; ctx.fillStyle = C.amber; ctx.fillText(fitText(ctx, `⚠ ${wn}`, tw), tx, yy); }
         }
         steps.forEach((sec, r) => {
           const rowTop = y;
@@ -3789,7 +3792,7 @@
             if (tag) { ctx.font = F(600, 12); ctx.fillStyle = C.dim; ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2); }
             if (it.inst && it.inst.trace) {
               drawInstFooter(ctx, it.inst, tx, yy + 18, tw);
-              drawTrace(ctx, it.inst, tx, yy + 18 + (instWarn(it.inst) ? 16 : 0) + 12, tw, TRACE_H - 14, col);
+              drawTrace(ctx, it.inst, tx, yy + 18 + instLines(it.inst) * 15 + 12, tw, TRACE_H - 14, col);
             }
             return;
           }
@@ -3824,7 +3827,7 @@
             ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2);
             if (it.inst && it.inst.trace) {
               drawInstFooter(ctx, it.inst, tx, yy + 18, tw);
-              drawTrace(ctx, it.inst, tx, yy + 18 + (instWarn(it.inst) ? 16 : 0) + 12, tw, TRACE_H - 14, col);
+              drawTrace(ctx, it.inst, tx, yy + 18 + instLines(it.inst) * 15 + 12, tw, TRACE_H - 14, col);
             }
             return;
           }
