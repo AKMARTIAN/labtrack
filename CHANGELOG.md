@@ -2,6 +2,21 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.15.0] - 2026-11-25
+
+### Added
+- **Several readings of one sample at one step:** **+ reading** on any record opens a small window.
+  - *What are you measuring?* defaults to **re-read (same as before)**.
+  - You can also pick any type (e.g. Qubit, then TapeStation after a clean-up), or choose **other…** to type your own measurement and unit. It is saved as a type for next time.
+  - The result is optional, so you can fill it in later.
+- **Readings in the log:** extra readings sit straight under the first one, marked *↳ reading 2*, without repeating the name and tube. Each is still its own row, so CSV/text exports and continuing a run keep them.
+- **Readings in the journey:** shown under the step as *↳ reading 2* in the app, and labelled in the picture. Replicate groups get mean ± SD for each reading.
+- **Trends average re-reads** of the same thing at one step, so the line doesn't zig-zag.
+- **TapeStation** is now a built-in type (bp, DIN, RIN, ng/µL, nM) with the gel icon.
+
+### Changed
+- Record actions are slightly tighter on phones (*↳ follow*, *+ read*) so they still fit on one line.
+
 ## [3.14.0] - 2026-11-25
 
 ### Added

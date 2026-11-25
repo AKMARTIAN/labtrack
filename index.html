@@ -297,6 +297,11 @@
     .entry-main { display: flex; align-items: flex-start; gap: 12px; }
     .time { flex-shrink: 0; width: 42px; padding-top: 2px; font-size: 11.5px; color: var(--dim); }
     .entry-body { flex: 1; min-width: 0; }
+    .entry.entry-cont { border-top: 1px dashed color-mix(in srgb, var(--border) 85%, transparent); padding-top: 6px; }
+    .entry-cont .entry-body { border-left: 2px solid color-mix(in srgb, var(--violet) 40%, transparent); padding-left: 10px; margin-left: 2px; }
+    .reading-lbl { font-size: 11.5px; font-weight: 800; color: var(--violet); }
+    .reading-lbl .of { color: var(--muted); font-weight: 600; }
+    @media (max-width: 420px) { .wide { display: none; } }
     .rec-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
     .rec { font-weight: 700; color: var(--text); word-break: break-word; }
     .tube { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 5px; font-size: 11px; font-weight: 700; color: var(--blue); border: 1px dashed color-mix(in srgb, var(--blue) 55%, transparent); background: color-mix(in srgb, var(--blue) 7%, transparent); white-space: nowrap; }
@@ -474,7 +479,7 @@
     button.rec:hover { text-decoration-color: var(--dim); }
     button.rec i { font-weight: 500; color: var(--dim); }
     .rename-grid { display: grid; grid-template-columns: 90px 1fr; gap: 12px; }
-    @media (max-width: 420px) { .entry-actions .act { padding: 0 5px; font-size: 11px; } .entry-actions { gap: 0; } .entry-actions .act-rename { display: none; } }
+    @media (max-width: 420px) { .entry-actions .act { padding: 0 3px; font-size: 11px; letter-spacing: -0.01em; } .entry-actions { gap: 0; } .entry-actions .act-rename { display: none; } }
     .check { display: flex; align-items: flex-start; line-height: 1.45; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
     .check input { flex-shrink: 0; margin: 1px 0 0; width: 16px; height: 16px; accent-color: var(--green); }
     .log-tools { display: flex; gap: 4px; }
@@ -765,6 +770,38 @@
     </form>
   </div>
 
+  <!-- Another reading of the same sample at the same step -->
+  <div id="readingModal" class="modal hidden no-print">
+    <form id="readingForm" class="sheet">
+      <div class="sheet-head">
+        <div><h3>add a reading</h3><p id="readingSub">another reading of this sample at the same step.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div>
+          <label for="readingType" class="lbl">what are you measuring?</label>
+          <select id="readingType" class="field"></select>
+        </div>
+        <div id="readingOtherWrap" class="grid-2 hidden">
+          <div><label for="readingOtherName" class="lbl">measurement</label><input id="readingOtherName" type="text" class="field" placeholder="e.g. Bioanalyzer" autocomplete="off" /></div>
+          <div><label for="readingOtherUnit" class="lbl">unit</label><input id="readingOtherUnit" type="text" class="field" placeholder="e.g. RIN" autocomplete="off" /></div>
+        </div>
+        <div>
+          <label for="readingResult" class="lbl">result <span class="tiny" style="color:var(--dim)">optional, fill in later</span></label>
+          <div class="field-group">
+            <input id="readingResult" type="text" class="field" placeholder="45.6" autocomplete="off" enterkeyhint="done" />
+            <select id="readingUnit" class="field" aria-label="Unit"></select>
+          </div>
+        </div>
+        <p class="hint" id="readingHint">it goes straight under the first reading, in the same section.</p>
+        <div class="row-2">
+          <button type="button" data-close class="btn">cancel</button>
+          <button type="submit" class="btn btn-primary">+ add reading</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
   <!-- Export -->
   <div id="exportModal" class="modal hidden no-print">
     <div class="sheet">
@@ -871,7 +908,8 @@
         { id: 'volume',   name: 'Volume',        units: ['µL', 'mL'], color: 'sky' },
         { id: 'temp',     name: 'Temperature',   units: ['°C'], color: 'orange' },
         { id: 'ph',       name: 'pH',            units: [], color: 'emerald' },
-        { id: 'cells',    name: 'Cell count',    units: ['cells/mL', 'cells/µL'], color: 'pink' }
+        { id: 'cells',    name: 'Cell count',    units: ['cells/mL', 'cells/µL'], color: 'pink' },
+        { id: 'tapestation', name: 'TapeStation', units: ['bp', 'DIN', 'RIN', 'ng/µL', 'nM'], color: 'indigo' }
       ];
 
       function loadPrefs() {
@@ -1293,7 +1331,15 @@
         </div>`;
       }
 
-      function renderItem(item) {
+      // Extra readings of one sample at one step sit straight under the first one:
+      // returns 2, 3… for a record that follows a record with the same name and tube.
+      const sameSample = (a, b) => a && b && a.kind === 'result' && b.kind === 'result' && a.name && a.name === b.name && (a.tube || '') === (b.tube || '');
+      function readingNo(items, k) {
+        let n = 1;
+        while (k - n >= 0 && sameSample(items[k - n], items[k])) n++;
+        return n > 1 ? n : 0;
+      }
+      function renderItem(item, reading) {
         const id = escapeHtml(item.id);
         const editing = openEditor && openEditor.id === item.id ? openEditor.mode : null;
         const time = `<div class="time-col"><span class="time">${escapeHtml(item.timestamp || '--:--')}</span><span class="grip" data-drag-item="${id}" title="Drag to move" aria-hidden="true">⠿</span></div>`;
@@ -1320,13 +1366,15 @@
         ].filter(Boolean).join(' · ');
 
         return `
-          <div class="entry" data-entry="${id}">
+          <div class="entry ${reading ? 'entry-cont' : ''}" data-entry="${id}">
             <div class="entry-main">
               ${time}
               <div class="entry-body">
-                <div class="rec-line">${item.tube ? `<button type="button" class="tube tap" data-act="rename-rec" data-focus="tube" data-id="${id}" title="Change tube number">tube ${escapeHtml(item.tube)}</button>` : ''}<button type="button" data-act="rename-rec" data-id="${id}" class="rec" title="Rename">${nameHtml(item.name) || '<i>unnamed</i>'}</button>${chip(item) ? `<span class="tap" data-act="edit" data-focus="typeId" data-id="${id}" title="Change type">${chip(item)}</span>` : ''}</div>
+                <div class="rec-line">${reading
+                  ? `<span class="reading-lbl">↳ reading ${reading}</span>`
+                  : `${item.tube ? `<button type="button" class="tube tap" data-act="rename-rec" data-focus="tube" data-id="${id}" title="Change tube number">tube ${escapeHtml(item.tube)}</button>` : ''}<button type="button" data-act="rename-rec" data-id="${id}" class="rec" title="Rename">${nameHtml(item.name) || '<i>unnamed</i>'}</button>`}${chip(item) ? `<span class="tap" data-act="edit" data-focus="typeId" data-id="${id}" title="Change type">${chip(item)}</span>` : ''}</div>
                 ${details ? `<div class="details">${details}</div>` : ''}
-                ${fromLine(item)}
+                ${reading ? '' : fromLine(item)}
               </div>
               ${item.result || editing
                 ? `<div class="result tap ${isNumeric(item.result) ? 'num' : 'txt'}" data-act="edit" data-focus="result" data-id="${id}" title="Change result">${escapeHtml(item.result)}${item.unit ? `<span class="unit" data-act="edit" data-focus="unit" data-id="${id}">${escapeHtml(item.unit)}</span>` : ''}</div>`
@@ -1336,9 +1384,10 @@
             ${reorderMode ? moveBar(item) : editing ? renderEditor(item, editing) : `
               <div class="entry-actions">
                 <button type="button" data-act="note" data-id="${id}" class="act amber">${item.notes ? 'edit note' : '+ note'}</button>
-                <button type="button" data-act="follow" data-id="${id}" class="act violet">↳ follow up</button>
-                <button type="button" data-act="add-rep" data-id="${id}" class="act" title="Add a replicate of this sample">+ rep</button>
-                <button type="button" data-act="rename-rec" data-id="${id}" class="act act-rename">rename</button>
+                ${reading ? '' : `<button type="button" data-act="follow" data-id="${id}" class="act violet">↳ follow<span class="wide"> up</span></button>`}
+                <button type="button" data-act="add-reading" data-id="${id}" class="act" title="Another reading of this sample at this step (re-read, or a different measurement)">+ read<span class="wide">ing</span></button>
+                ${reading ? '' : `<button type="button" data-act="add-rep" data-id="${id}" class="act" title="Add a replicate of this sample">+ rep</button>
+                <button type="button" data-act="rename-rec" data-id="${id}" class="act act-rename">rename</button>`}
                 ${editBtn}${delBtn}
               </div>`}
           </div>`;
@@ -1385,10 +1434,10 @@
           let lastDate = null;
           const body = items.length === 0
             ? '<div class="sec-empty">// nothing logged here yet</div>'
-            : items.map((i) => {
+            : items.map((i, k) => {
                 const divider = i.date !== lastDate ? `<div class="day">${dayLabel(i.date)}</div>` : '';
                 lastDate = i.date;
-                return divider + renderItem(i);
+                return divider + renderItem(i, divider ? 0 : readingNo(items, k));
               }).join('');
           return `
             <section class="panel ${sec.collapsed ? 'sec-collapsed' : ''}" data-section="${sid}">
@@ -2029,6 +2078,9 @@
         } else if (act === 'follow' && item) {
           openFollow([item], item.sectionId);
           return;
+        } else if (act === 'add-reading' && item) {
+          openReading(item);
+          return;
         } else if (act === 'add-rep' && item) {
           // Add one more replicate of this sample at this step. A record that isn't a
           // replicate yet becomes R1 (in its linked steps too) and the new one R2.
@@ -2221,6 +2273,78 @@
         showToast(`Duplicated as "${name}"${keepResults ? '' : ': type the new results'}`);
         const target = document.querySelector(`[data-section="${CSS.escape(copy.id)}"]`);
         if (target) target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      });
+
+      // Another reading of the same sample at the same step: a re-read of the same thing
+      // (default), another type (e.g. Qubit and TapeStation after a clean-up), or your own.
+      let readingSrc = null;
+      function readingUnitOptions() {
+        const v = $('readingType').value, src = readingSrc;
+        let units = [], pick = '';
+        if (v === '__same__') { units = src.unit ? [src.unit] : []; pick = src.unit || ''; }
+        else if (v !== '__other__') { const t = typeById(v); units = unitsFor(t); pick = (prefs.lastUnit && prefs.lastUnit[v]) || units[0] || ''; }
+        const other = v === '__other__';
+        $('readingOtherWrap').classList.toggle('hidden', !other);
+        $('readingUnit').classList.toggle('hidden', other);
+        $('readingUnit').innerHTML = units.map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('') + '<option value="">no unit</option>';
+        $('readingUnit').value = pick;
+        $('readingResult').setAttribute('inputmode', !other && $('readingUnit').value && v !== 'general' ? 'decimal' : 'text');
+      }
+      function openReading(item) {
+        readingSrc = item;
+        const t = typeById(item.typeId);
+        const what = [t && t.id !== 'general' ? t.name : '', item.unit].filter(Boolean).join(', ');
+        $('readingSub').textContent = `${[item.tube ? `tube ${item.tube}` : '', item.name].filter(Boolean).join(' · ')} at ${sectionName(isOrphan(item) ? '' : item.sectionId)}`;
+        $('readingType').innerHTML = `<option value="__same__">re-read · same as before${what ? ` (${escapeHtml(what)})` : ''}</option>`
+          + typeOptions('', false).replace(/ selected/g, '') + '<option value="__other__">other… type your own</option>';
+        $('readingType').value = '__same__';
+        $('readingResult').value = '';
+        $('readingOtherName').value = '';
+        $('readingOtherUnit').value = '';
+        readingUnitOptions();
+        openModal('readingModal');
+        $('readingResult').focus();
+      }
+      $('readingType').addEventListener('change', () => {
+        readingUnitOptions();
+        if ($('readingType').value === '__other__') $('readingOtherName').focus(); else $('readingResult').focus();
+      });
+      $('readingForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const src = readingSrc;
+        if (!src || !state.quickItems.includes(src)) { closeModals(); return; }
+        const v = $('readingType').value;
+        let type, unit;
+        if (v === '__same__') { type = typeById(src.typeId) || BUILTIN_TYPES[0]; unit = src.unit; }
+        else if (v === '__other__') {
+          const name = $('readingOtherName').value.trim();
+          unit = $('readingOtherUnit').value.trim();
+          if (!name) { $('readingOtherName').focus(); showToast('Name the measurement'); return; }
+          type = allTypes().find((x) => x.name.toLowerCase() === name.toLowerCase());
+          if (!type) {
+            type = { id: newId('type_'), name, units: unit ? [unit] : [], color: CUSTOM_COLORS[prefs.customTypes.length % CUSTOM_COLORS.length] };
+            prefs.customTypes.push(type);
+          } else if (unit && type.id !== 'general' && !BUILTIN_TYPES.includes(type) && !type.units.includes(unit)) type.units.push(unit);
+          savePrefs();
+        } else { type = typeById(v) || BUILTIN_TYPES[0]; unit = $('readingUnit').value; }
+        const it = {
+          id: newId('qi_'), kind: 'result', sectionId: src.sectionId, date: todayISO(), timestamp: nowTime(),
+          typeId: type.id, typeName: type.name, name: src.name, tube: src.tube, result: $('readingResult').value.trim(), unit,
+          volume: '', dilution: '', notes: '', text: ''
+        };
+        if (src.fromId) it.fromId = src.fromId;
+        // Straight after the sample's last reading at this step.
+        let at = state.quickItems.indexOf(src);
+        while (at + 1 < state.quickItems.length && sameSample(state.quickItems[at + 1], src) && sameSection(state.quickItems[at + 1], src)) at++;
+        state.quickItems.splice(at + 1, 0, it);
+        closeModals();
+        saveState();
+        renderLog();
+        showToast(`Added ${v === '__same__' ? 're-read' : type.name + ' reading'} for ${src.name}${it.result ? '' : ': type its result'}`);
+        if (!it.result) {
+          const box = document.querySelector(`[data-fill="${CSS.escape(it.id)}"]`);
+          if (box) { box.scrollIntoView({ block: 'center', behavior: 'smooth' }); box.focus({ preventScroll: true }); }
+        }
       });
 
       // Follow up: carry one sample (or every sample in a section) on to its next step.
@@ -2531,7 +2655,7 @@
         [/extract|isolat|lysis|\bdna\b|\brna\b/i, 'dna'],
         [/receipt|receiv|intake|accession|arriv/i, 'box']
       ];
-      const TYPE_ICON_IDS = { qubit: 'reader', nanodrop: 'drop', size: 'ruler', molarity: 'flask', volume: 'cylinder', temp: 'thermo', ph: 'strip', cells: 'cells' };
+      const TYPE_ICON_IDS = { tapestation: 'gel', qubit: 'reader', nanodrop: 'drop', size: 'ruler', molarity: 'flask', volume: 'cylinder', temp: 'thermo', ph: 'strip', cells: 'cells' };
       const TYPE_ICON_RULES = [
         [/temp|°c|celsius/i, 'thermo'], [/\bph\b/i, 'strip'], [/volume|\bvol\b/i, 'cylinder'], [/cell/i, 'cells'],
         [/size|length|\bbp\b/i, 'ruler'], [/molar|\bnm\b/i, 'flask'], [/qubit|fluor/i, 'reader'],
@@ -2915,13 +3039,49 @@
         const sd = nums.length > 1 ? Math.sqrt(nums.reduce((a, b) => a + (b - mean) ** 2, 0) / (nums.length - 1)) : 0;
         return { n: nums.length, mean, sd, fmt: (v) => v.toFixed(dec), sdFmt: sd.toFixed(Math.min(3, dec + 1)) };
       }
-      function groupTrend(rows) {
-        const count = {};
-        rows.forEach((r) => { if (r.item.unit && repStats(r.vals)) count[r.item.unit] = (count[r.item.unit] || 0) + 1; });
-        const unit = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
+      const decOf = (its) => Math.min(3, Math.max(0, ...its.map((v) => ((String(v.result).split('.')[1] || '').replace(/\D.*$/, '')).length)));
+      // Main reading of one sample across its steps. Several readings of the same thing at
+      // one step (re-reads) are averaged so the line doesn't zig-zag.
+      function mainTrend(items, stepOf) {
+        const pts = items.filter((i) => isNumeric(i.result) && i.unit).map((i) => ({ i, v: numOf(i), step: stepOf(i) })).filter((p) => isFinite(p.v));
+        const steps = {};
+        pts.forEach((p) => { (steps[p.i.unit] = steps[p.i.unit] || new Set()).add(p.step); });
+        const unit = Object.keys(steps).sort((a, b) => steps[b].size - steps[a].size)[0];
         if (!unit) return null;
-        const pts = rows.filter((r) => r.item.unit === unit).map((r) => ({ r, st: repStats(r.vals) })).filter((p) => p.st);
-        return pts.length >= 2 ? { unit, pts } : null;
+        const by = new Map();
+        pts.filter((p) => p.i.unit === unit).forEach((p) => { if (!by.has(p.step)) by.set(p.step, []); by.get(p.step).push(p); });
+        const out = [...by.entries()].sort((a, b) => a[0] - b[0]).map(([step, ps]) => {
+          const v = ps.reduce((a, p) => a + p.v, 0) / ps.length;
+          return { step, v, label: ps.length === 1 ? ps[0].i.result : v.toFixed(decOf(ps.map((p) => p.i))), n: ps.length };
+        });
+        return out.length >= 2 ? { unit, pts: out } : null;
+      }
+      function groupTrend(rows) {
+        const steps = {};
+        rows.forEach((r) => { if (r.item.unit && repStats(r.vals)) (steps[r.item.unit] = steps[r.item.unit] || new Set()).add(r.sid); });
+        const unit = Object.keys(steps).sort((a, b) => steps[b].size - steps[a].size)[0];
+        if (!unit) return null;
+        const pts = [];
+        rows.filter((r) => r.item.unit === unit && repStats(r.vals)).forEach((r) => {
+          const prev = pts.find((p) => p.r.sid === r.sid);
+          if (prev) prev.rows.push(r); else pts.push({ r, rows: [r] });
+        });
+        pts.forEach((p) => {
+          if (p.rows.length === 1) { p.st = repStats(p.r.vals); return; }
+          // Re-reads at one step: average each replicate's readings, then mean ± SD across replicates.
+          const n = p.r.vals.length;
+          const vals = Array.from({ length: n }, (_, mi) => {
+            const xs = p.rows.map((r) => numOf(r.vals[mi])).filter(isFinite);
+            return xs.length ? { result: String(xs.reduce((a, b) => a + b, 0) / xs.length) } : null;
+          });
+          const st = repStats(vals);
+          const dec = decOf(p.rows.flatMap((r) => r.vals.filter(Boolean)));
+          if (st) { st.fmt = (v) => v.toFixed(dec); st.sdFmt = st.sd.toFixed(Math.min(3, dec + 1)); }
+          p.st = st;
+          p.r = { sid: p.r.sid, item: p.r.item, vals };
+        });
+        const use = pts.filter((p) => p.st);
+        return use.length >= 2 ? { unit, pts: use } : null;
       }
 
       function drawJourneyPicture(theme) {
@@ -3059,13 +3219,13 @@
               c.e.j.items.filter((i) => secOf(i) === sec.id).forEach((it, m) => {
                 const by = rowTop + 8 + m * BLOCK, ny = by + BLOCK / 2;
                 nodes[k].push(ny);
-                front.push((ctx) => drawSingleCell(ctx, it, lineX, ny, by, x, w, col));
+                front.push((ctx) => drawSingleCell(ctx, it, lineX, ny, by, x, w, col, m + 1));
               });
             } else {
               c.rows.filter((row) => row.sid === sec.id).forEach((row, m) => {
                 const by = rowTop + 8 + m * GBLOCK, ny = by + GBLOCK / 2;
                 nodes[k].push(ny);
-                front.push((ctx) => drawGroupCell(ctx, row, c, lineX, ny, by));
+                front.push((ctx) => drawGroupCell(ctx, row, c, lineX, ny, by, m + 1));
               });
             }
           });
@@ -3103,7 +3263,7 @@
           const t = typeById(it.typeId);
           return it.typeId && it.typeId !== 'general' ? (t ? t.name : it.typeName) : '';
         }
-        function drawSingleCell(ctx, it, lineX, ny, by, x, w, col) {
+        function drawSingleCell(ctx, it, lineX, ny, by, x, w, col, rd) {
           const has = String(it.result).trim() !== '';
           const tx = lineX + 28, tw = w - (tx - x) - 12;
           if (it.tube) {
@@ -3118,10 +3278,10 @@
           }
           ctx.textAlign = 'left';
           const yy = resultLines(ctx, it, tx, by + 30, tw);
-          const tag = typeTag(it);
+          const tag = [typeTag(it), rd > 1 ? `reading ${rd}` : ''].filter(Boolean).join(' · ');
           if (tag) { ctx.font = F(600, 12); ctx.fillStyle = C.dim; ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2); }
         }
-        function drawGroupCell(ctx, row, c, lineX, ny, by) {
+        function drawGroupCell(ctx, row, c, lineX, ny, by, rd) {
           const { x, w, col } = c;
           const n = row.vals.length, shown = Math.min(n, 4);
           // A small rack of tubes, one per replicate (filled once its result is in)
@@ -3167,7 +3327,7 @@
           // Individual replicate values
           const parts = row.vals.map((v) => (v ? (String(v.result).trim() || '?') : '–'));
           ctx.font = F(500, 12); ctx.fillStyle = C.dim;
-          const tag = typeTag(it);
+          const tag = [typeTag(it), rd > 1 ? `reading ${rd}` : ''].filter(Boolean).join(' · ');
           ctx.fillText(fitText(ctx, parts.join(' · ') + (tag ? `  ${tag}` : ''), tw), tx, yy + 1);
         }
 
@@ -3179,13 +3339,8 @@
             return g ? { unit: g.unit, vs: g.pts.map((p) => p.st.mean), sds: g.pts.map((p) => p.st.sd), steps: g.pts.map((p) => stepIndex(p.r.sid) + 1), first: g.pts[0].st.fmt(g.pts[0].st.mean), last: g.pts[g.pts.length - 1].st.fmt(g.pts[g.pts.length - 1].st.mean),
               lines: c.e.members.map((m, mi) => g.pts.map((p) => numOf(p.r.vals[mi]))) } : null;
           }
-          const j = c.e.j;
-          const pts = j.items.filter((i) => isNumeric(i.result) && i.unit).map((i) => ({ i, v: numOf(i), step: stepIndex(secOf(i)) + 1 })).filter((p) => isFinite(p.v));
-          const count = {};
-          pts.forEach((p) => { count[p.i.unit] = (count[p.i.unit] || 0) + 1; });
-          const unit = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
-          const use = unit ? pts.filter((p) => p.i.unit === unit) : [];
-          return use.length >= 2 ? { unit, vs: use.map((p) => p.v), steps: use.map((p) => p.step), first: use[0].i.result, last: use[use.length - 1].i.result } : null;
+          const mt = mainTrend(c.e.j.items, (i) => stepIndex(secOf(i)) + 1);
+          return mt ? { unit: mt.unit, vs: mt.pts.map((p) => p.v), steps: mt.pts.map((p) => p.step), first: mt.pts[0].label, last: mt.pts[mt.pts.length - 1].label } : null;
         });
         if (trends.some(Boolean)) {
           front.push((ctx) => {
@@ -3624,8 +3779,9 @@
         const stepIndex = (sid) => steps.findIndex((x) => x.id === sid);
         const cardHtml = (j, k) => {
           const done = j.items.filter((i) => String(i.result).trim()).length;
-          const rows = j.items.map((it) => {
+          const rows = j.items.map((it, idx) => {
             const sid = secOf(it), sec = steps.find((x) => x.id === sid) || GENERAL;
+            const rd = j.items.slice(0, idx).filter((x) => secOf(x) === sid).length + 1;
             const has = String(it.result).trim() !== '';
             const num = has && isNumeric(it.result);
             const tIcon = typeIcon(it), sIcon = sectionIcon(sec);
@@ -3638,24 +3794,20 @@
             return `<li class="jstep" data-goto="${escapeHtml(it.id)}" title="Show in log">
                 <div class="jnode">${node}</div>
                 <div class="jwhat">
-                  <div class="jstepname"><span class="jn">${String(stepNo.get(sid) || '').padStart(2, '0')}</span>${iconSvg(sIcon)}<span>${escapeHtml(sec.name)}</span></div>
+                  <div class="jstepname">${rd > 1 ? '<span class="reading-lbl">↳ reading ' + rd + '</span>' : `<span class="jn">${String(stepNo.get(sid) || '').padStart(2, '0')}</span>${iconSvg(sIcon)}<span>${escapeHtml(sec.name)}</span>`}</div>
                   ${tag || (it.tube && it.tube !== j.tube) ? `<div class="jtype">${iconSvg(tIcon)}${escapeHtml([tag, it.tube && it.tube !== j.tube ? `tube ${it.tube}` : ''].filter(Boolean).join(' · '))}</div>` : ''}
                 </div>
                 ${res}
               </li>`;
           }).join('');
           // Trend of the sample's main reading (the unit it was measured in most often)
-          const pts = j.items.filter((i) => isNumeric(i.result) && i.unit).map((i) => ({ i, v: parseFloat(String(i.result).replace(/[^\d.eE+-]/g, '')) })).filter((p) => isFinite(p.v));
-          const count = {};
-          pts.forEach((p) => { count[p.i.unit] = (count[p.i.unit] || 0) + 1; });
-          const unit = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
-          const use = unit ? pts.filter((p) => p.i.unit === unit) : [];
+          const mt = mainTrend(j.items, (i) => stepIndex(secOf(i)) + 1);
           let trend = '';
-          if (use.length >= 2) {
-            const a = use[0].v, b = use[use.length - 1].v;
+          if (mt) {
+            const use = mt.pts, a = use[0].v, b = use[use.length - 1].v;
             const pct = a ? Math.round(((b - a) / Math.abs(a)) * 100) : 0;
             trend = `<div class="jtrend">${sparkSvg(use.map((p) => p.v))}
-              <div class="cap"><span><b>${escapeHtml(use[0].i.result)} → ${escapeHtml(use[use.length - 1].i.result)}</b> ${escapeHtml(unit)}</span><span class="${pct < 0 ? 'down' : 'up'}">${pct > 0 ? '+' : ''}${pct}%</span></div></div>`;
+              <div class="cap"><span><b>${escapeHtml(use[0].label)} → ${escapeHtml(use[use.length - 1].label)}</b> ${escapeHtml(mt.unit)}</span><span class="${pct < 0 ? 'down' : 'up'}">${pct > 0 ? '+' : ''}${pct}%</span></div></div>`;
           }
           return `<section class="panel jcard" style="--sc:var(--t-${J_PALETTE[k % J_PALETTE.length]})">
               <div class="jhead"><span class="jbar"></span><div><div class="jname">${nameHtml(j.name)}</div>
@@ -3673,6 +3825,7 @@
           const rows = rowsData.map((row) => {
             const sec = steps.find((x) => x.id === row.sid) || GENERAL;
             const it = row.item, st = repStats(row.vals);
+            const rd = rowsData.filter((x) => x.sid === row.sid).indexOf(row) + 1;
             const shown = row.vals.slice(0, 5);
             const tubesHtml = `<span class="jtubes">${shown.map((v) => (v ? tubeSvg(String(v.result).trim() !== '') : '<svg viewBox="0 0 17 42" style="opacity:.2"><path d="M3 8.5h11v24a5.5 5.5 0 0 1-11 0z" fill="none" stroke="var(--dim)" stroke-width="1.5"/></svg>')).join('')}${row.vals.length > 5 ? `<span class="more">+${row.vals.length - 5}</span>` : ''}</span>`;
             const t = typeById(it.typeId);
@@ -3692,7 +3845,7 @@
             return `<li class="jstep" data-goto="${escapeHtml(target.id)}" title="Show in log">
                 <div class="jnode">${tubesHtml}</div>
                 <div class="jwhat">
-                  <div class="jstepname"><span class="jn">${String(stepIndex(row.sid) + 1).padStart(2, '0')}</span>${iconSvg(sectionIcon(sec))}<span>${escapeHtml(sec.name)}</span></div>
+                  <div class="jstepname">${rd > 1 ? '<span class="reading-lbl">↳ reading ' + rd + '</span>' : `<span class="jn">${String(stepIndex(row.sid) + 1).padStart(2, '0')}</span>${iconSvg(sectionIcon(sec))}<span>${escapeHtml(sec.name)}</span>`}</div>
                   ${tag ? `<div class="jtype">${iconSvg(typeIcon(it))}${escapeHtml(tag)}</div>` : ''}
                 </div>
                 ${res}
