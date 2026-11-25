@@ -169,6 +169,7 @@
     .btn-ghost:hover { background: var(--panel-2); color: var(--text); border-color: var(--border); }
     .btn-block { width: 100%; height: 48px; font-size: 14px; font-weight: 800; letter-spacing: 0.02em; border-radius: 10px; }
     .btn .k { opacity: .85; }
+    @media (max-width: 479px) { .brand .path { display: none; } .top-actions { gap: 4px; } .top-actions .btn { padding: 0 9px; } }
     @media (max-width: 399px) { .hide-xs { display: none; } .top-actions { gap: 4px; } .top-actions .btn { padding: 0 9px; } }
     .icon-btn { width: 36px; padding: 0 !important; font-size: 15px; }
     @media (max-width: 639px) { .hide-sm { display: none; } }
@@ -301,7 +302,7 @@
     .entry-cont .entry-body { border-left: 2px solid color-mix(in srgb, var(--violet) 40%, transparent); padding-left: 10px; margin-left: 2px; }
     .reading-lbl { font-size: 11.5px; font-weight: 800; color: var(--violet); }
     .reading-lbl .of { color: var(--muted); font-weight: 600; }
-    @media (max-width: 420px) { .wide { display: none; } }
+    @media (max-width: 480px) { .wide { display: none; } }
     .rec-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
     .rec { font-weight: 700; color: var(--text); word-break: break-word; }
     .tube { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 5px; font-size: 11px; font-weight: 700; color: var(--blue); border: 1px dashed color-mix(in srgb, var(--blue) 55%, transparent); background: color-mix(in srgb, var(--blue) 7%, transparent); white-space: nowrap; }
@@ -385,6 +386,9 @@
     .jreps .jr i { font-style: normal; font-size: 10px; font-weight: 800; color: var(--violet); }
     .jreps .jr b { color: var(--text); font-weight: 700; }
     .jreps .jr.none { color: var(--dim); }
+    .jreps .jr.line { flex-basis: 100%; }
+    .jreps .sep { color: var(--dim); }
+    .jreps .avg { margin-left: 4px; font-weight: 800; color: var(--text); }
     .jreps .fill { width: 64px; height: 26px; font-size: 13px; }
     .jflash { animation: jflash 1.6s ease-out; }
     @keyframes jflash { 0%, 30% { background: color-mix(in srgb, var(--cyan) 18%, transparent); } 100% { background: transparent; } }
@@ -479,7 +483,7 @@
     button.rec:hover { text-decoration-color: var(--dim); }
     button.rec i { font-weight: 500; color: var(--dim); }
     .rename-grid { display: grid; grid-template-columns: 90px 1fr; gap: 12px; }
-    @media (max-width: 420px) { .entry-actions .act { padding: 0 3px; font-size: 11px; letter-spacing: -0.01em; } .entry-actions { gap: 0; } .entry-actions .act-rename { display: none; } }
+    @media (max-width: 480px) { .entry-actions .act { padding: 0 3px; font-size: 11px; letter-spacing: -0.01em; } .entry-actions { gap: 0; } .entry-actions .act-rename { display: none; } }
     .check { display: flex; align-items: flex-start; line-height: 1.45; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
     .check input { flex-shrink: 0; margin: 1px 0 0; width: 16px; height: 16px; accent-color: var(--green); }
     .log-tools { display: flex; gap: 4px; }
@@ -495,9 +499,9 @@
     .tap { cursor: pointer; }
     button.tube.tap { font-family: inherit; }
     .result.tap:hover, .note-text.tap:hover, .annot.tap:hover { opacity: .8; }
-    .sec-title { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1 1 160px; }
+    .sec-title { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1 1 250px; }
     .sec-head { flex-wrap: wrap; row-gap: 0; }
-    .sec-title .sec-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
+    .sec-title .sec-name { white-space: normal; overflow-wrap: break-word; word-break: normal; hyphens: auto; line-height: 1.25; }
     .sec-actions { margin-left: auto; }
     .caret-btn { padding: 6px 6px 6px 8px; }
     .count-btn { padding: 6px 4px; }
@@ -3011,35 +3015,76 @@
           return e;
         });
       }
-      // One row per measurement (step + type + unit), with each replicate's record in it.
+      // One row per measurement (step + type + unit). Each replicate keeps its own list of
+      // readings (re-reads of its tube): row.reads[replicate] = [reading 1, reading 2…].
       function measureRows(g, secOf, stepIndex) {
         const rows = [], map = new Map();
         g.members.forEach((m, mi) => {
-          const seen = {};
           m.items.forEach((it) => {
             const sid = secOf(it);
-            const base = `${sid}|${it.typeId}|${it.unit || ''}`;
-            const c = (seen[base] = (seen[base] || 0) + 1);
-            const key = `${base}|${c}`;
+            const key = `${sid}|${it.typeId}|${it.unit || ''}`;
             let row = map.get(key);
-            if (!row) { row = { key, sid, item: it, vals: new Array(g.members.length).fill(null) }; map.set(key, row); rows.push(row); }
-            row.vals[mi] = it;
+            if (!row) { row = { key, sid, item: it, reads: g.members.map(() => []), vals: new Array(g.members.length).fill(null) }; map.set(key, row); rows.push(row); }
+            row.reads[mi].push(it);
+            if (!row.vals[mi]) row.vals[mi] = it;
           });
         });
+        rows.forEach((r) => { r.multi = r.reads.some((x) => x.length > 1); });
         rows.sort((a, b) => stepIndex(a.sid) - stepIndex(b.sid));
         return rows;
       }
-      const numOf = (it) => (it && isNumeric(it.result) ? parseFloat(String(it.result).replace(/[^\d.eE+-]/g, '')) : NaN);
-      function repStats(vals) {
-        const its = vals.filter((v) => v && isFinite(numOf(v)));
-        const nums = its.map(numOf);
+      // The same for one sample: re-reads of one measurement at one step are grouped together.
+      function measuresOf(items, secOf) {
+        const out = [], map = new Map();
+        items.forEach((it) => {
+          const key = `${secOf(it)}|${it.typeId}|${it.unit || ''}`;
+          let m = map.get(key);
+          if (!m) { m = { sid: secOf(it), item: it, reads: [] }; map.set(key, m); out.push(m); }
+          m.reads.push(it);
+        });
+        return out;
+      }
+      // "tubes 1–3" when they run in order, otherwise "tubes 13, 25, 52".
+      function tubeList(tubes) {
+        tubes = tubes.filter(Boolean);
+        if (!tubes.length) return '';
+        if (tubes.length === 1) return `tube ${tubes[0]}`;
+        const m = tubes.map((t) => String(t).match(/^(\D*)(\d+)$/));
+        const run = m.every((x, i) => x && x[1] === m[0][1] && Number(x[2]) === Number(m[0][2]) + i);
+        if (run) return `tubes ${tubes[0]}–${tubes[tubes.length - 1]}`;
+        return `tubes ${tubes.length > 4 ? `${tubes.slice(0, 3).join(', ')}…` : tubes.join(', ')}`;
+      }
+      // Average of one tube's readings (NaN if none are numbers yet).
+      function readsAvg(reads) {
+        const xs = reads.map(numOf).filter(isFinite);
+        return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN;
+      }
+      // A tube's value as shown: the reading itself, or the average of its re-reads.
+      function readsLabel(reads) {
+        const done = reads.filter((v) => String(v.result).trim());
+        if (!done.length) return '';
+        const v = readsAvg(reads);
+        if (done.length === 1 || !isFinite(v)) return done[0].result;
+        return v.toFixed(decOf(done.filter((x) => isFinite(numOf(x)))));
+      }
+      function meanSd(nums, dec) {
         if (!nums.length) return null;
-        const dec = Math.min(3, Math.max(0, ...its.map((v) => ((String(v.result).split('.')[1] || '').replace(/\D.*$/, '')).length)));
         const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
         const sd = nums.length > 1 ? Math.sqrt(nums.reduce((a, b) => a + (b - mean) ** 2, 0) / (nums.length - 1)) : 0;
         return { n: nums.length, mean, sd, fmt: (v) => v.toFixed(dec), sdFmt: sd.toFixed(Math.min(3, dec + 1)) };
       }
-      const decOf = (its) => Math.min(3, Math.max(0, ...its.map((v) => ((String(v.result).split('.')[1] || '').replace(/\D.*$/, '')).length)));
+      // Replicates: average each replicate's own re-reads first, then mean ± SD across replicates.
+      function rowStats(row) {
+        const nums = row.reads.map(readsAvg).filter(isFinite);
+        return meanSd(nums, decOf(row.reads.flat().filter((v) => isFinite(numOf(v)))));
+      }
+      // One sample's re-reads: mean ± SD of its readings.
+      function readStats(reads) {
+        const its = reads.filter((v) => isFinite(numOf(v)));
+        return meanSd(its.map(numOf), decOf(its));
+      }
+      const numOf = (it) => (it && isNumeric(it.result) ? parseFloat(String(it.result).replace(/[^\d.eE+-]/g, '')) : NaN);
+      const decOf = (its) => !its.length ? 0 : Math.min(3, Math.max(0, ...its.map((v) => ((String(v.result).split('.')[1] || '').replace(/\D.*$/, '')).length)));
       // Main reading of one sample across its steps. Several readings of the same thing at
       // one step (re-reads) are averaged so the line doesn't zig-zag.
       function mainTrend(items, stepOf) {
@@ -3058,30 +3103,15 @@
       }
       function groupTrend(rows) {
         const steps = {};
-        rows.forEach((r) => { if (r.item.unit && repStats(r.vals)) (steps[r.item.unit] = steps[r.item.unit] || new Set()).add(r.sid); });
+        rows.forEach((r) => { if (r.item.unit && rowStats(r)) (steps[r.item.unit] = steps[r.item.unit] || new Set()).add(r.sid); });
         const unit = Object.keys(steps).sort((a, b) => steps[b].size - steps[a].size)[0];
         if (!unit) return null;
         const pts = [];
-        rows.filter((r) => r.item.unit === unit && repStats(r.vals)).forEach((r) => {
-          const prev = pts.find((p) => p.r.sid === r.sid);
-          if (prev) prev.rows.push(r); else pts.push({ r, rows: [r] });
+        rows.filter((r) => r.item.unit === unit).forEach((r) => {
+          const st = rowStats(r);
+          if (st && !pts.some((p) => p.r.sid === r.sid)) pts.push({ r, st });
         });
-        pts.forEach((p) => {
-          if (p.rows.length === 1) { p.st = repStats(p.r.vals); return; }
-          // Re-reads at one step: average each replicate's readings, then mean ± SD across replicates.
-          const n = p.r.vals.length;
-          const vals = Array.from({ length: n }, (_, mi) => {
-            const xs = p.rows.map((r) => numOf(r.vals[mi])).filter(isFinite);
-            return xs.length ? { result: String(xs.reduce((a, b) => a + b, 0) / xs.length) } : null;
-          });
-          const st = repStats(vals);
-          const dec = decOf(p.rows.flatMap((r) => r.vals.filter(Boolean)));
-          if (st) { st.fmt = (v) => v.toFixed(dec); st.sdFmt = st.sd.toFixed(Math.min(3, dec + 1)); }
-          p.st = st;
-          p.r = { sid: p.r.sid, item: p.r.item, vals };
-        });
-        const use = pts.filter((p) => p.st);
-        return use.length >= 2 ? { unit, pts: use } : null;
+        return pts.length >= 2 ? { unit, pts } : null;
       }
 
       function drawJourneyPicture(theme) {
@@ -3176,9 +3206,9 @@
               ctx.font = F(800, 12); const tw = ctx.measureText(`×${n}`).width + 12;
               rrect(ctx, px, gridTop + 23, tw, 19, 5); ctx.fillStyle = rgba(C.violet, 0.12); ctx.fill(); ctx.strokeStyle = rgba(C.violet, 0.4); ctx.lineWidth = 1; ctx.stroke();
               ctx.fillStyle = C.violet; ctx.fillText(`×${n}`, px + 6, gridTop + 37);
-              const tubes = e.members.map((m) => m.tube).filter(Boolean);
+              const tubes = tubeList(e.members.map((m) => m.tube));
               ctx.font = F(500, 13); ctx.fillStyle = C.muted;
-              ctx.fillText(fitText(ctx, [`R${e.members[0].rep}–R${e.members[n - 1].rep}`, tubes.length ? `tubes ${tubes[0]}–${tubes[tubes.length - 1]}` : '', `${done}/${items.length} done`].filter(Boolean).join(' · '), w - 44), x + 30, gridTop + 60);
+              ctx.fillText(fitText(ctx, [`R${e.members[0].rep}–R${e.members[n - 1].rep}`, tubes, `${done}/${items.length} done`].filter(Boolean).join(' · '), w - 44), x + 30, gridTop + 60);
             }
           });
         });
@@ -3186,11 +3216,15 @@
 
         // Rows
         const nodes = cols.map(() => []);
+        cols.forEach((c) => { if (c.e.j) c.measures = measuresOf(c.e.j.items, secOf); });
+        const READ_LINE = 17;
+        const singleH = (m) => (m.reads.length > 1 ? BLOCK + 22 : BLOCK);
+        const groupH = (row) => GBLOCK + (row.multi ? row.reads.length * READ_LINE + 4 : 0);
         steps.forEach((sec, r) => {
           const rowTop = y;
           const cellH = cols.map((c) => (c.e.j
-            ? c.e.j.items.filter((i) => secOf(i) === sec.id).length * BLOCK
-            : c.rows.filter((row) => row.sid === sec.id).length * GBLOCK) + 16);
+            ? c.measures.filter((m) => m.sid === sec.id).reduce((a, m) => a + singleH(m), 0)
+            : c.rows.filter((row) => row.sid === sec.id).reduce((a, row) => a + groupH(row), 0)) + 16);
           meas.font = F(800, 18);
           const nameLines = wrapLines(meas, sec.name, LABEL - 80).slice(0, 3);
           const labelH = 28 + nameLines.length * 23 + 18;
@@ -3215,17 +3249,20 @@
           cols.forEach((c, k) => {
             const { x, w, col } = c;
             const lineX = x + 34;
+            let by = rowTop + 8;
             if (c.e.j) {
-              c.e.j.items.filter((i) => secOf(i) === sec.id).forEach((it, m) => {
-                const by = rowTop + 8 + m * BLOCK, ny = by + BLOCK / 2;
+              c.measures.filter((m) => m.sid === sec.id).forEach((m, idx) => {
+                const top = by, ny = top + BLOCK / 2;
                 nodes[k].push(ny);
-                front.push((ctx) => drawSingleCell(ctx, it, lineX, ny, by, x, w, col, m + 1));
+                front.push((ctx) => drawSingleCell(ctx, m, lineX, ny, top, x, w, col, idx + 1));
+                by += singleH(m);
               });
             } else {
-              c.rows.filter((row) => row.sid === sec.id).forEach((row, m) => {
-                const by = rowTop + 8 + m * GBLOCK, ny = by + GBLOCK / 2;
+              c.rows.filter((row) => row.sid === sec.id).forEach((row, idx) => {
+                const top = by, ny = top + GBLOCK / 2;
                 nodes[k].push(ny);
-                front.push((ctx) => drawGroupCell(ctx, row, c, lineX, ny, by, m + 1));
+                front.push((ctx) => drawGroupCell(ctx, row, c, lineX, ny, top, idx + 1));
+                by += groupH(row);
               });
             }
           });
@@ -3259,12 +3296,22 @@
           }
           return yy;
         }
+        function bigValue(ctx, text, unit, tx, yy, tw) {
+          ctx.font = F(800, 23); ctx.fillStyle = C.green;
+          if (theme === 'dark') { ctx.shadowColor = rgba(C.green, 0.4); ctx.shadowBlur = 12; }
+          const v = fitText(ctx, text, tw);
+          ctx.fillText(v, tx, yy); ctx.shadowBlur = 0;
+          const endX = tx + ctx.measureText(v).width;
+          if (unit) { ctx.font = F(500, 13); ctx.fillStyle = C.muted; if (endX + 7 + ctx.measureText(unit).width <= tx + tw) ctx.fillText(unit, endX + 7, yy); }
+        }
         function typeTag(it) {
           const t = typeById(it.typeId);
           return it.typeId && it.typeId !== 'general' ? (t ? t.name : it.typeName) : '';
         }
-        function drawSingleCell(ctx, it, lineX, ny, by, x, w, col, rd) {
-          const has = String(it.result).trim() !== '';
+        // One sample, one measurement at a step: its reading, or the mean of its re-reads.
+        function drawSingleCell(ctx, m, lineX, ny, by, x, w, col, rd) {
+          const it = m.reads[0];
+          const has = m.reads.every((v) => String(v.result).trim() !== '');
           const tx = lineX + 28, tw = w - (tx - x) - 12;
           if (it.tube) {
             ctx.save(); ctx.translate(lineX, ny); ctx.scale(0.78, 0.78); drawTube(ctx, -13, -36, col, has, C); ctx.restore();
@@ -3277,40 +3324,50 @@
             else { ctx.beginPath(); ctx.arc(lineX, ny, 4.5, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); }
           }
           ctx.textAlign = 'left';
-          const yy = resultLines(ctx, it, tx, by + 30, tw);
           const tag = [typeTag(it), rd > 1 ? `reading ${rd}` : ''].filter(Boolean).join(' · ');
-          if (tag) { ctx.font = F(600, 12); ctx.fillStyle = C.dim; ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2); }
+          if (m.reads.length === 1) {
+            const yy = resultLines(ctx, it, tx, by + 30, tw);
+            if (tag) { ctx.font = F(600, 12); ctx.fillStyle = C.dim; ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2); }
+            return;
+          }
+          // Re-reads of the same tube: mean, spread, then each reading in order.
+          const st = readStats(m.reads);
+          let yy = by + 30;
+          if (st) bigValue(ctx, st.fmt(st.mean), it.unit, tx, yy, tw);
+          else { ctx.font = F(700, 15); ctx.fillStyle = C.amber; ctx.fillText('pending', tx, yy); }
+          yy += 19;
+          ctx.font = F(700, 13); ctx.fillStyle = C.text;
+          if (st) ctx.fillText(fitText(ctx, `mean of ${st.n} reads${st.n > 1 ? ` ± ${st.sdFmt}` : ''}`, tw), tx, yy);
+          yy += 17;
+          ctx.font = F(500, 12); ctx.fillStyle = C.dim;
+          ctx.fillText(fitText(ctx, m.reads.map((v) => String(v.result).trim() || '?').join(' · ') + (tag ? `  ${tag}` : ''), tw), tx, yy);
         }
+        // Replicates, one measurement at a step: mean ± SD across replicates, then each
+        // replicate's own value (and, for re-reads, its readings and their average).
         function drawGroupCell(ctx, row, c, lineX, ny, by, rd) {
           const { x, w, col } = c;
           const n = row.vals.length, shown = Math.min(n, 4);
-          // A small rack of tubes, one per replicate (filled once its result is in)
           const gap = 15, startX = lineX - ((shown - 1) * gap) / 2;
           ctx.fillStyle = C.panel;
           rrect(ctx, startX - 12, ny - 26, (shown - 1) * gap + 24, 52, 8); ctx.fill();
-          row.vals.slice(0, shown).forEach((it, m) => {
-            const has = it && String(it.result).trim() !== '';
+          row.reads.slice(0, shown).forEach((reads, m) => {
+            const has = reads.length && reads.every((v) => String(v.result).trim() !== '');
             ctx.save(); ctx.translate(startX + m * gap, ny); ctx.scale(0.55, 0.55);
-            if (it) drawTube(ctx, -13, -36, col, has, C);
+            if (reads.length) drawTube(ctx, -13, -36, col, has, C);
             else { ctx.globalAlpha = 0.25; drawTube(ctx, -13, -36, C.dim, false, C); }
             ctx.restore();
           });
           if (n > shown) { ctx.font = F(800, 11); ctx.fillStyle = C.muted; ctx.textAlign = 'center'; ctx.fillText(`+${n - shown}`, lineX, ny + 34); }
           const tx = startX + (shown - 1) * gap + 22, tw = w - (tx - x) - 12;
           ctx.textAlign = 'left';
-          const st = repStats(row.vals);
+          const st = rowStats(row);
           const it = row.item;
           let yy = by + 28;
           if (st) {
-            ctx.font = F(800, 23); ctx.fillStyle = C.green;
-            if (theme === 'dark') { ctx.shadowColor = rgba(C.green, 0.4); ctx.shadowBlur = 12; }
-            const mean = fitText(ctx, st.fmt(st.mean), tw);
-            ctx.fillText(mean, tx, yy); ctx.shadowBlur = 0;
-            const endX = tx + ctx.measureText(mean).width;
-            if (it.unit) { ctx.font = F(500, 13); ctx.fillStyle = C.muted; if (endX + 7 + ctx.measureText(it.unit).width <= tx + tw) ctx.fillText(it.unit, endX + 7, yy); }
+            bigValue(ctx, st.fmt(st.mean), it.unit, tx, yy, tw);
             yy += 19;
             ctx.font = F(700, 13); ctx.fillStyle = C.text;
-            ctx.fillText(fitText(ctx, st.n > 1 ? `± ${st.sdFmt} SD · n=${st.n}` : `n=1`, tw), tx, yy);
+            ctx.fillText(fitText(ctx, st.n > 1 ? `± ${st.sdFmt} SD · n=${st.n}` : 'n=1', tw), tx, yy);
             yy += 17;
           } else {
             const texts = row.vals.filter((v) => v && String(v.result).trim());
@@ -3324,11 +3381,31 @@
               ctx.fillStyle = C.amber; ctx.fillText(fitText(ctx, label, pw - 16), tx + 8, yy); yy += 24;
             }
           }
-          // Individual replicate values
-          const parts = row.vals.map((v) => (v ? (String(v.result).trim() || '?') : '–'));
-          ctx.font = F(500, 12); ctx.fillStyle = C.dim;
           const tag = [typeTag(it), rd > 1 ? `reading ${rd}` : ''].filter(Boolean).join(' · ');
-          ctx.fillText(fitText(ctx, parts.join(' · ') + (tag ? `  ${tag}` : ''), tw), tx, yy + 1);
+          if (!row.multi) {
+            const parts = row.reads.map((reads) => (reads.length ? (String(reads[0].result).trim() || '?') : '–'));
+            ctx.font = F(500, 12); ctx.fillStyle = C.dim;
+            ctx.fillText(fitText(ctx, parts.join(' · ') + (tag ? `  ${tag}` : ''), tw), tx, yy + 1);
+            return;
+          }
+          // Re-reads: one line per replicate, e.g. "R2  54 · 53.8 · 53.6  → 53.8"
+          ctx.font = F(500, 12); ctx.fillStyle = C.dim;
+          ctx.fillText(fitText(ctx, `${tag ? tag + ' · ' : ''}re-reads averaged per replicate`, tw), tx, yy + 1);
+          yy += READ_LINE + 2;
+          row.reads.forEach((reads, mi) => {
+            const label = `R${c.e.members[mi].rep}`;
+            ctx.font = F(800, 12); ctx.fillStyle = C.violet;
+            ctx.fillText(label, tx, yy);
+            const lx = tx + ctx.measureText(label).width + 8;
+            const avg = readsLabel(reads);
+            const list = reads.length ? reads.map((v) => String(v.result).trim() || '?').join(' · ') : '–';
+            ctx.font = F(500, 12); ctx.fillStyle = C.muted;
+            const arrow = reads.length > 1 && avg ? `  → ${avg}` : '';
+            const listTxt = fitText(ctx, list, tw - (lx - tx) - (arrow ? ctx.measureText(arrow).width + 4 : 0));
+            ctx.fillText(listTxt, lx, yy);
+            if (arrow) { ctx.font = F(800, 12); ctx.fillStyle = C.text; ctx.fillText(arrow, lx + ctx.measureText(listTxt).width, yy); }
+            yy += READ_LINE;
+          });
         }
 
         // Trend row: each sample's main reading across the steps (replicates: mean ± SD)
@@ -3337,7 +3414,7 @@
           if (c.e.members) {
             const g = groupTrend(c.rows);
             return g ? { unit: g.unit, vs: g.pts.map((p) => p.st.mean), sds: g.pts.map((p) => p.st.sd), steps: g.pts.map((p) => stepIndex(p.r.sid) + 1), first: g.pts[0].st.fmt(g.pts[0].st.mean), last: g.pts[g.pts.length - 1].st.fmt(g.pts[g.pts.length - 1].st.mean),
-              lines: c.e.members.map((m, mi) => g.pts.map((p) => numOf(p.r.vals[mi]))) } : null;
+              lines: c.e.members.map((m, mi) => g.pts.map((p) => readsAvg(p.r.reads[mi]))) } : null;
           }
           const mt = mainTrend(c.e.j.items, (i) => stepIndex(secOf(i)) + 1);
           return mt ? { unit: mt.unit, vs: mt.pts.map((p) => p.v), steps: mt.pts.map((p) => p.step), first: mt.pts[0].label, last: mt.pts[mt.pts.length - 1].label } : null;
@@ -3777,27 +3854,46 @@
         const stepNo = new Map(steps.map((x, k) => [x.id, k + 1]));
         const focusId = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fill : null;
         const stepIndex = (sid) => steps.findIndex((x) => x.id === sid);
+        const fillBox = (v, label, ph) => `<input type="text" class="fill" data-fill="${escapeHtml(v.id)}" placeholder="${ph}" inputmode="${v.unit && v.typeId !== 'general' ? 'decimal' : 'text'}" enterkeyhint="next" autocomplete="off" aria-label="${escapeHtml(label)}" />`;
+        const typeName = (it) => { const t = typeById(it.typeId); return it.typeId && it.typeId !== 'general' ? (t ? t.name : it.typeName) : ''; };
+        const stepLine = (sid, sec, rd) => (rd > 1
+          ? `<span class="reading-lbl">↳ reading ${rd}</span>`
+          : `<span class="jn">${String(stepIndex(sid) + 1).padStart(2, '0')}</span>${iconSvg(sectionIcon(sec))}<span>${escapeHtml(sec.name)}</span>`);
         const cardHtml = (j, k) => {
           const done = j.items.filter((i) => String(i.result).trim()).length;
-          const rows = j.items.map((it, idx) => {
-            const sid = secOf(it), sec = steps.find((x) => x.id === sid) || GENERAL;
-            const rd = j.items.slice(0, idx).filter((x) => secOf(x) === sid).length + 1;
-            const has = String(it.result).trim() !== '';
-            const num = has && isNumeric(it.result);
-            const tIcon = typeIcon(it), sIcon = sectionIcon(sec);
-            const t = typeById(it.typeId);
-            const tag = it.typeId && it.typeId !== 'general' ? (t ? t.name : it.typeName) : '';
-            const node = it.tube ? tubeSvg(has) : `<span class="jdot ${has ? 'done' : ''}">${tIcon ? iconSvg(tIcon) : ''}</span>`;
-            const res = has
-              ? `<div class="jres ${num ? '' : 'txt'}">${escapeHtml(it.result)}${it.unit ? `<span class="unit">${escapeHtml(it.unit)}</span>` : ''}</div>`
-              : `<div class="jres result pending"><input type="text" class="fill" data-fill="${escapeHtml(it.id)}" placeholder="result?" inputmode="${it.unit && it.typeId !== 'general' ? 'decimal' : 'text'}" enterkeyhint="next" autocomplete="off" aria-label="Result for ${escapeHtml(j.name)} at ${escapeHtml(sec.name)}" />${it.unit ? `<span class="unit">${escapeHtml(it.unit)}</span>` : ''}</div>`;
-            return `<li class="jstep" data-goto="${escapeHtml(it.id)}" title="Show in log">
+          const measures = measuresOf(j.items, secOf);
+          const rows = measures.map((m) => {
+            const it = m.reads[0];
+            const sid = m.sid, sec = steps.find((x) => x.id === sid) || GENERAL;
+            const rd = measures.filter((x) => x.sid === sid).indexOf(m) + 1;
+            const allDone = m.reads.every((v) => String(v.result).trim() !== '');
+            const tIcon = typeIcon(it);
+            const tag = typeName(it);
+            const node = it.tube ? tubeSvg(allDone) : `<span class="jdot ${allDone ? 'done' : ''}">${tIcon ? iconSvg(tIcon) : ''}</span>`;
+            const unit = it.unit ? `<span class="unit">${escapeHtml(it.unit)}</span>` : '';
+            let res, extra = '';
+            if (m.reads.length === 1) {
+              const has = String(it.result).trim() !== '';
+              res = has
+                ? `<div class="jres ${isNumeric(it.result) ? '' : 'txt'}">${escapeHtml(it.result)}${unit}</div>`
+                : `<div class="jres result pending">${fillBox(it, `Result for ${j.name} at ${sec.name}`, 'result?')}${unit}</div>`;
+            } else {
+              // Re-reads of this tube: the mean, then every reading in order.
+              const st = readStats(m.reads);
+              res = st
+                ? `<div class="jres">${escapeHtml(st.fmt(st.mean))}${unit}<span class="jsd">mean of ${st.n} reads${st.n > 1 ? ` ± ${escapeHtml(st.sdFmt)}` : ''}</span></div>`
+                : '<div class="jres txt" style="color:var(--amber)">pending</div>';
+              extra = `<div class="jreps">${m.reads.map((v, n) => `<span class="jr"><i>#${n + 1}</i>${String(v.result).trim() ? `<b>${escapeHtml(v.result)}</b>` : fillBox(v, `Reading ${n + 1} for ${j.name} at ${sec.name}`, '?')}</span>`).join('')}</div>`;
+            }
+            const target = m.reads.find((v) => !String(v.result).trim()) || it;
+            return `<li class="jstep" data-goto="${escapeHtml(target.id)}" title="Show in log">
                 <div class="jnode">${node}</div>
                 <div class="jwhat">
-                  <div class="jstepname">${rd > 1 ? '<span class="reading-lbl">↳ reading ' + rd + '</span>' : `<span class="jn">${String(stepNo.get(sid) || '').padStart(2, '0')}</span>${iconSvg(sIcon)}<span>${escapeHtml(sec.name)}</span>`}</div>
+                  <div class="jstepname">${stepLine(sid, sec, rd)}</div>
                   ${tag || (it.tube && it.tube !== j.tube) ? `<div class="jtype">${iconSvg(tIcon)}${escapeHtml([tag, it.tube && it.tube !== j.tube ? `tube ${it.tube}` : ''].filter(Boolean).join(' · '))}</div>` : ''}
                 </div>
                 ${res}
+                ${extra}
               </li>`;
           }).join('');
           // Trend of the sample's main reading (the unit it was measured in most often)
@@ -3809,44 +3905,46 @@
             trend = `<div class="jtrend">${sparkSvg(use.map((p) => p.v))}
               <div class="cap"><span><b>${escapeHtml(use[0].label)} → ${escapeHtml(use[use.length - 1].label)}</b> ${escapeHtml(mt.unit)}</span><span class="${pct < 0 ? 'down' : 'up'}">${pct > 0 ? '+' : ''}${pct}%</span></div></div>`;
           }
+          const nSteps = new Set(j.items.map(secOf)).size;
           return `<section class="panel jcard" style="--sc:var(--t-${J_PALETTE[k % J_PALETTE.length]})">
               <div class="jhead"><span class="jbar"></span><div><div class="jname">${nameHtml(j.name)}</div>
-                <div class="jsub">${[j.tube ? `tube ${escapeHtml(j.tube)}` : '', `${j.items.length} ${j.items.length === 1 ? 'step' : 'steps'}`, done < j.items.length ? `<b>${j.items.length - done} to fill in</b>` : 'all done'].filter(Boolean).join(' · ')}</div></div></div>
+                <div class="jsub">${[j.tube ? `tube ${escapeHtml(j.tube)}` : '', `${nSteps} ${nSteps === 1 ? 'step' : 'steps'}`, done < j.items.length ? `<b>${j.items.length - done} to fill in</b>` : 'all done'].filter(Boolean).join(' · ')}</div></div></div>
               <ol class="jsteps">${rows}</ol>
               ${trend}
             </section>`;
         };
-        // Replicates: one card for the sample, mean ± SD at each step and every replicate's value.
+        // Replicates: one card for the sample. At each step: mean ± SD across replicates, then
+        // each replicate's own value. Re-reads are averaged within a replicate first.
         const groupHtml = (g, k) => {
           const rowsData = measureRows(g, secOf, stepIndex);
           const items = g.members.flatMap((m) => m.items);
           const done = items.filter((i) => String(i.result).trim()).length;
-          const tubes = g.members.map((m) => m.tube).filter(Boolean);
           const rows = rowsData.map((row) => {
             const sec = steps.find((x) => x.id === row.sid) || GENERAL;
-            const it = row.item, st = repStats(row.vals);
+            const it = row.item, st = rowStats(row);
             const rd = rowsData.filter((x) => x.sid === row.sid).indexOf(row) + 1;
-            const shown = row.vals.slice(0, 5);
-            const tubesHtml = `<span class="jtubes">${shown.map((v) => (v ? tubeSvg(String(v.result).trim() !== '') : '<svg viewBox="0 0 17 42" style="opacity:.2"><path d="M3 8.5h11v24a5.5 5.5 0 0 1-11 0z" fill="none" stroke="var(--dim)" stroke-width="1.5"/></svg>')).join('')}${row.vals.length > 5 ? `<span class="more">+${row.vals.length - 5}</span>` : ''}</span>`;
-            const t = typeById(it.typeId);
-            const tag = it.typeId && it.typeId !== 'general' ? (t ? t.name : it.typeName) : '';
+            const shown = row.reads.slice(0, 5);
+            const tubesHtml = `<span class="jtubes">${shown.map((reads) => (reads.length ? tubeSvg(reads.every((v) => String(v.result).trim() !== '')) : '<svg viewBox="0 0 17 42" style="opacity:.2"><path d="M3 8.5h11v24a5.5 5.5 0 0 1-11 0z" fill="none" stroke="var(--dim)" stroke-width="1.5"/></svg>')).join('')}${row.reads.length > 5 ? `<span class="more">+${row.reads.length - 5}</span>` : ''}</span>`;
+            const tag = typeName(it);
             const texts = row.vals.filter((v) => v && String(v.result).trim() && !isNumeric(v.result));
             const res = st
               ? `<div class="jres">${escapeHtml(st.fmt(st.mean))}${it.unit ? `<span class="unit">${escapeHtml(it.unit)}</span>` : ''}<span class="jsd">${st.n > 1 ? `± ${escapeHtml(st.sdFmt)} SD · n=${st.n}` : 'n=1'}</span></div>`
               : texts.length ? `<div class="jres txt">${escapeHtml(texts[0].result)}</div>`
               : '<div class="jres txt" style="color:var(--amber)">pending</div>';
-            const reps = row.vals.map((v, mi) => {
+            const reps = row.reads.map((reads, mi) => {
               const label = `<i>R${g.members[mi].rep}</i>`;
-              if (!v) return `<span class="jr none">${label}–</span>`;
-              if (!String(v.result).trim()) return `<span class="jr">${label}<input type="text" class="fill" data-fill="${escapeHtml(v.id)}" placeholder="?" inputmode="${v.unit && v.typeId !== 'general' ? 'decimal' : 'text'}" enterkeyhint="next" autocomplete="off" aria-label="Result for ${escapeHtml(g.base)} R${g.members[mi].rep} at ${escapeHtml(sec.name)}" /></span>`;
-              return `<span class="jr">${label}<b>${escapeHtml(v.result)}</b></span>`;
+              const who = `${g.base} R${g.members[mi].rep} at ${sec.name}`;
+              if (!reads.length) return `<span class="jr none">${label}–</span>`;
+              const vals = reads.map((v, n) => (String(v.result).trim() ? `<b>${escapeHtml(v.result)}</b>` : fillBox(v, `${reads.length > 1 ? `Reading ${n + 1} for ` : 'Result for '}${who}`, '?'))).join('<span class="sep">·</span>');
+              const avg = reads.length > 1 ? readsLabel(reads) : '';
+              return `<span class="jr${row.multi ? ' line' : ''}">${label}${vals}${avg ? `<span class="avg">→ ${escapeHtml(avg)}</span>` : ''}</span>`;
             }).join('');
-            const target = row.vals.find((v) => v && !String(v.result).trim()) || row.vals.find(Boolean);
+            const target = row.reads.flat().find((v) => !String(v.result).trim()) || row.vals.find(Boolean);
             return `<li class="jstep" data-goto="${escapeHtml(target.id)}" title="Show in log">
                 <div class="jnode">${tubesHtml}</div>
                 <div class="jwhat">
-                  <div class="jstepname">${rd > 1 ? '<span class="reading-lbl">↳ reading ' + rd + '</span>' : `<span class="jn">${String(stepIndex(row.sid) + 1).padStart(2, '0')}</span>${iconSvg(sectionIcon(sec))}<span>${escapeHtml(sec.name)}</span>`}</div>
-                  ${tag ? `<div class="jtype">${iconSvg(typeIcon(it))}${escapeHtml(tag)}</div>` : ''}
+                  <div class="jstepname">${stepLine(row.sid, sec, rd)}</div>
+                  ${tag || row.multi ? `<div class="jtype">${iconSvg(typeIcon(it))}${escapeHtml([tag, row.multi ? 're-reads averaged per replicate' : ''].filter(Boolean).join(' · '))}</div>` : ''}
                 </div>
                 ${res}
                 <div class="jreps">${reps}</div>
@@ -3862,9 +3960,10 @@
               <div class="cap"><span>mean <b>${escapeHtml(tr.pts[0].st.fmt(a))} → ${escapeHtml(tr.pts[tr.pts.length - 1].st.fmt(b))}</b> ${escapeHtml(tr.unit)}</span><span class="${pct < 0 ? 'down' : 'up'}">${pct > 0 ? '+' : ''}${pct}%</span></div></div>`;
           }
           const first = g.members[0].rep, last = g.members[g.members.length - 1].rep;
+          const tubes = tubeList(g.members.map((m) => m.tube));
           return `<section class="panel jcard jgroup" style="--sc:var(--t-${J_PALETTE[k % J_PALETTE.length]})">
               <div class="jhead"><span class="jbar"></span><div><div class="jname">${escapeHtml(g.base)}<span class="rep">×${g.members.length}</span></div>
-                <div class="jsub">${[`replicates R${first}–R${last}`, tubes.length ? `tubes ${escapeHtml(tubes[0])}–${escapeHtml(tubes[tubes.length - 1])}` : '', done < items.length ? `<b>${items.length - done} to fill in</b>` : 'all done'].filter(Boolean).join(' · ')}</div></div></div>
+                <div class="jsub">${[`replicates R${first}–R${last}`, tubes ? escapeHtml(tubes) : '', done < items.length ? `<b>${items.length - done} to fill in</b>` : 'all done'].filter(Boolean).join(' · ')}</div></div></div>
               <ol class="jsteps">${rows}</ol>
               ${trend}
             </section>`;

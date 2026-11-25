@@ -2,6 +2,21 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.15.1] - 2026-11-25
+
+### Fixed
+- **Replicates with re-reads were averaged the wrong way in the journey.** Readings were grouped by position (reading 1 of R1, R2 and R3 together, then reading 2…), which mixed different tubes.
+  - Each replicate's re-reads are now averaged first (e.g. R2: 54 · 53.8 · 53.6 → 53.8).
+  - The mean ± SD is then taken across the replicates, so n is the number of replicates.
+  - This applies to the journey view, the picture and the trend lines.
+- The journey now shows **one line per replicate** with its readings and its average, so it's clear which readings belong to which tube.
+- A single sample's re-reads show as one row: *mean of 3 reads ± spread*, with each reading listed.
+- Replicate tubes that don't run in order are listed (*tubes 13, 25, 52*) instead of shown as a misleading range (*13–52*).
+- On phones 400–480 px wide (e.g. larger iPhones):
+  - Record actions now fit on one line.
+  - The **export** button no longer runs off the edge.
+  - Section names no longer break mid-word.
+
 ## [3.15.0] - 2026-11-25
 
 ### Added
