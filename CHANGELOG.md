@@ -2,6 +2,17 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.13.0] - 2026-11-25
+
+### Added
+- **Journey view in the app:** tap **◎ journey** above the log to see one card per sample, followed through every step.
+  - Each step shows its tube (filled once the result is in), step icon, type and result.
+  - Each card ends with a trend line of the sample's main reading and its % change.
+  - Type pending results straight into the journey; Enter moves to the next one.
+  - Tap any step to jump to that record in the log; tap **≡ log** to go back.
+  - The view you were last on is remembered on this device.
+- **Icons in the log:** section headers, type tags and notes now show the same icons as the picture export.
+
 ## [3.12.0] - 2026-11-25
 
 ### Added

@@ -315,6 +315,50 @@
       background: color-mix(in srgb, var(--c) 12%, transparent);
     }
 
+    /* Icons (shared with the picture export) */
+    .ic { width: 1em; height: 1em; flex-shrink: 0; display: inline-block; vertical-align: -0.15em; }
+    .tag .ic { width: 12px; height: 12px; margin-right: 4px; }
+    .sec-ic { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 27px; height: 27px; margin: 0 3px 0 1px; border-radius: 7px; color: var(--cyan); background: color-mix(in srgb, var(--cyan) 10%, transparent); border: 1px solid color-mix(in srgb, var(--cyan) 30%, transparent); }
+    .sec-ic .ic { width: 17px; height: 17px; }
+    .entry-note .note-label { display: flex; align-items: center; gap: 5px; }
+    .entry-note .note-label .ic { width: 15px; height: 15px; }
+
+    /* Journey view: one card per sample, followed through its steps */
+    .journey { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); margin-top: 10px; }
+    .jcard { --sc: var(--t-cyan); padding: 12px 14px 14px; }
+    .jhead { display: flex; align-items: stretch; gap: 10px; margin-bottom: 6px; }
+    .jbar { width: 5px; border-radius: 3px; background: var(--sc); flex-shrink: 0; }
+    .jname { font-weight: 800; font-size: 15px; overflow-wrap: anywhere; }
+    .jsub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .jsub b { color: var(--amber); font-weight: 700; }
+    .jsteps { list-style: none; margin: 0; padding: 0; position: relative; }
+    .jsteps::before { content: ''; position: absolute; left: 14px; top: 22px; bottom: 22px; width: 3px; border-radius: 2px; background: color-mix(in srgb, var(--sc) 55%, transparent); }
+    .jstep { position: relative; display: grid; grid-template-columns: 31px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 4px 6px 0; border-radius: 8px; cursor: pointer; }
+    .jstep:hover { background: var(--hover); }
+    .jnode { position: relative; z-index: 1; display: flex; justify-content: center; }
+    .jnode svg { width: 17px; height: 42px; }
+    .jnode .jdot { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--sc); background: var(--panel); border: 2.5px solid var(--sc); }
+    .jnode .jdot .ic { width: 13px; height: 13px; }
+    .jnode .jdot.done { background: color-mix(in srgb, var(--sc) 18%, var(--panel)); }
+    .jwhat { min-width: 0; }
+    .jstepname { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 800; color: var(--text); overflow-wrap: anywhere; }
+    .jstepname .ic { width: 14px; height: 14px; color: var(--cyan); }
+    .jstepname .jn { color: var(--cyan); font-size: 10.5px; }
+    .jtype { font-size: 10.5px; color: var(--dim); margin-top: 1px; display: flex; align-items: center; gap: 4px; }
+    .jtype .ic { width: 11px; height: 11px; }
+    .jres { text-align: right; font-weight: 800; font-size: 17px; color: var(--green); text-shadow: var(--num-glow); white-space: nowrap; }
+    .jres.txt { font-size: 12.5px; color: var(--text); font-weight: 700; white-space: normal; max-width: 150px; overflow-wrap: anywhere; text-shadow: none; }
+    .jres .unit { font-size: 11px; color: var(--muted); font-weight: 500; margin-left: 3px; text-shadow: none; }
+    .jres.result.pending { max-width: none; }
+    .jtrend { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg-2); }
+    .jtrend svg { display: block; width: 100%; height: 58px; overflow: visible; }
+    .jtrend .cap { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+    .jtrend .cap b { color: var(--text); }
+    .jtrend .up { color: var(--green); font-weight: 800; }
+    .jtrend .down { color: var(--amber); font-weight: 800; }
+    .jflash { animation: jflash 1.6s ease-out; }
+    @keyframes jflash { 0%, 30% { background: color-mix(in srgb, var(--cyan) 18%, transparent); } 100% { background: transparent; } }
+
     .editor { margin: 10px 0 4px; padding: 12px; display: grid; gap: 12px; background: var(--bg-2); border: 1px solid var(--border-2); border-radius: 10px; }
     .editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
@@ -563,8 +607,9 @@
     </div>
 
     <div class="log-head">
-      <h2><span class="c-green">##</span> log</h2>
+      <h2><span class="c-green">##</span> <span id="logTitle">log</span></h2>
       <div class="log-tools">
+        <button id="btnJourney" type="button" class="btn btn-ghost" aria-pressed="false" title="Follow each sample through its steps"><span class="c-cyan">◎</span> journey</button>
         <button id="btnReorder" type="button" class="btn btn-ghost" aria-pressed="false"><span class="c-violet">⇅</span> reorder</button>
         <button id="btnAddSection" type="button" class="btn btn-ghost"><span class="c-green">+</span> section</button>
       </div>
@@ -580,6 +625,7 @@
       <p class="tiny">upload a labtrack .csv or .txt export to pick up where you left off.</p>
     </div>
     <div id="sectionsContainer" class="stack-lg" style="margin-top:10px"></div>
+    <div id="journeyContainer" class="journey hidden"></div>
   </main>
 
   <footer class="no-print">
@@ -936,6 +982,8 @@
       let state = loadState();
       let entryKind = 'result';
       let reorderMode = false;
+      let journeyMode = false;
+      try { journeyMode = localStorage.getItem('labtrack_view') === 'journey'; } catch (e) {}
       let renamingSection = null;
       function finishSectionRename(save) {
         if (!renamingSection) return;
@@ -1012,7 +1060,7 @@
       function chip(item) {
         if (!item.typeId || item.typeId === 'general') return '';
         const t = typeById(item.typeId);
-        return `<span class="tag" style="--c:${hexOf(t)}">${escapeHtml(t ? t.name : item.typeName)}</span>`;
+        return `<span class="tag" style="--c:${hexOf(t)}">${iconSvg(typeIcon(item))}${escapeHtml(t ? t.name : item.typeName)}</span>`;
       }
 
       /* ---------- Entry form ---------- */
@@ -1190,7 +1238,7 @@
               <div class="entry-main">
                 ${time}
                 <div class="entry-body">
-                  <div class="note-label"># note</div>
+                  <div class="note-label">${iconSvg('note')}note</div>
                   <p class="note-text tap" data-act="edit" data-focus="text" data-id="${id}" title="Edit note">${escapeHtml(item.text)}</p>
                 </div>
               </div>
@@ -1250,6 +1298,7 @@
       }
 
       function renderLog() {
+        if (journeyMode) renderJourney();
         renderStats();
         $('entryName').placeholder = suggestName();
         $('emptyState').classList.toggle('hidden', state.quickItems.length > 0);
@@ -1283,6 +1332,7 @@
                   <button type="button" ${sec.isVirtual ? 'disabled' : `data-act="collapse" data-sec="${sid}"`} class="sec-toggle caret-btn" aria-expanded="${!sec.collapsed}" aria-label="${sec.collapsed ? 'Expand' : 'Collapse'} section">
                     <span class="caret ${sec.isVirtual ? 'invisible' : ''}">${sec.collapsed ? '▸' : '▾'}</span>
                   </button>
+                  ${sectionIcon(sec) ? `<span class="sec-ic" aria-hidden="true">${iconSvg(sectionIcon(sec))}</span>` : ''}
                   ${sec.isVirtual ? `<span class="sec-name">${escapeHtml(sec.name)}</span>` : `<button type="button" data-act="rename-sec-inline" data-sec="${sid}" class="sec-name sec-name-btn" title="Rename section">${escapeHtml(sec.name)}</button>`}
                   <button type="button" ${sec.isVirtual ? 'disabled' : `data-act="collapse" data-sec="${sid}"`} class="sec-toggle count-btn" tabindex="-1" aria-hidden="true"><span class="count">${items.length}</span></button>
                 </div>`}
@@ -2376,6 +2426,12 @@
         const id = t && !BUILTIN_TYPES.includes(t) ? null : item.typeId;
         return TYPE_ICON_IDS[id] || ruleIcon(TYPE_ICON_RULES, t ? t.name : item.typeName);
       }
+      // The same icons as inline SVG for the app itself.
+      function iconSvg(key) {
+        const ic = key && PIC_ICONS[key];
+        if (!ic) return '';
+        return `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ic.s ? `<path d="${ic.s}"/>` : ''}${ic.f ? `<path d="${ic.f}" fill="currentColor" stroke="none"/>` : ''}</svg>`;
+      }
       function drawIcon(ctx, key, x, y, size, color) {
         const ic = PIC_ICONS[key];
         if (!ic) return false;
@@ -3222,6 +3278,124 @@
       });
       applyTheme(document.documentElement.dataset.theme);
 
+      /* ---------- Journey view in the app ---------- */
+      const J_PALETTE = ['cyan', 'violet', 'orange', 'pink', 'teal', 'sky', 'lime', 'rose', 'indigo', 'amber', 'emerald', 'fuchsia'];
+      function tubeSvg(filled) {
+        return `<svg viewBox="0 0 17 42" aria-hidden="true">
+          <rect x="0.8" y="1" width="15.4" height="6" rx="2" fill="var(--sc)"/>
+          <path d="M3 8.5h11v24a5.5 5.5 0 0 1-11 0z" fill="var(--panel-2)"/>
+          ${filled ? '<path d="M3 19h11v13.5a5.5 5.5 0 0 1-11 0z" fill="var(--sc)" opacity=".55"/><path d="M3 19h11" stroke="var(--sc)" stroke-width="1.4"/>' : ''}
+          <path d="M3 8.5h11v24a5.5 5.5 0 0 1-11 0z" fill="none" stroke="${filled ? 'var(--sc)' : 'var(--border-2)'}" stroke-width="1.5"/>
+          <path d="M5.5 11v13" stroke="#fff" stroke-opacity=".35" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>`;
+      }
+      function sparkSvg(vs) {
+        const lo = Math.min(...vs), hi = Math.max(...vs), rng = hi - lo || 1, w = 100, h = 40;
+        const pts = vs.map((v, n) => [(n / (vs.length - 1)) * w, 4 + (1 - (v - lo) / rng) * (h - 8)]);
+        const line = pts.map((p, n) => `${n ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join('');
+        return `<svg viewBox="-4 0 108 ${h}" preserveAspectRatio="none" aria-hidden="true">
+          <path d="${line}L${w} ${h}L0 ${h}Z" fill="var(--sc)" opacity=".13"/>
+          <path d="${line}" fill="none" stroke="var(--sc)" stroke-width="2.2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+          ${pts.map((p) => `<path d="M${p[0].toFixed(1)} ${p[1].toFixed(1)}h0" stroke="var(--sc)" stroke-width="8" stroke-linecap="round" vector-effect="non-scaling-stroke"/><path d="M${p[0].toFixed(1)} ${p[1].toFixed(1)}h0" stroke="var(--panel)" stroke-width="4" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`).join('')}
+        </svg>`;
+      }
+      function renderJourney() {
+        const { journeys, steps, secOf } = sampleJourneys();
+        const box = $('journeyContainer');
+        if (!journeys.length) {
+          box.innerHTML = '<div class="panel sec-empty" style="padding:16px">// no records yet. add some, or follow a sample up with <b>↳ follow up</b>, and each sample\'s journey shows here.</div>';
+          return;
+        }
+        const stepNo = new Map(steps.map((x, k) => [x.id, k + 1]));
+        const focusId = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.fill : null;
+        box.innerHTML = journeys.map((j, k) => {
+          const done = j.items.filter((i) => String(i.result).trim()).length;
+          const rows = j.items.map((it) => {
+            const sid = secOf(it), sec = steps.find((x) => x.id === sid) || GENERAL;
+            const has = String(it.result).trim() !== '';
+            const num = has && isNumeric(it.result);
+            const tIcon = typeIcon(it), sIcon = sectionIcon(sec);
+            const t = typeById(it.typeId);
+            const tag = it.typeId && it.typeId !== 'general' ? (t ? t.name : it.typeName) : '';
+            const node = it.tube ? tubeSvg(has) : `<span class="jdot ${has ? 'done' : ''}">${tIcon ? iconSvg(tIcon) : ''}</span>`;
+            const res = has
+              ? `<div class="jres ${num ? '' : 'txt'}">${escapeHtml(it.result)}${it.unit ? `<span class="unit">${escapeHtml(it.unit)}</span>` : ''}</div>`
+              : `<div class="jres result pending"><input type="text" class="fill" data-fill="${escapeHtml(it.id)}" placeholder="result?" inputmode="${it.unit && it.typeId !== 'general' ? 'decimal' : 'text'}" enterkeyhint="next" autocomplete="off" aria-label="Result for ${escapeHtml(j.name)} at ${escapeHtml(sec.name)}" />${it.unit ? `<span class="unit">${escapeHtml(it.unit)}</span>` : ''}</div>`;
+            return `<li class="jstep" data-goto="${escapeHtml(it.id)}" title="Show in log">
+                <div class="jnode">${node}</div>
+                <div class="jwhat">
+                  <div class="jstepname"><span class="jn">${String(stepNo.get(sid) || '').padStart(2, '0')}</span>${iconSvg(sIcon)}<span>${escapeHtml(sec.name)}</span></div>
+                  ${tag || (it.tube && it.tube !== j.tube) ? `<div class="jtype">${iconSvg(tIcon)}${escapeHtml([tag, it.tube && it.tube !== j.tube ? `tube ${it.tube}` : ''].filter(Boolean).join(' · '))}</div>` : ''}
+                </div>
+                ${res}
+              </li>`;
+          }).join('');
+          // Trend of the sample's main reading (the unit it was measured in most often)
+          const pts = j.items.filter((i) => isNumeric(i.result) && i.unit).map((i) => ({ i, v: parseFloat(String(i.result).replace(/[^\d.eE+-]/g, '')) })).filter((p) => isFinite(p.v));
+          const count = {};
+          pts.forEach((p) => { count[p.i.unit] = (count[p.i.unit] || 0) + 1; });
+          const unit = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
+          const use = unit ? pts.filter((p) => p.i.unit === unit) : [];
+          let trend = '';
+          if (use.length >= 2) {
+            const a = use[0].v, b = use[use.length - 1].v;
+            const pct = a ? Math.round(((b - a) / Math.abs(a)) * 100) : 0;
+            trend = `<div class="jtrend">${sparkSvg(use.map((p) => p.v))}
+              <div class="cap"><span><b>${escapeHtml(use[0].i.result)} → ${escapeHtml(use[use.length - 1].i.result)}</b> ${escapeHtml(unit)}</span><span class="${pct < 0 ? 'down' : 'up'}">${pct > 0 ? '+' : ''}${pct}%</span></div></div>`;
+          }
+          return `<section class="panel jcard" style="--sc:var(--t-${J_PALETTE[k % J_PALETTE.length]})">
+              <div class="jhead"><span class="jbar"></span><div><div class="jname">${escapeHtml(j.name)}</div>
+                <div class="jsub">${[j.tube ? `tube ${escapeHtml(j.tube)}` : '', `${j.items.length} ${j.items.length === 1 ? 'step' : 'steps'}`, done < j.items.length ? `<b>${j.items.length - done} to fill in</b>` : 'all done'].filter(Boolean).join(' · ')}</div></div></div>
+              <ol class="jsteps">${rows}</ol>
+              ${trend}
+            </section>`;
+        }).join('');
+        if (focusId) { const again = box.querySelector(`[data-fill="${CSS.escape(focusId)}"]`); if (again) again.focus({ preventScroll: true }); }
+      }
+      function setJourneyMode(on) {
+        journeyMode = on;
+        try { localStorage.setItem('labtrack_view', on ? 'journey' : 'log'); } catch (e) {}
+        if (on && reorderMode) $('btnReorder').click();
+        $('btnJourney').setAttribute('aria-pressed', on);
+        $('btnJourney').innerHTML = on ? '<span class="c-green">≡</span> log' : '<span class="c-cyan">◎</span> journey';
+        $('btnJourney').title = on ? 'Back to the log' : 'Follow each sample through its steps';
+        $('logTitle').textContent = on ? 'sample journey' : 'log';
+        $('btnReorder').classList.toggle('hidden', on);
+        $('btnAddSection').classList.toggle('hidden', on);
+        $('sectionsContainer').classList.toggle('hidden', on);
+        $('journeyContainer').classList.toggle('hidden', !on);
+        if (on) renderJourney();
+      }
+      $('btnJourney').addEventListener('click', () => setJourneyMode(!journeyMode));
+      $('journeyContainer').addEventListener('change', (e) => { if (e.target.matches('[data-fill]')) { saveFill(e.target); renderLog(); } });
+      $('journeyContainer').addEventListener('keydown', (e) => {
+        if (!e.target.matches('[data-fill]') || e.key !== 'Enter') return;
+        e.preventDefault();
+        const id = e.target.dataset.fill;
+        saveFill(e.target);
+        renderLog();
+        const boxes = [...$('journeyContainer').querySelectorAll('[data-fill]')];
+        const next = boxes.find((b) => b.dataset.fill !== id);
+        if (next) { next.focus(); next.scrollIntoView({ block: 'center', behavior: 'smooth' }); } else document.activeElement.blur();
+      });
+      $('journeyContainer').addEventListener('click', (e) => {
+        if (e.target.closest('input')) return;
+        const row = e.target.closest('[data-goto]');
+        if (!row) return;
+        const id = row.dataset.goto;
+        const item = state.quickItems.find((i) => i.id === id);
+        if (!item) return;
+        const sec = state.quickSections.find((x) => x.id === item.sectionId);
+        if (sec && sec.collapsed) sec.collapsed = false;
+        setJourneyMode(false);
+        renderLog();
+        const el = document.querySelector(`[data-entry="${CSS.escape(id)}"]`);
+        if (el) {
+          requestAnimationFrame(() => el.scrollIntoView({ block: 'center' }));
+          el.classList.add('jflash'); setTimeout(() => el.classList.remove('jflash'), 1700);
+        }
+      });
+
       function renderAll() {
         renderMeta();
         renderKind();
@@ -3257,6 +3431,7 @@
       });
 
       renderAll();
+      if (journeyMode) setJourneyMode(true);
       saveState();
       if (awayTooLong()) showWelcomeIfNeeded();
       markActive();
