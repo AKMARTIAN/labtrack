@@ -11,7 +11,7 @@ Example pictures exported from LabTrack and screenshots of the app at phone size
 | `03_picture_journey_light.png`, `03_picture_journey_dark.png` | **Sample journey** layout. Three samples followed from extraction through Illumina library prep to pooling, with a trend chart of the main reading. One sample stops at QC. |
 | `04_picture_journey_12_samples.jpg` | A 12-sample journey. Larger runs make a wide picture that suits slides. |
 | `05_picture_journey_replicates_light.png`, `05_picture_journey_replicates_dark.png` | **Replicates.** Elephant blood ×3 and Rhino blood ×3 show mean ± SD at each step with every replicate's value, next to a negative control. |
-| `06_picture_journey_readings_light.png`, `06_picture_journey_readings_dark.png` | **Several readings per step.** Qubit and TapeStation after a bead clean-up, a Qubit re-read and a Bioanalyzer reading. |
+| `06_picture_journey_readings_light.png`, `06_picture_journey_readings_dark.png` | **Several readings per step.** After the bead clean-up each replicate's tube is read twice on the Qubit. The re-reads are averaged within each replicate (R1 29.8 · 30.2 → 30.0), then mean ± SD is taken across replicates. A TapeStation reading and a single sample's re-reads (*mean of 2 reads*) are also shown, plus a Bioanalyzer reading. |
 
 ## The app (phone size)
 
