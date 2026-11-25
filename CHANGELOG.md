@@ -2,6 +2,11 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.18.1] - 2026-11-25
+
+### Changed
+- The new logo now appears at the start of the app header. On phones under 480 px wide the logo's own `>` stands in for the `$` and the cursor block, so everything still fits on one line.
+
 ## [3.18.0] - 2026-11-25
 
 ### Changed

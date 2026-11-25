@@ -145,6 +145,9 @@
     .brand { display: flex; align-items: baseline; gap: 6px; font-weight: 700; font-size: 15px; white-space: nowrap; }
     .brand .path { color: var(--cyan); font-weight: 500; }
     .brand .name { color: var(--text); letter-spacing: -0.01em; }
+    .brand-logo { width: 28px; height: 28px; align-self: center; flex-shrink: 0; border-radius: 7px; margin-right: 2px; }
+    :root[data-theme="dark"] .brand-logo { box-shadow: 0 0 0 1px var(--border-2); }
+    @media (max-width: 479px) { .brand-dollar, .brand .cursor { display: none; } .brand { gap: 5px; } .brand-logo { width: 26px; height: 26px; margin-right: 0; } }
     .cursor { display: inline-block; color: var(--green); animation: blink 1.1s steps(1) infinite; margin-left: 1px; }
     @keyframes blink { 50% { opacity: 0; } }
     .top-actions { display: flex; align-items: center; gap: 6px; }
@@ -561,7 +564,7 @@
   <header class="topbar no-print">
     <div class="wrap topbar-in">
       <div class="brand" aria-label="LabTrack">
-        <span class="path hide-xs">~/lab</span><span class="c-green">$</span><span class="name">labtrack</span><span class="cursor" aria-hidden="true">▊</span>
+        <img class="brand-logo" src="assets/icon.svg" width="28" height="28" alt="" aria-hidden="true" /><span class="path hide-xs">~/lab</span><span class="c-green brand-dollar">$</span><span class="name">labtrack</span><span class="cursor" aria-hidden="true">▊</span>
       </div>
       <div class="top-actions">
         <a href="help.html" id="btnHelp" class="btn icon-btn help-btn" title="How to use LabTrack" aria-label="Help: how to use LabTrack">?</a>
@@ -695,7 +698,7 @@
   </main>
 
   <footer class="no-print">
-    <span class="c-dim">//</span> saved on this device only · <a href="help.html">help</a> · <a href="https://github.com/AKMARTIAN/labtrack" target="_blank" rel="noopener">about labtrack</a> · <a id="appVersion" class="ver" href="https://github.com/AKMARTIAN/labtrack/releases/tag/v3.18.0" target="_blank" rel="noopener" title="What's new in this version">v3.18.0</a><!-- keep in step with CACHE in sw.js -->
+    <span class="c-dim">//</span> saved on this device only · <a href="help.html">help</a> · <a href="https://github.com/AKMARTIAN/labtrack" target="_blank" rel="noopener">about labtrack</a> · <a id="appVersion" class="ver" href="https://github.com/AKMARTIAN/labtrack/releases/tag/v3.18.1" target="_blank" rel="noopener" title="What's new in this version">v3.18.1</a><!-- keep in step with CACHE in sw.js -->
   </footer>
 
   <!-- Record types -->
