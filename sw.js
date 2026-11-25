@@ -1,7 +1,7 @@
 // LabTrack service worker — caches the app so it keeps working offline.
 // Bump CACHE when releasing a new version so users get the update.
-const CACHE = 'labtrack-v3.17.4';
-const CORE = ['./', './index.html', './help.html', './manifest.webmanifest', './assets/icon.svg', './assets/icon-192.png'];
+const CACHE = 'labtrack-v3.18.0';
+const CORE = ['./', './index.html', './help.html', './manifest.webmanifest', './assets/icon.svg', './assets/icon-192.png', './assets/apple-touch-icon.png', './assets/favicon-32.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));

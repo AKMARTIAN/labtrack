@@ -2,6 +2,11 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.18.0] - 2026-11-25
+
+### Changed
+- **New logo:** a terminal `>` prompt beside a test tube with green liquid, in LabTrack's dark terminal colours. It replaces the old blue flask everywhere: browser tab, home-screen icon (iPhone and Android, including Android's round and squircle masks), the help page and the GitHub README.
+
 ## [3.17.4] - 2026-11-25
 
 ### Changed

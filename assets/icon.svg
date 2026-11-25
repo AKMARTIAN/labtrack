@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#0284c7"/>
-  <g transform="translate(64 64) scale(16)" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M9 3h6m-5 0v5.5L5.2 17.4A2 2 0 007 20h10a2 2 0 001.8-2.6L14 8.5V3"/>
-    <path d="M7.5 14h9" stroke-width="1.2" opacity=".75"/>
-  </g>
+  <title>LabTrack</title>
+  <rect width="512" height="512" rx="112" fill="#0b0f14"/>
+  <path d="M140 170 L230 256 L140 342" fill="none" stroke="#7ee787" stroke-width="46" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="268" y="112" width="128" height="38" rx="15" fill="#56d4dd"/>
+  <path d="M288 158 h88 v196 a44 44 0 0 1 -88 0 z" fill="none" stroke="#56d4dd" stroke-width="18" stroke-linejoin="round"/>
+  <path d="M301 262 h62 v92 a31 31 0 0 1 -62 0 z" fill="#7ee787"/>
 </svg>
