@@ -2,6 +2,17 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.11.0] - 2026-11-25
+
+### Added
+- **Icons in the picture export:**
+  - **Sections:** each preset step gets its own icon: Sample receipt (box), Extraction (DNA), Quantification (gauge), PCR (thermocycler), Clean-up (magnet and beads), Library prep (fragments with adapters), Normalisation (balance), Pooling (funnel), QC (magnifier with tick) and Sequencing (read peaks), plus Gel (gel lanes).
+  - **Matching by name:** your own section names are matched too, e.g. *Bead clean-up*, *AMPure*, *qPCR*, *TapeStation*, *DNA extraction*.
+  - **Measurement types:** each type gets an icon in its tag: Qubit (reader), NanoDrop (droplet), Fragment size (ruler), Molarity (flask), Volume (measuring cylinder), Temperature (thermometer), pH (test strip), Cell count (cells). Custom types are matched by name.
+  - **Notes:** notes show a pen writing in a notebook.
+  - **Records without a tube:** these show their measurement icon instead of a plain dot.
+  - **General and unrecognised names:** left without an icon.
+
 ## [3.10.0] - 2026-11-25
 
 ### Added
