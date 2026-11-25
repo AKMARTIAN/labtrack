@@ -2,6 +2,14 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.17.2] - 2026-11-25
+
+### Changed
+- **Picture export (journey):**
+  - A sample column with a TapeStation result is wider, and its details (concentration, peak, average size, warnings) wrap instead of being cut off.
+  - Rows no longer repeat "reading 2 / 3" labels, since each row already sits beside its step name.
+- **README:** new showcase of TapeStation import with an example journey.
+
 ## [3.17.1] - 2026-11-25
 
 ### Changed

@@ -3543,7 +3543,8 @@
         const entries = journeyEntries(journeys);
         const stepIndex = (sid) => steps.findIndex((x) => x.id === sid);
         const PAD = 44, LABEL = 250, COLW = 214, HEADH = 84, BLOCK = 70, GBLOCK = 84, TRENDH = 168;
-        const weight = (e) => (e.j ? 1 : 1.45);
+        const hasInst = (e) => (e.j ? e.j.items : e.members.flatMap((m) => m.items).concat(e.shared || [])).some((i) => i.inst && i.inst.trace);
+        const weight = (e) => (e.j ? 1 : 1.45) * (hasInst(e) ? 1.5 : 1);
         const totalW = entries.reduce((a, e) => a + weight(e), 0) || 1;
         const W = Math.max(1080, Math.round(PAD * 2 + LABEL + totalW * COLW));
         const gridX = PAD, gridW = W - PAD * 2;
@@ -3641,10 +3642,20 @@
         cols.forEach((c) => { if (c.e.j) c.measures = measuresOf(c.e.j.items, secOf); });
         const READ_LINE = 17;
         const TRACE_H = 104;
-        const instLines = (inst) => (avgNote(inst) ? 1 : 0) + (instWarn(inst) ? 1 : 0);
-        const instH = (it) => (it.inst && it.inst.trace ? TRACE_H + 20 + instLines(it.inst) * 16 : 0);
-        const singleH = (m) => (m.reads.length > 1 ? BLOCK + 22 : BLOCK) + instH(m.reads[0]);
-        const groupH = (row) => (row.shared ? BLOCK + instH(row.item) : GBLOCK + (row.multi ? row.reads.length * READ_LINE + 4 : 0));
+        // TapeStation summary, average-size note and warnings, wrapped to the column.
+        function footLines(inst, tw) {
+          meas.font = F(500, 12);
+          const out = [];
+          wrapLines(meas, instSummary(inst), tw).forEach((l) => out.push([l, C.muted]));
+          const an = avgNote(inst);
+          if (an) wrapLines(meas, an, tw).forEach((l) => out.push([l, C.dim]));
+          const wn = instWarn(inst);
+          if (wn) wrapLines(meas, `⚠ ${wn}`, tw).forEach((l) => out.push([l, C.amber]));
+          return out;
+        }
+        const instH = (it, tw) => (it.inst && it.inst.trace ? TRACE_H + 20 + (footLines(it.inst, tw).length - 1) * 15 : 0);
+        const singleH = (m, w) => (m.reads.length > 1 ? BLOCK + 22 : BLOCK) + instH(m.reads[0], w - 74);
+        const groupH = (row, w) => (row.shared ? BLOCK + instH(row.item, w - 80) : GBLOCK + (row.multi ? row.reads.length * READ_LINE + 4 : 0));
         // A small electropherogram, drawn like the one in the app.
         function drawTrace(ctx, inst, x, y, w, h, col) {
           const t = inst.trace;
@@ -3675,18 +3686,16 @@
           ctx.textAlign = 'left';
         }
         function drawInstFooter(ctx, inst, tx, yy, tw) {
-          ctx.font = F(500, 12); ctx.fillStyle = C.muted;
-          ctx.fillText(fitText(ctx, instSummary(inst), tw), tx, yy);
-          const an = avgNote(inst);
-          if (an) { yy += 15; ctx.fillStyle = C.dim; ctx.fillText(fitText(ctx, an, tw), tx, yy); }
-          const wn = instWarn(inst);
-          if (wn) { yy += 15; ctx.fillStyle = C.amber; ctx.fillText(fitText(ctx, `⚠ ${wn}`, tw), tx, yy); }
+          const lines = footLines(inst, tw);
+          ctx.font = F(500, 12); ctx.textAlign = 'left';
+          lines.forEach(([l, col], k) => { ctx.fillStyle = col; ctx.fillText(l, tx, yy + k * 15); });
+          return lines.length;
         }
         steps.forEach((sec, r) => {
           const rowTop = y;
           const cellH = cols.map((c) => (c.e.j
-            ? c.measures.filter((m) => m.sid === sec.id).reduce((a, m) => a + singleH(m), 0)
-            : c.rows.filter((row) => row.sid === sec.id).reduce((a, row) => a + groupH(row), 0)) + 16);
+            ? c.measures.filter((m) => m.sid === sec.id).reduce((a, m) => a + singleH(m, c.w), 0)
+            : c.rows.filter((row) => row.sid === sec.id).reduce((a, row) => a + groupH(row, c.w), 0)) + 16);
           meas.font = F(800, 18);
           const nameLines = wrapLines(meas, sec.name, LABEL - 80).slice(0, 3);
           const labelH = 28 + nameLines.length * 23 + 18;
@@ -3717,14 +3726,14 @@
                 const top = by, ny = top + BLOCK / 2;
                 nodes[k].push(ny);
                 front.push((ctx) => drawSingleCell(ctx, m, lineX, ny, top, x, w, col, idx + 1));
-                by += singleH(m);
+                by += singleH(m, w);
               });
             } else {
               c.rows.filter((row) => row.sid === sec.id).forEach((row, idx) => {
                 const top = by, ny = top + GBLOCK / 2;
                 nodes[k].push(ny);
                 front.push((ctx) => drawGroupCell(ctx, row, c, lineX, ny, top, idx + 1));
-                by += groupH(row);
+                by += groupH(row, w);
               });
             }
           });
@@ -3786,13 +3795,13 @@
             else { ctx.beginPath(); ctx.arc(lineX, ny, 4.5, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); }
           }
           ctx.textAlign = 'left';
-          const tag = [typeTag(it), rd > 1 ? `reading ${rd}` : ''].filter(Boolean).join(' · ');
+          const tag = typeTag(it);
           if (m.reads.length === 1) {
             const yy = resultLines(ctx, it, tx, by + 30, tw);
             if (tag) { ctx.font = F(600, 12); ctx.fillStyle = C.dim; ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2); }
             if (it.inst && it.inst.trace) {
-              drawInstFooter(ctx, it.inst, tx, yy + 18, tw);
-              drawTrace(ctx, it.inst, tx, yy + 18 + instLines(it.inst) * 15 + 12, tw, TRACE_H - 14, col);
+              const nl = drawInstFooter(ctx, it.inst, tx, yy + 18, tw);
+              drawTrace(ctx, it.inst, tx, yy + 18 + (nl - 1) * 15 + 12, tw, TRACE_H - 14, col);
             }
             return;
           }
@@ -3826,8 +3835,8 @@
             const tag = [typeTag(it), 'whole sample'].filter(Boolean).join(' · ');
             ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2);
             if (it.inst && it.inst.trace) {
-              drawInstFooter(ctx, it.inst, tx, yy + 18, tw);
-              drawTrace(ctx, it.inst, tx, yy + 18 + instLines(it.inst) * 15 + 12, tw, TRACE_H - 14, col);
+              const nl = drawInstFooter(ctx, it.inst, tx, yy + 18, tw);
+              drawTrace(ctx, it.inst, tx, yy + 18 + (nl - 1) * 15 + 12, tw, TRACE_H - 14, col);
             }
             return;
           }
@@ -3866,7 +3875,7 @@
               ctx.fillStyle = C.amber; ctx.fillText(fitText(ctx, label, pw - 16), tx + 8, yy); yy += 24;
             }
           }
-          const tag = [typeTag(it), rd > 1 ? `reading ${rd}` : ''].filter(Boolean).join(' · ');
+          const tag = typeTag(it);
           if (!row.multi) {
             const parts = row.reads.map((reads) => (reads.length ? (String(reads[0].result).trim() || '?') : '–'));
             ctx.font = F(500, 12); ctx.fillStyle = C.dim;
