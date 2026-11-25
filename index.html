@@ -351,6 +351,17 @@
     .opt .badge { width: 42px; height: 42px; flex-shrink: 0; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
     .opt strong { display: block; font-size: 13px; }
     .opt small { display: block; font-size: 11.5px; color: var(--muted); }
+    .b-amber { color: var(--amber); background: color-mix(in srgb, var(--amber) 10%, transparent); border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent); }
+    .png-sheet { max-width: 620px; }
+    .png-frame { border: 1px solid var(--border); border-radius: 10px; background: var(--bg-2); overflow: auto; max-height: 56vh; -webkit-overflow-scrolling: touch; }
+    .png-frame img { display: block; width: 100%; height: auto; }
+    .png-frame .png-wait { padding: 40px 12px; text-align: center; font-size: 12px; color: var(--muted); }
+    .png-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .png-theme { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+    .png-theme button { padding: 7px 12px; font-size: 12px; color: var(--muted); }
+    .png-theme button.on { background: var(--panel-2); color: var(--text); font-weight: 700; }
+    #btnSharePng.hidden + #btnDownloadPng { grid-column: 1 / -1; }
+    .png-tip { font-size: 11.5px; color: var(--muted); margin: 0; }
     .b-green { color: var(--green); background: color-mix(in srgb, var(--green) 10%, transparent); border: 1px solid color-mix(in srgb, var(--green) 30%, transparent); }
     .b-cyan { color: var(--cyan); background: color-mix(in srgb, var(--cyan) 10%, transparent); border: 1px solid color-mix(in srgb, var(--cyan) 30%, transparent); }
     .b-violet { color: var(--violet); background: color-mix(in srgb, var(--violet) 10%, transparent); border: 1px solid color-mix(in srgb, var(--violet) 30%, transparent); }
@@ -683,11 +694,36 @@
       </div>
       <div class="sheet-body">
         <button id="btnDownloadCsv" type="button" class="opt"><span class="badge b-green">.csv</span><span><strong>download spreadsheet</strong><small>one row per entry · excel / sheets</small></span></button>
+        <button id="btnOpenPng" type="button" class="opt"><span class="badge b-amber">.png</span><span><strong>picture of the run</strong><small>steps, tubes and results as an image · share or present</small></span></button>
         <button id="btnDownloadTxt" type="button" class="opt"><span class="badge b-cyan">.txt</span><span><strong>download text report</strong><small>readable lab notebook summary</small></span></button>
         <button id="btnCopyTxt" type="button" class="opt"><span class="badge b-violet">cp</span><span><strong>copy summary</strong><small>paste into an eln, doc or email</small></span></button>
         <div class="row-2" style="margin-top:6px">
           <button id="btnDownloadJson" type="button" class="btn">save backup</button>
           <label class="btn">import backup<input id="inputImportJson" type="file" accept=".json,.csv,.txt,application/json,text/csv,text/plain" class="hidden" /></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Picture export -->
+  <div id="pngModal" class="modal hidden no-print">
+    <div class="sheet png-sheet">
+      <div class="sheet-head">
+        <div><h3>picture of the run</h3><p>each section is a step, top to bottom. records with a tube number get a tube; an empty tube is still waiting for its result.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div class="png-frame" id="pngFrame"><div class="png-wait">drawing…</div></div>
+        <div class="png-bar">
+          <div class="png-theme" role="group" aria-label="Picture colours">
+            <button type="button" data-png-theme="light">light</button>
+            <button type="button" data-png-theme="dark">dark</button>
+          </div>
+          <p class="png-tip">on a phone you can also press and hold the picture to save it.</p>
+        </div>
+        <div class="row-2">
+          <button id="btnSharePng" type="button" class="btn hidden">share…</button>
+          <button id="btnDownloadPng" type="button" class="btn btn-primary">download .png</button>
         </div>
       </div>
     </div>
@@ -923,6 +959,39 @@
         return s ? s.name : 'General';
       };
       const isOrphan = (i) => !i.sectionId || !state.quickSections.some((s) => s.id === i.sectionId);
+      // Records without a section live in "General". It sits in the run's order like any
+      // other section (state.generalPos), so the log reads top to bottom in the order things
+      // were started. Older runs without a saved position get one from when General began.
+      const GENERAL = { id: '__general__', name: 'General', collapsed: false, isVirtual: true };
+      function defaultGeneralPos() {
+        const firstOrphan = state.quickItems.findIndex(isOrphan);
+        if (firstOrphan < 0) return state.quickSections.length;
+        const i = state.quickSections.findIndex((sec) => {
+          const first = state.quickItems.findIndex((x) => x.sectionId === sec.id);
+          return first < 0 || first > firstOrphan;
+        });
+        return i < 0 ? state.quickSections.length : i;
+      }
+      function displaySections() {
+        const list = [...state.quickSections];
+        if (state.quickItems.some(isOrphan)) {
+          const pos = Number.isInteger(state.generalPos) ? state.generalPos : defaultGeneralPos();
+          list.splice(Math.max(0, Math.min(pos, list.length)), 0, GENERAL);
+        }
+        return list;
+      }
+      function commitDisplay(list) {
+        const g = list.findIndex((x) => x.isVirtual);
+        if (g >= 0) state.generalPos = g;
+        state.quickSections = list.filter((x) => !x.isVirtual);
+      }
+      // Put a new section right after another one (by id), or at the end.
+      function insertSectionAfter(sec, afterId) {
+        const list = displaySections();
+        const i = afterId ? list.findIndex((x) => x.id === afterId) : -1;
+        list.splice(i < 0 ? list.length : i + 1, 0, sec);
+        commitDisplay(list);
+      }
 
       function sectionOptions(selectedId) {
         return '<option value="">General</option>' + state.quickSections.map((s) =>
@@ -1182,8 +1251,7 @@
         $('emptyState').classList.toggle('hidden', state.quickItems.length > 0);
         renderSectionSelects();
 
-        const sections = [...state.quickSections];
-        if (state.quickItems.some(isOrphan)) sections.push({ id: '__general__', name: 'General', collapsed: false, isVirtual: true });
+        const sections = displaySections();
 
         $('sectionsContainer').innerHTML = sections.map((sec) => {
           const items = sec.isVirtual ? state.quickItems.filter(isOrphan) : state.quickItems.filter((i) => i.sectionId === sec.id);
@@ -1207,7 +1275,7 @@
                   <button type="button" data-act="sec-save" data-sec="${sid}" class="btn btn-primary">save</button>
                 </div>` : `
                 <div class="sec-title">
-                  ${sec.isVirtual ? '' : `<span class="grip sec-grip" data-drag-sec="${sid}" title="Drag to move section" aria-hidden="true">⠿</span>`}
+                  <span class="grip sec-grip" data-drag-sec="${sid}" title="Drag to move section" aria-hidden="true">⠿</span>
                   <button type="button" ${sec.isVirtual ? 'disabled' : `data-act="collapse" data-sec="${sid}"`} class="sec-toggle caret-btn" aria-expanded="${!sec.collapsed}" aria-label="${sec.collapsed ? 'Expand' : 'Collapse'} section">
                     <span class="caret ${sec.isVirtual ? 'invisible' : ''}">${sec.collapsed ? '▸' : '▾'}</span>
                   </button>
@@ -1217,8 +1285,8 @@
                 ${renamingSection === sec.id ? '' : reorderMode ? `
                 <div class="sec-actions">
                   ${items.filter((i) => i.kind === 'result').length > 1 ? `<span class="sort-lbl">sort</span><button type="button" data-act="sort-name" data-sec="${sid}" class="act">a→z</button><button type="button" data-act="sort-tube" data-sec="${sid}" class="act">tube</button>` : ''}
-                  ${sec.isVirtual ? '' : `<button type="button" class="mv" data-act="sec-up" data-sec="${sid}" aria-label="Move section up" ${state.quickSections.indexOf(sec) > 0 ? '' : 'disabled'}>↑</button>
-                  <button type="button" class="mv" data-act="sec-down" data-sec="${sid}" aria-label="Move section down" ${state.quickSections.indexOf(sec) < state.quickSections.length - 1 ? '' : 'disabled'}>↓</button>`}
+                  <button type="button" class="mv" data-act="sec-up" data-sec="${sid}" aria-label="Move section up" ${sections.indexOf(sec) > 0 ? '' : 'disabled'}>↑</button>
+                  <button type="button" class="mv" data-act="sec-down" data-sec="${sid}" aria-label="Move section down" ${sections.indexOf(sec) < sections.length - 1 ? '' : 'disabled'}>↓</button>
                 </div>` : sec.isVirtual ? (items.length ? `<div class="sec-actions"><button type="button" data-act="next-step" data-sec="__general__" class="act violet">↳ next step</button></div>` : '') : `
                 <div class="sec-actions">
                   ${items.some((i) => i.kind === 'result') ? `<button type="button" data-act="next-step" data-sec="${sid}" class="act violet">↳ next step</button>` : ''}
@@ -1239,8 +1307,7 @@
       }
       function orderedItems() {
         const out = [];
-        state.quickSections.forEach((sec) => out.push(...state.quickItems.filter((i) => i.sectionId === sec.id)));
-        out.push(...state.quickItems.filter(isOrphan));
+        displaySections().forEach((sec) => out.push(...state.quickItems.filter((i) => (sec.isVirtual ? isOrphan(i) : i.sectionId === sec.id))));
         return out;
       }
       // Section the record was carried on from (for exports), or ''.
@@ -1279,8 +1346,7 @@
         lines.push(`Exported: ${fmtDate(todayISO())} ${nowTime()}`);
         lines.push(`Entries:  ${state.quickItems.length}`);
         lines.push('');
-        const groups = state.quickSections.map((s) => ({ name: s.name, items: state.quickItems.filter((i) => i.sectionId === s.id) }));
-        groups.push({ name: 'General', items: state.quickItems.filter(isOrphan) });
+        const groups = displaySections().map((s) => ({ name: s.name, items: state.quickItems.filter((i) => (s.isVirtual ? isOrphan(i) : i.sectionId === s.id)) }));
         groups.filter((g) => g.items.length).forEach((g) => {
           lines.push(`--- ${g.name} ---`);
           g.items.forEach((i) => {
@@ -1401,7 +1467,7 @@
         let sec = state.quickSections.find((x) => x.name.toLowerCase() === name.toLowerCase());
         if (!sec) {
           sec = { id: newId('qsec_'), name, collapsed: false };
-          state.quickSections.push(sec);
+          insertSectionAfter(sec, null);
           saveState();
           showToast(`New section "${name}"`);
         }
@@ -1621,7 +1687,7 @@
             panel.classList.add('drop-into');
           }
         } else {
-          if (panel === drag.src || panel.dataset.section === '__general__') {
+          if (panel === drag.src) {
             if (drag.key !== 'self') { clearDropMarks(); drag.key = 'self'; drag.target = null; }
             return;
           }
@@ -1680,11 +1746,13 @@
             showToast(`Moved to ${sectionName(it.sectionId)}`);
           }
         } else {
-          const sec = state.quickSections.find((x) => x.id === d.id);
+          const list = displaySections();
+          const sec = list.find((x) => x.id === d.id);
           if (!sec) return;
-          state.quickSections.splice(state.quickSections.indexOf(sec), 1);
-          const ref = state.quickSections.findIndex((x) => x.id === t.refId);
-          state.quickSections.splice(ref + (t.after ? 1 : 0), 0, sec);
+          list.splice(list.indexOf(sec), 1);
+          const ref = list.findIndex((x) => x.id === t.refId);
+          list.splice(ref + (t.after ? 1 : 0), 0, sec);
+          commitDisplay(list);
         }
         openEditor = null;
         saveState();
@@ -1768,7 +1836,11 @@
         } else if (act === 'remove-sec' && sec) {
           const n = state.quickItems.filter((i) => i.sectionId === sec.id).length;
           if (!confirm(`Remove section "${sec.name}"?${n ? ` Its ${n} ${n === 1 ? 'entry' : 'entries'} will move to General.` : ''}`)) return;
-          state.quickSections = state.quickSections.filter((s) => s.id !== sec.id);
+          const list = displaySections();
+          const at = list.indexOf(sec);
+          list.splice(at, 1);
+          if (n && !list.includes(GENERAL)) list.splice(at, 0, GENERAL);
+          commitDisplay(list);
           state.quickItems.forEach((i) => { if (i.sectionId === sec.id) i.sectionId = ''; });
           showToast('Section removed');
         } else if ((act === 'item-up' || act === 'item-down') && item) {
@@ -1782,10 +1854,12 @@
           again && again.closest('.entry').scrollIntoView({ block: 'nearest' });
           return;
         } else if (act === 'sec-up' || act === 'sec-down') {
-          const i = state.quickSections.findIndex((x) => x.id === btn.dataset.sec);
+          const list = displaySections();
+          const i = list.findIndex((x) => x.id === btn.dataset.sec);
           const j = i + (act === 'sec-up' ? -1 : 1);
-          if (i < 0 || j < 0 || j >= state.quickSections.length) return;
-          [state.quickSections[i], state.quickSections[j]] = [state.quickSections[j], state.quickSections[i]];
+          if (i < 0 || j < 0 || j >= list.length) return;
+          [list[i], list[j]] = [list[j], list[i]];
+          commitDisplay(list);
           saveState(); renderLog();
           const again = document.querySelector(`[data-act="${act}"][data-sec="${CSS.escape(btn.dataset.sec)}"]`);
           if (again) { again.closest('section').scrollIntoView({ block: 'nearest' }); if (!again.disabled) again.focus({ preventScroll: true }); }
@@ -1952,7 +2026,7 @@
         if (state.quickSections.some((x) => x.name.toLowerCase() === name.toLowerCase())) { showToast('A section with that name already exists'); $('dupName').focus(); return; }
         const keepResults = $('dupResults').checked, keepNotes = $('dupNotes').checked;
         const copy = { id: newId('qsec_'), name, collapsed: false };
-        state.quickSections.splice(state.quickSections.indexOf(src) + 1, 0, copy);
+        insertSectionAfter(copy, src.id);
         const items = state.quickItems
           .filter((i) => i.sectionId === src.id && (i.kind === 'result' || keepNotes))
           .map((i) => Object.assign({}, i, {
@@ -2012,7 +2086,11 @@
           if (!name) { $('followNewName').focus(); showToast('Name the new section'); return; }
           const existing = state.quickSections.find((x) => x.name.toLowerCase() === name.toLowerCase());
           sectionId = existing ? existing.id : newId('qsec_');
-          if (!existing) state.quickSections.push({ id: sectionId, name, collapsed: false });
+          if (!existing) {
+            // The next step goes right below the step it follows on from.
+            const srcSec = followItems[0] && (isOrphan(followItems[0]) ? GENERAL.id : followItems[0].sectionId);
+            insertSectionAfter({ id: sectionId, name, collapsed: false }, srcSec);
+          }
           rememberSectionName(name);
         }
         const sec = state.quickSections.find((x) => x.id === sectionId);
@@ -2065,7 +2143,7 @@
           showToast('Section renamed');
         } else {
           const id = newId('qsec_');
-          state.quickSections.push({ id, name, collapsed: false });
+          insertSectionAfter({ id, name, collapsed: false }, null);
           rememberSectionName(name);
           currentSection = id;
           showToast(`Added section "${name}"`);
@@ -2125,6 +2203,402 @@
         closeModals();
         showToast('Downloaded spreadsheet');
       });
+      /* ---------- Picture export (PNG) ---------- */
+      // Draws the run on a canvas in the app's own terminal look: one card per section,
+      // joined top to bottom as steps, with a drawn tube for every record that has a tube number.
+      let pngTheme = null, pngBlob = null, pngUrl = null;
+      function themeColors(theme) {
+        const root = document.documentElement;
+        const before = root.dataset.theme;
+        root.dataset.theme = theme;
+        const cs = getComputedStyle(root);
+        const v = (n) => cs.getPropertyValue(n).trim();
+        const c = {};
+        ['--bg', '--bg-2', '--panel', '--panel-2', '--border', '--border-2', '--text', '--muted', '--dim', '--green', '--cyan',
+          '--blue', '--amber', '--violet', '--red', '--note-text'].forEach((n) => { c[n.slice(2)] = v(n); });
+        c.type = {};
+        TYPE_COLOR_NAMES.forEach((n) => { c.type[n] = v('--t-' + n); });
+        root.dataset.theme = before;
+        return c;
+      }
+      function rgba(color, a) {
+        const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color || '');
+        if (!m) return color;
+        let h = m[1];
+        if (h.length === 3) h = h.split('').map((x) => x + x).join('');
+        const n = parseInt(h, 16);
+        return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
+      }
+      function rrect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+      }
+      function wrapLines(ctx, text, maxW) {
+        const out = [];
+        String(text || '').split(/\n/).forEach((para) => {
+          let line = '';
+          para.split(/(\s+)/).forEach((word) => {
+            if (!word) return;
+            const test = line + word;
+            if (ctx.measureText(test).width <= maxW || !line.trim()) {
+              line = test;
+              // Break a single word that is wider than the line.
+              while (ctx.measureText(line).width > maxW && line.length > 1) {
+                let cut = line.length - 1;
+                while (cut > 1 && ctx.measureText(line.slice(0, cut)).width > maxW) cut--;
+                out.push(line.slice(0, cut));
+                line = line.slice(cut);
+              }
+            } else {
+              out.push(line.trimEnd());
+              line = word.trim() ? word : '';
+            }
+          });
+          out.push(line.trimEnd());
+        });
+        return out.length ? out : [''];
+      }
+      function fitText(ctx, text, maxW) {
+        text = String(text || '');
+        if (ctx.measureText(text).width <= maxW) return text;
+        while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1);
+        return text + '…';
+      }
+      function drawTube(ctx, x, y, color, filled, C) {
+        // x, y: top-left of a 26 × 70 tube (cap included).
+        const w = 26, capH = 12, bodyH = 56;
+        ctx.save();
+        rrect(ctx, x - 3, y, w + 6, capH, 4);
+        ctx.fillStyle = color; ctx.fill();
+        ctx.fillStyle = rgba('#ffffff', 0.25);
+        ctx.fillRect(x + 1, y + 3, w - 2, 2);
+        const by = y + capH + 1;
+        const body = () => {
+          ctx.beginPath();
+          ctx.moveTo(x, by);
+          ctx.lineTo(x + w, by);
+          ctx.lineTo(x + w, by + bodyH - w / 2);
+          ctx.arc(x + w / 2, by + bodyH - w / 2, w / 2, 0, Math.PI);
+          ctx.closePath();
+        };
+        body();
+        ctx.fillStyle = C['panel-2']; ctx.fill();
+        if (filled) {
+          ctx.save();
+          body(); ctx.clip();
+          const ly = by + bodyH * 0.38;
+          ctx.fillStyle = rgba(color, 0.55);
+          ctx.fillRect(x - 1, ly, w + 2, bodyH);
+          ctx.fillStyle = rgba(color, 0.9);
+          ctx.fillRect(x - 1, ly, w + 2, 2.5);
+          ctx.restore();
+        }
+        body();
+        ctx.lineWidth = 2; ctx.strokeStyle = filled ? rgba(color, 0.9) : C['border-2'];
+        ctx.stroke();
+        ctx.fillStyle = rgba('#ffffff', 0.35);
+        ctx.fillRect(x + 5, by + 6, 2.5, bodyH - 24);
+        ctx.restore();
+      }
+
+      function drawRunPicture(theme) {
+        const C = themeColors(theme);
+        const W = 1080, PAD = 44, RAIL = 40;
+        const cardX = PAD + RAIL + 14, cardW = W - cardX - PAD;
+        const F = (wt, px) => `${wt} ${px}px 'JetBrains Mono', ui-monospace, Menlo, monospace`;
+        const sections = displaySections()
+          .map((sec) => ({ sec, items: state.quickItems.filter((i) => (sec.isVirtual ? isOrphan(i) : i.sectionId === sec.id)) }))
+          .filter((x) => x.items.length);
+        const anyTube = state.quickItems.some((i) => i.kind === 'result' && i.tube);
+        const tubeCol = anyTube ? 64 : 22;
+        const typeColor = (i) => {
+          const t = typeById(i.typeId);
+          return C.type[(t && t.color) || 'slate'] || C.type.slate;
+        };
+
+        // Lay everything out as draw calls, then size the canvas to fit.
+        const ops = [];
+        const meas = document.createElement('canvas').getContext('2d');
+        let y = 0;
+        const text = (str, x, yy, font, color, align = 'left') => ops.push((ctx) => { ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(str, x, yy); });
+
+        // Window bar
+        ops.push((ctx) => {
+          rrect(ctx, PAD, PAD, W - PAD * 2, 44, 12);
+          ctx.fillStyle = C.panel; ctx.fill();
+          ctx.strokeStyle = C.border; ctx.lineWidth = 1.5; ctx.stroke();
+          [C.red, C.amber, C.green].forEach((col, k) => { ctx.beginPath(); ctx.arc(PAD + 24 + k * 20, PAD + 22, 6, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); });
+        });
+        meas.font = F(500, 15);
+        text(fitText(meas, `labtrack ~ ${state.meta.id || 'untitled run'}`, W - PAD * 2 - 220), W / 2, PAD + 27, F(500, 15), C.muted, 'center');
+        y = PAD + 44 + 40;
+
+        // Title
+        meas.font = F(800, 34);
+        const titleLines = wrapLines(meas, state.meta.id || 'untitled run', W - PAD * 2 - 34);
+        titleLines.forEach((ln, k) => {
+          if (k === 0) text('>', PAD, y + 32, F(800, 34), C.green);
+          text(ln, PAD + 34, y + 32, F(800, 34), C.text);
+          y += 44;
+        });
+        const recs = state.quickItems.filter((i) => i.kind === 'result');
+        const pending = recs.filter((i) => !String(i.result).trim()).length;
+        const dates = state.quickItems.map((i) => i.date).filter(Boolean).sort();
+        const span = dates.length ? (dates[0] === dates[dates.length - 1] ? dates[0] : `${dates[0]} → ${dates[dates.length - 1]}`) : todayISO();
+        const metaBits = [span, state.meta.operator ? `by ${state.meta.operator}` : '',
+          `${recs.length} ${recs.length === 1 ? 'record' : 'records'}`,
+          `${sections.length} ${sections.length === 1 ? 'step' : 'steps'}`,
+          pending ? `${pending} to fill in` : ''].filter(Boolean).join('  ·  ');
+        meas.font = F(500, 17);
+        wrapLines(meas, metaBits, W - PAD * 2 - 34).forEach((ln) => { text(ln, PAD + 34, y + 14, F(500, 17), C.muted); y += 26; });
+        y += 26;
+
+        const railX = PAD + RAIL / 2;
+        const nodes = [];
+        if (!sections.length) {
+          text('// nothing logged yet', PAD + 34, y + 20, F(500, 18), C.dim);
+          y += 60;
+        }
+        sections.forEach(({ sec, items }, si) => {
+          const top = y;
+          const headH = 58;
+          const rowOps = [];
+          let ry = top + headH;
+          items.forEach((it, k) => {
+            const rowTop = ry;
+            const tx = cardX + 20 + tubeCol;
+            const right = cardX + cardW - 20;
+            if (it.kind === 'note') {
+              meas.font = F(500, 17);
+              const lines = wrapLines(meas, it.text, right - tx);
+              const h = 30 + lines.length * 25 + 14;
+              rowOps.push((ctx) => {
+                ctx.fillStyle = C.amber; ctx.fillRect(cardX + 20 + tubeCol / 2 - 2, rowTop + 16, 4, h - 30);
+                ctx.font = F(800, 14); ctx.fillStyle = C.amber; ctx.textAlign = 'left'; ctx.fillText('# note', tx, rowTop + 30);
+                ctx.font = F(500, 17); ctx.fillStyle = C['note-text'];
+                lines.forEach((ln, j) => ctx.fillText(ln, tx, rowTop + 56 + j * 25));
+                ctx.font = F(500, 13); ctx.fillStyle = C.dim; ctx.textAlign = 'right'; ctx.fillText(it.timestamp || '', right, rowTop + 30);
+              });
+              ry += h;
+            } else {
+              const col = typeColor(it);
+              const has = String(it.result).trim() !== '';
+              const num = has && isNumeric(it.result);
+              // Result block on the right
+              const resFont = num ? F(800, 28) : F(700, 19);
+              meas.font = resFont;
+              const resMax = Math.min(380, (right - tx) * 0.48);
+              const resLines = has ? wrapLines(meas, it.result, resMax - (it.unit ? 0 : 0)) : [];
+              meas.font = F(500, 15);
+              const unitW = it.unit ? meas.measureText(it.unit).width + 8 : 0;
+              meas.font = resFont;
+              const resW = has ? Math.max(...resLines.map((l) => meas.measureText(l).width)) + (resLines.length === 1 ? unitW : 0) : 120;
+              const leftMax = right - tx - Math.min(resMax + unitW, resW) - 20;
+              // Left block: name + tag, details, from, notes
+              meas.font = F(700, 20);
+              const nameLines = wrapLines(meas, it.name || '(unnamed)', leftMax);
+              const t = typeById(it.typeId);
+              const tag = it.typeId && it.typeId !== 'general' ? (t ? t.name : it.typeName) : '';
+              const sub = [];
+              const details = [it.volume ? `vol ${it.volume}` : '', it.dilution ? `from ${it.dilution}` : ''].filter(Boolean).join('  ·  ');
+              meas.font = F(500, 15);
+              if (details) wrapLines(meas, details, leftMax).forEach((l) => sub.push({ l, c: C.muted }));
+              const src = it.fromId && state.quickItems.find((x) => x.id === it.fromId);
+              if (src) {
+                const where = src.sectionId === it.sectionId || (isOrphan(src) && isOrphan(it)) ? 'earlier' : sectionName(isOrphan(src) ? '' : src.sectionId);
+                wrapLines(meas, `↳ from ${where}${src.result ? `: ${resultText(src)}` : ''}`, leftMax).forEach((l) => sub.push({ l, c: C.violet }));
+              }
+              if (it.notes) wrapLines(meas, it.notes, leftMax - 30).forEach((l, j) => sub.push({ l: (j ? '   ' : '└─ ') + l, c: C['note-text'] }));
+              let leftH = nameLines.length * 27 + (tag ? 30 : 0) + sub.length * 22;
+              const rightH = has ? resLines.length * (num ? 34 : 26) + 22 : 48;
+              const h = Math.max(leftH, rightH, it.tube ? 96 : 0) + 30;
+              rowOps.push((ctx) => {
+                if (k) {
+                  ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.setLineDash([4, 5]);
+                  ctx.beginPath(); ctx.moveTo(cardX + 20, rowTop + 0.5); ctx.lineTo(right, rowTop + 0.5); ctx.stroke(); ctx.setLineDash([]);
+                }
+                const cx = cardX + 20 + tubeCol / 2;
+                if (it.tube) {
+                  drawTube(ctx, cx - 13, rowTop + 14, col, has, C);
+                  ctx.font = F(800, 15); ctx.fillStyle = C.text; ctx.textAlign = 'center';
+                  ctx.fillText(fitText(ctx, it.tube, tubeCol + 6), cx, rowTop + 105);
+                } else {
+                  ctx.beginPath(); ctx.arc(cx, rowTop + 25, 5, 0, Math.PI * 2);
+                  ctx.fillStyle = has ? col : C.panel; ctx.fill();
+                  ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.stroke();
+                }
+                let ly = rowTop + 32;
+                ctx.textAlign = 'left';
+                ctx.font = F(700, 20); ctx.fillStyle = it.name ? C.text : C.dim;
+                nameLines.forEach((ln) => { ctx.fillText(ln, tx, ly); ly += 27; });
+                if (tag) {
+                  ctx.font = F(700, 13);
+                  const tw = Math.min(ctx.measureText(tag).width + 18, leftMax);
+                  rrect(ctx, tx, ly - 15, tw, 24, 6);
+                  ctx.fillStyle = rgba(col, 0.12); ctx.fill();
+                  ctx.strokeStyle = rgba(col, 0.4); ctx.lineWidth = 1; ctx.stroke();
+                  ctx.fillStyle = col; ctx.fillText(fitText(ctx, tag, tw - 18), tx + 9, ly + 2);
+                  ly += 30;
+                }
+                ctx.font = F(500, 15);
+                sub.forEach(({ l, c }) => { ctx.fillStyle = c; ctx.fillText(l, tx, ly + 2); ly += 22; });
+                // Result
+                ctx.textAlign = 'right';
+                if (has) {
+                  let yy = rowTop + (num ? 38 : 33);
+                  resLines.forEach((ln, j) => {
+                    const last = j === resLines.length - 1;
+                    let xr = right;
+                    if (last && it.unit) {
+                      ctx.font = F(500, 15); ctx.fillStyle = C.muted; ctx.fillText(it.unit, xr, yy);
+                      xr -= ctx.measureText(it.unit).width + 8;
+                    }
+                    ctx.font = resFont; ctx.fillStyle = num ? C.green : C.text;
+                    if (num && theme === 'dark') { ctx.shadowColor = rgba(C.green, 0.45); ctx.shadowBlur = 14; }
+                    ctx.fillText(ln, xr, yy);
+                    ctx.shadowBlur = 0;
+                    yy += num ? 34 : 26;
+                  });
+                  ctx.font = F(500, 13); ctx.fillStyle = C.dim;
+                  ctx.fillText([it.date && it.date !== span ? it.date.slice(5) : '', it.timestamp].filter(Boolean).join(' '), right, yy - (num ? 10 : 4));
+                } else {
+                  ctx.font = F(700, 15);
+                  const label = it.unit ? `pending · ${it.unit}` : 'pending';
+                  const pw = ctx.measureText(label).width + 22;
+                  rrect(ctx, right - pw, rowTop + 14, pw, 28, 7);
+                  ctx.setLineDash([4, 4]); ctx.strokeStyle = C.amber; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+                  ctx.fillStyle = C.amber; ctx.fillText(label, right - 11, rowTop + 33);
+                }
+              });
+              ry += h;
+            }
+          });
+          const cardH = ry - top + 6;
+          const step = String(si + 1).padStart(2, '0');
+          nodes.push(top + 29);
+          ops.push((ctx) => {
+            rrect(ctx, cardX, top, cardW, cardH, 14);
+            ctx.fillStyle = C.panel; ctx.fill();
+            ctx.strokeStyle = C.border; ctx.lineWidth = 1.5; ctx.stroke();
+            // Header strip
+            ctx.save(); rrect(ctx, cardX, top, cardW, headH, 14); ctx.clip();
+            ctx.fillStyle = C['bg-2']; ctx.fillRect(cardX, top, cardW, headH);
+            ctx.restore();
+            ctx.strokeStyle = C.border; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(cardX, top + headH + 0.5); ctx.lineTo(cardX + cardW, top + headH + 0.5); ctx.stroke();
+            ctx.font = F(800, 15); ctx.fillStyle = C.cyan; ctx.textAlign = 'left';
+            ctx.fillText(`step ${step}`, cardX + 20, top + 36);
+            const sx = cardX + 20 + ctx.measureText(`step ${step}`).width + 16;
+            const n = items.filter((i) => i.kind === 'result').length;
+            const count = `${n} ${n === 1 ? 'record' : 'records'}`;
+            ctx.font = F(500, 14);
+            const cw = ctx.measureText(count).width;
+            ctx.fillStyle = C.dim; ctx.textAlign = 'right'; ctx.fillText(count, cardX + cardW - 20, top + 36);
+            ctx.font = F(800, 21); ctx.fillStyle = C.text; ctx.textAlign = 'left';
+            ctx.fillText(fitText(ctx, sec.name, cardX + cardW - 20 - cw - 20 - sx), sx, top + 37);
+          });
+          ops.push(...rowOps);
+          y += cardH + 30;
+        });
+
+        // Rail joining the steps
+        if (nodes.length) {
+          ops.unshift((ctx) => {
+            if (nodes.length > 1) {
+              ctx.strokeStyle = C['border-2']; ctx.lineWidth = 2; ctx.setLineDash([3, 6]);
+              ctx.beginPath(); ctx.moveTo(railX, nodes[0]); ctx.lineTo(railX, nodes[nodes.length - 1]); ctx.stroke(); ctx.setLineDash([]);
+            }
+          });
+          ops.push((ctx) => {
+            nodes.forEach((ny, k) => {
+              ctx.beginPath(); ctx.arc(railX, ny, 15, 0, Math.PI * 2);
+              ctx.fillStyle = C.panel; ctx.fill();
+              ctx.lineWidth = 2; ctx.strokeStyle = C.green; ctx.stroke();
+              ctx.font = F(800, 13); ctx.fillStyle = C.green; ctx.textAlign = 'center';
+              ctx.fillText(String(k + 1), railX, ny + 5);
+              ctx.strokeStyle = C['border-2']; ctx.lineWidth = 1.5;
+              ctx.beginPath(); ctx.moveTo(railX + 15, ny); ctx.lineTo(cardX, ny); ctx.stroke();
+            });
+          });
+        }
+
+        // Footer
+        y += 4;
+        const foot = y;
+        ops.push((ctx) => {
+          ctx.strokeStyle = C.border; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(PAD, foot); ctx.lineTo(W - PAD, foot); ctx.stroke();
+          ctx.font = F(500, 14); ctx.fillStyle = C.dim; ctx.textAlign = 'left';
+          ctx.fillText(`exported ${todayISO()} ${nowTime()}`, PAD, foot + 30);
+          ctx.textAlign = 'right'; ctx.fillStyle = C.muted;
+          ctx.fillText(anyTube ? 'filled tube = result in  ·  empty = pending' : 'labtrack', W - PAD, foot + 30);
+        });
+        const H = Math.ceil(foot + 30 + PAD);
+
+        // Keep under phone canvas limits (about 16 million pixels).
+        const scale = Math.max(0.5, Math.min(2, Math.sqrt(16e6 / (W * H)), 32000 / H));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(W * scale);
+        canvas.height = Math.round(H * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.scale(scale, scale);
+        ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+        // Faint grid like the app background
+        ctx.strokeStyle = theme === 'dark' ? 'rgba(255,255,255,0.035)' : 'rgba(15,23,42,0.05)';
+        ctx.lineWidth = 1;
+        for (let gx = 0; gx <= W; gx += 32) { ctx.beginPath(); ctx.moveTo(gx + 0.5, 0); ctx.lineTo(gx + 0.5, H); ctx.stroke(); }
+        for (let gy = 0; gy <= H; gy += 32) { ctx.beginPath(); ctx.moveTo(0, gy + 0.5); ctx.lineTo(W, gy + 0.5); ctx.stroke(); }
+        const glow = ctx.createRadialGradient(W * 0.85, 0, 0, W * 0.85, 0, 520);
+        glow.addColorStop(0, rgba(C.cyan, theme === 'dark' ? 0.12 : 0.08)); glow.addColorStop(1, rgba(C.cyan, 0));
+        ctx.fillStyle = glow; ctx.fillRect(0, 0, W, Math.min(H, 600));
+        ops.forEach((op) => { ctx.save(); op(ctx); ctx.restore(); });
+        return canvas;
+      }
+
+      async function renderPng() {
+        $('pngFrame').innerHTML = '<div class="png-wait">drawing…</div>';
+        document.querySelectorAll('[data-png-theme]').forEach((b) => b.classList.toggle('on', b.dataset.pngTheme === pngTheme));
+        try { await Promise.all([500, 700, 800].map((w) => document.fonts.load(`${w} 20px 'JetBrains Mono'`))); } catch (e) {}
+        const canvas = drawRunPicture(pngTheme);
+        pngBlob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+        if (pngUrl) URL.revokeObjectURL(pngUrl);
+        pngUrl = pngBlob ? URL.createObjectURL(pngBlob) : null;
+        if (!pngUrl) { $('pngFrame').innerHTML = '<div class="png-wait">could not draw the picture on this device.</div>'; return; }
+        $('pngFrame').innerHTML = `<img src="${pngUrl}" alt="Picture of ${escapeHtml(state.meta.id || 'this run')}" />`;
+        const file = new File([pngBlob], `${fileBase()}.png`, { type: 'image/png' });
+        $('btnSharePng').classList.toggle('hidden', !(navigator.canShare && navigator.canShare({ files: [file] })));
+      }
+      $('btnOpenPng').addEventListener('click', () => {
+        if (!state.quickItems.length) { showToast('Nothing to draw yet'); return; }
+        closeModals();
+        pngTheme = pngTheme || (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+        openModal('pngModal');
+        renderPng();
+      });
+      document.querySelectorAll('[data-png-theme]').forEach((b) => b.addEventListener('click', () => {
+        if (pngTheme === b.dataset.pngTheme) return;
+        pngTheme = b.dataset.pngTheme;
+        renderPng();
+      }));
+      $('btnDownloadPng').addEventListener('click', () => {
+        if (!pngBlob) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(pngBlob);
+        a.download = `${fileBase()}.png`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        showToast('Downloaded picture');
+      });
+      $('btnSharePng').addEventListener('click', async () => {
+        if (!pngBlob) return;
+        try { await navigator.share({ files: [new File([pngBlob], `${fileBase()}.png`, { type: 'image/png' })], title: state.meta.id || 'LabTrack run' }); } catch (e) {}
+      });
+
       $('btnDownloadTxt').addEventListener('click', () => {
         downloadFile(`${fileBase()}_report.txt`, buildTextReport(), 'text/plain;charset=utf-8');
         closeModals();

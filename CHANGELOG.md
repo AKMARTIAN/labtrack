@@ -2,6 +2,19 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.10.0] - 2026-11-25
+
+### Added
+- **Picture export (.png):** *export → picture of the run* draws the run as an image in LabTrack's terminal look, ready to share or present.
+  - Each section is a numbered step, joined top to bottom.
+  - Records with a tube number get a drawn tube in their type's colour: filled once the result is in, empty while it's pending.
+  - Results, units, type tags, volume, "↳ from" links and notes are all shown.
+  - Choose light or dark, then download, share (on phones that support it) or press and hold to save.
+
+### Changed
+- **Everything flows top to bottom:** a follow-up's new section is placed right below the section it came from, not at the end.
+- **General keeps its place:** records without a section no longer always sink to the bottom when new sections are added. General can be moved with drag or ⇅ reorder like any section, and CSV/text exports follow the same order.
+
 ## [3.9.1] - 2026-11-24
 
 ### Fixed

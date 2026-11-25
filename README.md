@@ -4,7 +4,7 @@
 
 # LabTrack
 
-**A simple, mobile-friendly lab log for recording results like Qubit readings, plus notes, each with a date, and one-tap CSV and text export.**
+**A simple, mobile-friendly lab log for recording results like Qubit readings, plus notes, each with a date, and one-tap CSV, text and picture export.**
 
 [![Open the app](https://img.shields.io/badge/Open%20the%20app-akmartian.github.io%2Flabtrack-0284c7?style=for-the-badge)](https://akmartian.github.io/labtrack/)
 
@@ -40,6 +40,7 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 - **Duplicate a section:** **⧉ copy** in a section header copies it with all its records, either with blank results for a repeat measurement or as an exact copy.
 - **Text results:** pick **no unit** and the result box accepts any text (e.g. *band at 300 bp*).
 - **Rearrange:** drag the **⠿** handle on a record to reorder it or move it into another section, or drag a section's handle to reorder sections. This works with touch and a mouse. You can also tap **⇅ reorder** for ↑ ↓ buttons and to sort a section by record name or tube number. Exports follow the order you set.
+- **Top-to-bottom flow:** a follow-up's new section appears right below the step it came from, and records with no section (*General*) keep their place instead of dropping to the bottom. Drag or ⇅ reorder to change it, General included.
 - **Continue a previous run:** upload a LabTrack `.csv` or `.txt` export (or a `.json` backup) to load that run back in and keep adding to it. Nothing already recorded is lost.
 - **Every entry is dated:** the date defaults to today and can be changed if you're logging something from an earlier day. The time is recorded automatically. The log is grouped by day.
 - **Notes, two ways:**
@@ -53,6 +54,7 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 | Format | Use it for |
 |---|---|
 | **CSV (.csv)** | Excel, Google Sheets, R, Python. One row per entry with date, time, section, type, tube, record, result, unit and note. Can be uploaded again to continue the run. |
+| **Picture (.png)** | A shareable image of the run in LabTrack's look: each section is a numbered step, top to bottom, and every record with a tube number gets a drawn tube (filled once its result is in, empty while pending). Light or dark. |
 | **Text report (.txt)** | Readable summary for ELNs, emails or printing. Can be uploaded again to continue the run. |
 | **Copy to clipboard** | Paste straight into a notebook entry or chat |
 | **JSON backup** | Save a full run and restore it later, or move it to another device |
