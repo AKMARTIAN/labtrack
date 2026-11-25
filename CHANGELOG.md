@@ -2,7 +2,23 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
-## [3.15.2] - 2026-11-25
+## [3.16.0] - 2026-11-25
+
+### Added
+- **Instrument results: Agilent TapeStation.** **↑ open → add instrument results**, then choose the CSV files exported from the TapeStation software.
+  - **What's read:** the sample table, peak table, electropherogram, and run and ScreenTape properties. The PNGs aren't needed.
+  - **Matching wells to samples:** each well is shown with its DIN (or RINe), concentration, main peak and a redrawn trace. Pick which sample it belongs to, or *don't add* for wells that aren't yours.
+  - **Automatic matching:** wells whose description matches a sample are matched for you (e.g. *LAMBDA* → *Lambda · whole sample (×3)*). Other wells default to *don't add*.
+  - **What's recorded:** the result is added as a TapeStation reading (e.g. **8.7 DIN**) with the run's date and time. Concentration, main peak (size, % of area), well, assay and the instrument's warnings (e.g. expired ScreenTape) are kept with it.
+  - **The trace:** LabTrack redraws the electropherogram in its own style from the exported data, with the lower marker, the labelled main peak and size marks from the ladder. It shows in the log, the journey and the picture export, and takes about 5 KB per sample. All values are the instrument's own; nothing is recalculated.
+  - **Whole-sample results:** a result added to a replicated sample's *whole sample* (e.g. a TapeStation of the stock) appears in that sample's journey alongside the replicates, in time order.
+  - **Exports:** CSV and text exports carry the values and a summary line. The backup (.json) also keeps the trace.
+- **+ reading** links to the TapeStation import for that sample.
+
+### Changed
+- **↑ open** now offers *continue a run* or *add instrument results*.
+
+ - 2026-11-25
 
 ### Fixed
 - **Continuing a run from a text report could misread results.** If the device opening the file didn't have a type with exactly the same name (e.g. *Qubit* renamed to *Qubit HS*, or a type created on another phone), a line like `54.8 ng/µL (Qubit)` was read as the text "54.8 ng/µL (Qubit)" with no unit or type.

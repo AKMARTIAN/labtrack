@@ -2,3 +2,6 @@
 .claude/settings.local.json
 *.log
 .claude/
+
+# Local test data (real runs, includes other people's samples): never commit
+Dev_Lambda_test/

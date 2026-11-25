@@ -390,6 +390,22 @@
     .jreps .sep { color: var(--dim); }
     .jreps .avg { margin-left: 4px; font-weight: 800; color: var(--text); }
     .jreps .fill { width: 64px; height: 26px; font-size: 13px; }
+    .inst-box { margin-top: 8px; padding: 8px 10px 6px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg-2); --sc: var(--t-indigo); }
+    .jcard .inst-box { --sc: inherit; grid-column: 2 / -1; margin-top: 2px; }
+    .trace { display: block; width: 100%; height: 92px; overflow: visible; font-family: var(--font); }
+    .trace text { font-size: 9px; fill: var(--dim); }
+    .trace text.pk { font-size: 10px; font-weight: 800; fill: var(--text); }
+    .inst-sum { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+    .inst-sum .dim, .inst-run .dim { color: var(--dim); }
+    .inst-warn { font-size: 11px; color: var(--amber); margin-top: 3px; }
+    .inst-run { font-size: 12px; color: var(--text); padding: 8px 10px; border: 1px dashed var(--border-2); border-radius: 9px; }
+    .inst-sheet { max-width: 560px; }
+    .inst-card { padding: 10px 12px; border: 1px solid var(--border); border-radius: 11px; background: var(--bg-2); display: grid; gap: 6px; }
+    .inst-card .trace { height: 70px; }
+    .inst-top { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .inst-top .well { font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 5px; color: var(--t-indigo); border: 1px solid color-mix(in srgb, var(--t-indigo) 40%, transparent); }
+    .inst-top .inst-hl { margin-left: auto; font-weight: 800; color: var(--green); }
+    .whole { display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 5px; font-size: 10px; font-weight: 800; line-height: 16px; color: var(--t-indigo); border: 1px solid color-mix(in srgb, var(--t-indigo) 40%, transparent); }
     .jflash { animation: jflash 1.6s ease-out; }
     @keyframes jflash { 0%, 30% { background: color-mix(in srgb, var(--cyan) 18%, transparent); } 100% { background: transparent; } }
 
@@ -543,7 +559,7 @@
       </div>
       <div class="top-actions">
         <button id="btnTheme" type="button" class="btn icon-btn" title="Switch to dark mode" aria-label="Switch to dark mode">☾</button>
-        <button type="button" data-continue class="btn" title="Continue a previous run from its export file"><span class="k c-cyan">↑</span> open</button>
+        <button type="button" id="btnOpen" class="btn" title="Continue a run, or add results from an instrument"><span class="k c-cyan">↑</span> open</button>
         <button id="btnNewRun" type="button" class="btn" title="Start a new run"><span class="k c-green">+</span> new</button>
         <button id="btnOpenExport" type="button" class="btn btn-primary" title="Export results" aria-label="Export results">↓<span class="hide-xs"> export</span></button>
         <input id="inputContinue" type="file" accept=".csv,.txt,.json,text/csv,text/plain,application/json" class="hidden" />
@@ -797,13 +813,46 @@
             <select id="readingUnit" class="field" aria-label="Unit"></select>
           </div>
         </div>
-        <p class="hint" id="readingHint">it goes straight under the first reading, in the same section.</p>
+        <p class="hint" id="readingHint">it goes straight under the first reading, in the same section. <button type="button" id="btnReadingInst" class="linkish">or import a TapeStation export…</button></p>
         <div class="row-2">
           <button type="button" data-close class="btn">cancel</button>
           <button type="submit" class="btn btn-primary">+ add reading</button>
         </div>
       </div>
     </form>
+  </div>
+
+  <!-- Open: continue a run or add instrument results -->
+  <div id="openModal" class="modal hidden no-print">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h3>open</h3><p>pick up a run, or bring results in from an instrument.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <button type="button" id="btnOpenRun" class="opt"><span class="badge b-cyan">run</span><span><strong>continue a run</strong><small>a labtrack .csv, .txt or backup .json</small></span></button>
+        <button type="button" id="btnOpenInst" class="opt"><span class="badge b-violet">TS</span><span><strong>add instrument results</strong><small>TapeStation export · DIN, concentration, peaks and trace</small></span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Instrument results (TapeStation) -->
+  <div id="instModal" class="modal hidden no-print">
+    <div class="sheet inst-sheet">
+      <div class="sheet-head">
+        <div><h3>add instrument results</h3><p>choose the CSV files exported from the TapeStation software (select them all, the PNGs aren't needed). then pick which sample each well belongs to.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <label id="instPick" class="btn btn-accent btn-block" style="height:44px">choose TapeStation export files<input id="instFiles" type="file" multiple accept=".csv,text/csv,text/plain" class="hidden" /></label>
+        <div id="instRun"></div>
+        <div id="instList" class="stack"></div>
+        <div class="row-2">
+          <button type="button" data-close class="btn">cancel</button>
+          <button type="button" id="btnInstAdd" class="btn btn-primary" disabled>choose files</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Export -->
@@ -1384,7 +1433,8 @@
                 ? `<div class="result tap ${isNumeric(item.result) ? 'num' : 'txt'}" data-act="edit" data-focus="result" data-id="${id}" title="Change result">${escapeHtml(item.result)}${item.unit ? `<span class="unit" data-act="edit" data-focus="unit" data-id="${id}">${escapeHtml(item.unit)}</span>` : ''}</div>`
                 : `<div class="result pending"><input type="text" class="fill" data-fill="${id}" placeholder="result?" inputmode="${item.unit && item.typeId !== 'general' ? 'decimal' : 'text'}" enterkeyhint="next" autocomplete="off" aria-label="Result for ${escapeHtml([item.tube ? 'tube ' + item.tube : '', item.name].filter(Boolean).join(' '))}" />${item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : ''}</div>`}
             </div>
-            ${item.notes && !editing ? `<div class="annot tap" data-act="note" data-id="${id}" title="Edit note"><span class="branch">└─</span><span>${escapeHtml(item.notes)}</span></div>` : ''}
+            ${item.inst && !editing ? instBlock(item.inst) : ''}
+            ${item.notes && !editing && !(item.inst && item.notes === item.inst.autoNote) ? `<div class="annot tap" data-act="note" data-id="${id}" title="Edit note"><span class="branch">└─</span><span>${escapeHtml(item.notes)}</span></div>` : ''}
             ${reorderMode ? moveBar(item) : editing ? renderEditor(item, editing) : `
               <div class="entry-actions">
                 <button type="button" data-act="note" data-id="${id}" class="act amber">${item.notes ? 'edit note' : '+ note'}</button>
@@ -2351,6 +2401,321 @@
         }
       });
 
+      /* ---------- Instrument results: Agilent TapeStation CSV exports ---------- */
+      // Reads the CSVs the TapeStation software exports (sample table, peak table,
+      // electropherogram, run and ScreenTape properties). Values are the instrument's own;
+      // the ladder is only used to place size marks under the redrawn trace.
+      async function readTextAuto(file) {
+        const buf = await file.arrayBuffer();
+        try { return new TextDecoder('utf-8', { fatal: true }).decode(buf).replace(/^﻿/, ''); }
+        catch (e) { return new TextDecoder('windows-1252').decode(buf); }
+      }
+      const unitFromHeader = (h) => {
+        const m = String(h || '').match(/\[([^\]]+)\]/);
+        return m ? m[1].replace(/\/(µ|u)l$/i, '/µL').replace(/\/ml$/i, '/mL') : '';
+      };
+      const numOrNull = (v) => { const n = parseFloat(String(v ?? '').replace(/[^\d.eE+-]/g, '')); return isFinite(n) ? n : null; };
+      function parseRunDate(s) {
+        const m = String(s || '').match(/(\d{1,2})-(\w{3})-(\d{4})\s+(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+        if (!m) return { date: '', time: '' };
+        const mon = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(m[2].toLowerCase()) + 1;
+        let h = Number(m[4]);
+        if (m[6]) { const pm = m[6].toUpperCase() === 'PM'; if (pm && h < 12) h += 12; if (!pm && h === 12) h = 0; }
+        return { date: `${m[3]}-${String(mon).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`, time: `${String(h).padStart(2, '0')}:${m[5]}` };
+      }
+      function findPeaks(y, minFrac) {
+        const mx = Math.max(...y);
+        const out = [];
+        for (let i = 1; i < y.length - 1; i++) {
+          if (y[i] >= y[i - 1] && y[i] > y[i + 1] && y[i] > minFrac * mx) {
+            if (out.length && i - out[out.length - 1] < 6) { if (y[i] > y[out[out.length - 1]]) out[out.length - 1] = i; }
+            else out.push(i);
+          }
+        }
+        return out;
+      }
+      async function parseTapeStation(files) {
+        const run = { assay: '', file: '', date: '', time: '', expired: false, device: '', samples: [], ladderOk: false };
+        let sampleRows = null, peakRows = null, electro = null;
+        for (const f of files) {
+          const rows = parseCsv(await readTextAuto(f)).filter((r) => r.some((c) => String(c).trim() !== ''));
+          if (!rows.length) continue;
+          const h = rows[0].map((x) => String(x).trim());
+          const col = (re) => h.findIndex((x) => re.test(x));
+          if (/^[A-P]\d{1,2}:/.test(h[0])) electro = { h, rows: rows.slice(1) };
+          else if (col(/^Size \[bp\]/i) >= 0 && col(/^Well$/i) >= 0) peakRows = { h, rows: rows.slice(1), col };
+          else if (col(/^Well$/i) >= 0 && col(/^Sample Description$/i) >= 0) sampleRows = { h, rows: rows.slice(1), col };
+          else if (col(/^Assay$/i) >= 0) {
+            const r = rows[1] || [];
+            run.assay = r[col(/^Assay$/i)] || '';
+            const fn = r[col(/^Filename$/i)] || '';
+            run.file = fn.split(/[\\/]/).pop();
+            Object.assign(run, parseRunDate(r[col(/^Run End Date$/i)]));
+          } else if (col(/Expiry Date/i) >= 0) {
+            const r = rows[1] || [];
+            const exp = parseRunDate(`${r[col(/Expiry Date/i)]} 00:00`).date;
+            const ran = parseRunDate(`${r[col(/Run Date/i)]} 00:00`).date;
+            run.expired = !!(exp && ran && exp < ran);
+            run.device = r[col(/Instrument Type/i)] || '';
+          }
+        }
+        if (!sampleRows && !peakRows) throw new Error('No TapeStation sample table or peak table found in those files.');
+        // Samples (one per well) with their headline values
+        const wells = new Map();
+        const well = (w, desc) => { if (!wells.has(w)) wells.set(w, { well: w, desc: desc || '', din: null, rin: null, conc: null, concUnit: '', notes: '', peaks: [], isLadder: /ladder/i.test(desc || '') }); return wells.get(w); };
+        if (sampleRows) {
+          const { col, h } = sampleRows;
+          const cW = col(/^Well$/i), cD = col(/^Sample Description$/i), cDin = col(/^DIN$/i), cRin = col(/^RINe?$/i), cC = col(/^Conc/i), cA = col(/^Alert$/i), cO = col(/^Observations$/i);
+          sampleRows.rows.forEach((r) => {
+            const s = well(r[cW], r[cD]);
+            if (cDin >= 0) s.din = numOrNull(r[cDin]);
+            if (cRin >= 0) s.rin = numOrNull(r[cRin]);
+            if (cC >= 0) { s.conc = numOrNull(r[cC]); s.concUnit = unitFromHeader(h[cC]); }
+            const obs = cO >= 0 ? String(r[cO] || '') : '';
+            s.notes = obs.split(/;\s*/).filter((x) => x && !/^ladder$/i.test(x.trim())).join('; ');
+            if (/ladder/i.test(obs)) s.isLadder = true;
+          });
+        }
+        let ladderSizes = [];
+        if (peakRows) {
+          const { col, h } = peakRows;
+          const cW = col(/^Well$/i), cD = col(/^Sample Description$/i), cS = col(/^Size \[bp\]/i), cC = col(/^Calibrated Conc/i), cP = col(/Integrated Area/i), cF = col(/^From/i), cT = col(/^To/i), cO = col(/^Observations$/i);
+          peakRows.rows.forEach((r) => {
+            const s = well(r[cW], cD >= 0 ? r[cD] : '');
+            const size = numOrNull(r[cS]);
+            const obs = cO >= 0 ? String(r[cO] || '') : '';
+            if (s.isLadder && size) { ladderSizes.push(size); return; }
+            if (!size || /marker/i.test(obs)) return;
+            s.peaks.push({ size, conc: cC >= 0 ? numOrNull(r[cC]) : null, concUnit: cC >= 0 ? unitFromHeader(h[cC]) : '', pct: cP >= 0 ? numOrNull(r[cP]) : null, from: cF >= 0 ? r[cF] : '', to: cT >= 0 ? r[cT] : '' });
+          });
+        }
+        // Electropherogram: one column per well. The ladder peaks give the size marks.
+        let ladderIdx = null;
+        const traces = new Map();
+        if (electro) {
+          const cols = electro.h.map((name) => ({ well: name.split(':')[0].trim(), y: [] }));
+          electro.rows.forEach((r) => cols.forEach((c, k) => c.y.push(Number(numOrNull(r[k]) || 0))));
+          cols.forEach((c) => traces.set(c.well, c.y));
+          const lad = [...wells.values()].find((s) => s.isLadder);
+          if (lad && traces.has(lad.well) && ladderSizes.length) {
+            const pk = findPeaks(traces.get(lad.well), 0.3);
+            if (pk.length === ladderSizes.length) { ladderIdx = pk; run.ladderOk = true; }
+          }
+        }
+        wells.forEach((s) => {
+          if (s.isLadder) return;
+          const y = traces.get(s.well);
+          if (y) {
+            let shift = 0, lm = null;
+            if (ladderIdx) {
+              const a = Math.max(0, ladderIdx[0] - 25), b = Math.min(y.length - 1, ladderIdx[0] + 25);
+              lm = a; for (let i = a; i <= b; i++) if (y[i] > y[lm]) lm = i;
+              shift = lm - ladderIdx[0];
+            }
+            const after = (lm ?? 0) + 15;
+            let peakIdx = after;
+            for (let i = after; i < y.length; i++) if (y[i] > y[peakIdx]) peakIdx = i;
+            let last = y.length - 1;
+            while (last > 0 && y[last] === 0) last--;
+            s.trace = {
+              y: y.slice(0, last + 1).map((v) => Math.round(v * 10) / 10),
+              ticks: ladderIdx ? ladderIdx.map((i, k) => [i + shift, ladderSizes[k]]) : [],
+              lm, peakIdx
+            };
+          }
+          run.samples.push(s);
+        });
+        return run;
+      }
+      // Size marks to label under a trace, skipping any that would crowd the previous one.
+      function spacedTicks(ticks, X, minGap) {
+        // Most useful first: the ladder's ends, then round sizes in between.
+        const rank = [100, 48500, 60000, 1000, 1500, 4000, 10000, 15000, 250, 400];
+        const chosen = [];
+        rank.forEach((bp) => {
+          const t = (ticks || []).find((x) => x[1] === bp);
+          if (t && chosen.every((c) => Math.abs(X(c[0]) - X(t[0])) >= minGap)) chosen.push(t);
+        });
+        return chosen.sort((a, b) => a[0] - b[0]);
+      }
+      const fmtBp = (n) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 1 : 2).replace(/\.?0+$/, '')} kb` : `${n} bp`);
+      const kbTick = (n) => (n >= 1000 ? `${+(n / 1000).toFixed(1)}k` : String(n));
+      // Main peak = the largest by area (or the only one)
+      const mainPeak = (inst) => (inst.peaks || []).slice().sort((a, b) => (b.pct || 0) - (a.pct || 0))[0] || null;
+      function instSummary(inst) {
+        const p = mainPeak(inst);
+        return [
+          inst.conc != null ? `${inst.conc} ${inst.concUnit || ''}`.trim() : '',
+          p ? `peak ${p.size.toLocaleString('en')} bp${p.pct != null ? ` (${Math.round(p.pct)}%)` : ''}` : '',
+          inst.well ? `well ${inst.well}` : ''
+        ].filter(Boolean).join(' · ');
+      }
+      const instWarn = (inst) => [inst.notes, inst.expired && !/expired/i.test(inst.notes || '') ? 'expired ScreenTape' : ''].filter(Boolean).join('; ').replace(/Caution!\s*/gi, '');
+      // A small electropherogram as inline SVG (app) — the same drawing as the picture export.
+      function traceSvg(inst, opt = {}) {
+        const t = inst && inst.trace;
+        if (!t || !t.y || !t.y.length) return '';
+        const W = 320, H = opt.h || 92, padB = 16, padT = 16;
+        const x0 = Math.max(0, (t.lm ?? 0) - 30), x1 = t.y.length - 1;
+        const max = Math.max(...t.y.slice(x0)) || 1;
+        const X = (i) => ((i - x0) / (x1 - x0 || 1)) * W;
+        const Y = (v) => padT + (1 - v / max) * (H - padB - padT);
+        let d = '';
+        for (let i = x0; i <= x1; i++) d += `${i === x0 ? 'M' : 'L'}${X(i).toFixed(1)} ${Y(t.y[i]).toFixed(1)}`;
+        const area = `${d}L${X(x1).toFixed(1)} ${H - padB}L${X(x0).toFixed(1)} ${H - padB}Z`;
+        const show = spacedTicks(t.ticks, X, 34);
+        const ticks = show.map(([i, bp]) => `<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${H - padB}" y2="${H - padB + 3}" stroke="var(--dim)"/><text x="${X(i).toFixed(1)}" y="${H - 3}" text-anchor="middle">${kbTick(bp)}</text>`).join('');
+        const p = mainPeak(inst);
+        const pk = p && t.peakIdx != null ? `<text x="${Math.min(W - 4, Math.max(4, X(t.peakIdx))).toFixed(1)}" y="${(Y(t.y[t.peakIdx]) - 4).toFixed(1)}" text-anchor="${X(t.peakIdx) > W - 40 ? 'end' : 'middle'}" class="pk">${p.size.toLocaleString('en')}</text>` : '';
+        const lm = t.lm != null ? `<text x="${X(t.lm).toFixed(1)}" y="${(Y(t.y[t.lm]) - 4).toFixed(1)}" text-anchor="middle">LM</text>` : '';
+        return `<svg class="trace" viewBox="0 -2 ${W} ${H + 2}" preserveAspectRatio="none" role="img" aria-label="Electropherogram">
+          <line x1="0" x2="${W}" y1="${H - padB}" y2="${H - padB}" stroke="var(--border-2)"/>
+          <path d="${area}" fill="var(--sc, var(--cyan))" opacity=".14"/>
+          <path d="${d}" fill="none" stroke="var(--sc, var(--cyan))" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+          ${ticks}${lm}${pk}
+        </svg>`;
+      }
+      function instBlock(inst) {
+        const w = instWarn(inst);
+        return `<div class="inst-box">
+            ${traceSvg(inst)}
+            <div class="inst-sum">${escapeHtml(instSummary(inst))}${inst.assay ? ` · <span class="dim">${escapeHtml(inst.assay)}</span>` : ''}</div>
+            ${w ? `<div class="inst-warn">⚠ ${escapeHtml(w)}</div>` : ''}
+          </div>`;
+      }
+
+      // Import window: choose the exported files, then match each well to a sample.
+      let instRun = null, instPreset = null;
+      function runSampleTargets() {
+        const { journeys } = sampleJourneys();
+        const entries = journeyEntries(journeys);
+        const out = [];
+        entries.forEach((e) => {
+          if (e.members) {
+            out.push({ key: `g:${e.base}`, label: `${e.base} · whole sample (×${e.members.length})`, name: e.base, tube: '', match: e.base, items: e.members.flatMap((m) => m.items).concat(e.shared || []) });
+            e.members.forEach((m) => out.push({ key: `s:${m.name}|${m.tube}`, label: `  ${m.name}${m.tube ? ` · tube ${m.tube}` : ''}`, name: m.name, tube: m.tube, match: m.name, items: m.items }));
+          } else out.push({ key: `s:${e.j.name}|${e.j.tube}`, label: `${e.j.name}${e.j.tube ? ` · tube ${e.j.tube}` : ''}`, name: e.j.name, tube: e.j.tube, match: e.j.name, items: e.j.items });
+        });
+        return out;
+      }
+      const squash = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      function openInstrument(preset) {
+        instRun = null;
+        instPreset = preset || null;
+        $('instRun').innerHTML = '';
+        $('instList').innerHTML = '';
+        $('btnInstAdd').disabled = true;
+        $('instPick').classList.remove('hidden');
+        openModal('instModal');
+      }
+      function renderInstList() {
+        const targets = runSampleTargets();
+        const secOpts = (sel) => state.quickSections.map((s) => `<option value="${escapeHtml(s.id)}" ${s.id === sel ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')
+          + `<option value="" ${sel === '' ? 'selected' : ''}>General</option><option value="__new__">+ new step: TapeStation</option>`;
+        const r = instRun;
+        $('instRun').innerHTML = `<div class="inst-run"><b>TapeStation${r.assay ? ` · ${escapeHtml(r.assay)}` : ''}</b>${r.date ? ` · run ${escapeHtml(r.date)} ${escapeHtml(r.time)}` : ''}<br><span class="dim">${r.samples.length} ${r.samples.length === 1 ? 'sample' : 'samples'} found · ladder ${r.ladderOk ? 'used for the size marks' : 'not found (no size marks)'}</span>${r.expired ? '<div class="inst-warn">⚠ the ScreenTape was past its expiry date</div>' : ''}</div>`;
+        $('instList').innerHTML = r.samples.map((s, k) => {
+          const preset = instPreset && targets.find((t) => t.key === instPreset);
+          const match = (k === 0 && preset && r.samples.length === 1 ? preset : null)
+            || targets.find((t) => t.key.startsWith('g:') && squash(t.match) === squash(s.desc))
+            || targets.find((t) => squash(t.match) === squash(s.desc));
+          const sel = match ? match.key : '__skip__';
+          const lastItem = match ? match.items[match.items.length - 1] : null;
+          const sec = lastItem ? (isOrphan(lastItem) ? '' : lastItem.sectionId) : (currentSection || (state.quickSections[0] || {}).id || '');
+          const headline = s.din != null ? `DIN ${s.din}` : s.rin != null ? `RINe ${s.rin}` : s.conc != null ? `${s.conc} ${s.concUnit}` : '';
+          return `<div class="inst-card" data-inst="${k}" style="--sc:var(--t-indigo)">
+              <div class="inst-top"><span class="well">${escapeHtml(s.well)}</span><b>${escapeHtml(s.desc || '(no description)')}</b><span class="inst-hl">${escapeHtml(headline)}</span></div>
+              ${traceSvg(Object.assign({ peaks: s.peaks }, s), { h: 70 })}
+              <div class="inst-sum">${escapeHtml(instSummary(s))}</div>
+              <div class="grid-2">
+                <div><label class="lbl">add to</label><select class="field" data-inst-target>
+                  <option value="__skip__" ${sel === '__skip__' ? 'selected' : ''}>don't add</option>
+                  ${targets.map((t) => `<option value="${escapeHtml(t.key)}" ${t.key === sel ? 'selected' : ''}>${escapeHtml(t.label)}</option>`).join('')}
+                  <option value="__new__">+ new sample: ${escapeHtml(s.desc || s.well)}</option>
+                </select></div>
+                <div><label class="lbl">at step</label><select class="field" data-inst-sec>${secOpts(sec)}</select></div>
+              </div>
+            </div>`;
+        }).join('') || '<p class="hint">no samples in those files.</p>';
+        updateInstButton();
+      }
+      function updateInstButton() {
+        const n = [...document.querySelectorAll('[data-inst-target]')].filter((x) => x.value !== '__skip__').length;
+        $('btnInstAdd').disabled = !n;
+        $('btnInstAdd').textContent = n ? `+ add ${n} ${n === 1 ? 'result' : 'results'}` : 'choose a sample';
+      }
+      $('instFiles').addEventListener('change', async (e) => {
+        const files = [...e.target.files];
+        e.target.value = '';
+        if (!files.length) return;
+        try {
+          instRun = await parseTapeStation(files);
+          $('instPick').classList.add('hidden');
+          renderInstList();
+        } catch (err) {
+          $('instRun').innerHTML = `<div class="inst-warn">${escapeHtml(err.message || 'Could not read those files')}. choose the CSV files exported from the TapeStation software.</div>`;
+        }
+      });
+      $('instList').addEventListener('change', (e) => { if (e.target.matches('[data-inst-target]')) updateInstButton(); });
+      $('btnInstAdd').addEventListener('click', () => {
+        if (!instRun) return;
+        const targets = runSampleTargets();
+        let added = 0, lastId = null;
+        const names = [];
+        document.querySelectorAll('[data-inst]').forEach((card) => {
+          const s = instRun.samples[Number(card.dataset.inst)];
+          const tk = card.querySelector('[data-inst-target]').value;
+          if (tk === '__skip__') return;
+          const t = tk === '__new__' ? { name: s.desc || s.well, tube: '', items: [] } : targets.find((x) => x.key === tk);
+          if (!t) return;
+          let sectionId = card.querySelector('[data-inst-sec]').value;
+          if (sectionId === '__new__') {
+            const ex = state.quickSections.find((x) => x.name.toLowerCase() === 'tapestation');
+            if (ex) sectionId = ex.id;
+            else {
+              const sec = { id: newId('qsec_'), name: 'TapeStation', collapsed: false };
+              const after = t.items.length ? (isOrphan(t.items[t.items.length - 1]) ? GENERAL.id : t.items[t.items.length - 1].sectionId) : null;
+              insertSectionAfter(sec, after);
+              sectionId = sec.id;
+            }
+          }
+          const inst = {
+            kind: 'tapestation', assay: instRun.assay, file: instRun.file, well: s.well, desc: s.desc,
+            din: s.din, rin: s.rin, conc: s.conc, concUnit: s.concUnit, peaks: s.peaks, notes: s.notes, expired: instRun.expired, trace: s.trace || null
+          };
+          const headline = s.din != null ? [String(s.din), 'DIN'] : s.rin != null ? [String(s.rin), 'RINe'] : s.conc != null ? [String(s.conc), s.concUnit] : ['', ''];
+          const warn = instWarn(inst);
+          const it = {
+            id: newId('qi_'), kind: 'result', sectionId, date: instRun.date || todayISO(), timestamp: instRun.time || nowTime(),
+            typeId: 'tapestation', typeName: 'TapeStation', name: t.name, tube: t.tube || '', result: headline[0], unit: headline[1],
+            volume: '', dilution: '', notes: '', text: '', inst
+          };
+          it.notes = inst.autoNote = [`TapeStation ${instRun.assay || ''}: ${instSummary(inst)}`.replace(/\s+:/, ':'), warn ? `⚠ ${warn}` : ''].filter(Boolean).join(' · ');
+          // Straight after the sample's last record in that step (or at the end of the step).
+          const inSec = state.quickItems.filter((x) => (sectionId ? x.sectionId === sectionId : isOrphan(x)));
+          const own = inSec.filter((x) => t.items.includes(x));
+          const ref = own[own.length - 1] || inSec[inSec.length - 1];
+          state.quickItems.splice(ref ? state.quickItems.indexOf(ref) + 1 : state.quickItems.length, 0, it);
+          added++; lastId = it.id; names.push(t.name);
+        });
+        if (!added) return;
+        closeModals();
+        saveState();
+        renderLog();
+        showToast(`Added ${added} TapeStation ${added === 1 ? 'result' : 'results'} to ${[...new Set(names)].join(', ')}`);
+        const el = document.querySelector(`[data-entry="${CSS.escape(lastId)}"]`);
+        if (el && !journeyMode) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.add('jflash'); setTimeout(() => el.classList.remove('jflash'), 1700); }
+      });
+
+      $('btnOpen').addEventListener('click', () => openModal('openModal'));
+      $('btnOpenRun').addEventListener('click', () => { closeModals(); $('inputContinue').click(); });
+      $('btnOpenInst').addEventListener('click', () => { closeModals(); openInstrument(); });
+      $('btnReadingInst').addEventListener('click', () => {
+        const src = readingSrc;
+        closeModals();
+        openInstrument(src ? (repParse(src.name) ? `s:${src.name}|${src.tube || ''}` : `s:${src.name}|${src.tube || ''}`) : null);
+      });
+
       // Follow up: carry one sample (or every sample in a section) on to its next step.
       let followItems = [];
       function openFollow(items, defaultSection) {
@@ -3008,11 +3373,20 @@
           j.rep = r.n;
           byBase.get(key).members.push(j);
         });
-        return out.map((e) => {
+        const res = out.map((e) => {
           if (!e.members) return e;
           if (e.members.length === 1) return { j: e.members[0] };
           e.members.sort((a, b) => a.rep - b.rep);
           return e;
+        });
+        // A record named just "<sample>" (e.g. a TapeStation of the whole stock) belongs to
+        // that sample's replicate group as a whole-sample result.
+        return res.filter((e) => {
+          if (!e.j) return true;
+          const g = res.find((x) => x.members && x.base.toLowerCase() === String(e.j.name).trim().toLowerCase());
+          if (!g) return true;
+          g.shared = (g.shared || []).concat(e.j.items);
+          return false;
         });
       }
       // One row per measurement (step + type + unit). Each replicate keeps its own list of
@@ -3029,8 +3403,13 @@
             if (!row.vals[mi]) row.vals[mi] = it;
           });
         });
+        (g.shared || []).forEach((it) => {
+          rows.push({ key: `shared|${it.id}`, sid: secOf(it), item: it, shared: true, reads: g.members.map(() => []), vals: new Array(g.members.length).fill(null) });
+        });
         rows.forEach((r) => { r.multi = r.reads.some((x) => x.length > 1); });
-        rows.sort((a, b) => stepIndex(a.sid) - stepIndex(b.sid));
+        // By step, then in the order things were done that day.
+        const t0 = (r) => (r.shared ? `${r.item.date} ${r.item.timestamp}` : r.reads.flat().map((x) => `${x.date} ${x.timestamp}`).sort()[0] || '');
+        rows.sort((a, b) => (stepIndex(a.sid) - stepIndex(b.sid)) || t0(a).localeCompare(t0(b)));
         return rows;
       }
       // The same for one sample: re-reads of one measurement at one step are grouped together.
@@ -3177,7 +3556,7 @@
           ctx.fillText('STEP', gridX + 20, gridTop + 48);
           cols.forEach(({ e, x, w, col }) => {
             ctx.fillStyle = col; rrect(ctx, x + 14, gridTop + 18, 6, 46, 3); ctx.fill();
-            const items = e.j ? e.j.items : e.members.flatMap((m) => m.items);
+            const items = e.j ? e.j.items : e.members.flatMap((m) => m.items).concat(e.shared || []);
             const done = items.filter((i) => String(i.result).trim()).length;
             if (e.j) {
               const r = repParse(e.j.name);
@@ -3218,8 +3597,45 @@
         const nodes = cols.map(() => []);
         cols.forEach((c) => { if (c.e.j) c.measures = measuresOf(c.e.j.items, secOf); });
         const READ_LINE = 17;
-        const singleH = (m) => (m.reads.length > 1 ? BLOCK + 22 : BLOCK);
-        const groupH = (row) => GBLOCK + (row.multi ? row.reads.length * READ_LINE + 4 : 0);
+        const TRACE_H = 104;
+        const instH = (it) => (it.inst && it.inst.trace ? TRACE_H + 20 + (instWarn(it.inst) ? 16 : 0) : 0);
+        const singleH = (m) => (m.reads.length > 1 ? BLOCK + 22 : BLOCK) + instH(m.reads[0]);
+        const groupH = (row) => (row.shared ? BLOCK + instH(row.item) : GBLOCK + (row.multi ? row.reads.length * READ_LINE + 4 : 0));
+        // A small electropherogram, drawn like the one in the app.
+        function drawTrace(ctx, inst, x, y, w, h, col) {
+          const t = inst.trace;
+          rrect(ctx, x, y, w, h, 8); ctx.fillStyle = C['bg-2']; ctx.fill(); ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.stroke();
+          const px = x + 10, pw = w - 20, top = y + 18, base = y + h - 22;
+          const x0 = Math.max(0, (t.lm ?? 0) - 30), x1 = t.y.length - 1;
+          const max = Math.max(...t.y.slice(x0)) || 1;
+          const X = (i) => px + ((i - x0) / (x1 - x0 || 1)) * pw;
+          const Y = (v) => top + (1 - v / max) * (base - top);
+          ctx.beginPath(); for (let i = x0; i <= x1; i++) (i === x0 ? ctx.moveTo(X(i), Y(t.y[i])) : ctx.lineTo(X(i), Y(t.y[i])));
+          ctx.lineTo(X(x1), base); ctx.lineTo(X(x0), base); ctx.closePath(); ctx.fillStyle = rgba(col, 0.16); ctx.fill();
+          ctx.beginPath(); for (let i = x0; i <= x1; i++) (i === x0 ? ctx.moveTo(X(i), Y(t.y[i])) : ctx.lineTo(X(i), Y(t.y[i])));
+          ctx.strokeStyle = col; ctx.lineWidth = 1.8; ctx.lineJoin = 'round'; ctx.stroke();
+          ctx.strokeStyle = C['border-2']; ctx.beginPath(); ctx.moveTo(px, base + 0.5); ctx.lineTo(px + pw, base + 0.5); ctx.stroke();
+          ctx.font = F(500, 10); ctx.fillStyle = C.dim; ctx.textAlign = 'center';
+          spacedTicks(t.ticks, X, 38).forEach(([i, bp]) => {
+            ctx.beginPath(); ctx.moveTo(X(i), base); ctx.lineTo(X(i), base + 3); ctx.stroke();
+            ctx.fillText(kbTick(bp), X(i), base + 13);
+          });
+          if (t.lm != null) { ctx.fillText('LM', X(t.lm), Y(t.y[t.lm]) - 4); }
+          const p = mainPeak(inst);
+          if (p && t.peakIdx != null) {
+            ctx.font = F(800, 11); ctx.fillStyle = C.text;
+            const lx = Math.min(px + pw - 4, Math.max(px + 4, X(t.peakIdx)));
+            ctx.textAlign = X(t.peakIdx) > px + pw - 40 ? 'right' : 'center';
+            ctx.fillText(`${p.size.toLocaleString('en')} bp`, lx, Y(t.y[t.peakIdx]) - 5);
+          }
+          ctx.textAlign = 'left';
+        }
+        function drawInstFooter(ctx, inst, tx, yy, tw) {
+          ctx.font = F(500, 12); ctx.fillStyle = C.muted;
+          ctx.fillText(fitText(ctx, instSummary(inst), tw), tx, yy);
+          const wn = instWarn(inst);
+          if (wn) { ctx.fillStyle = C.amber; ctx.fillText(fitText(ctx, `⚠ ${wn}`, tw), tx, yy + 15); }
+        }
         steps.forEach((sec, r) => {
           const rowTop = y;
           const cellH = cols.map((c) => (c.e.j
@@ -3328,6 +3744,10 @@
           if (m.reads.length === 1) {
             const yy = resultLines(ctx, it, tx, by + 30, tw);
             if (tag) { ctx.font = F(600, 12); ctx.fillStyle = C.dim; ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2); }
+            if (it.inst && it.inst.trace) {
+              drawInstFooter(ctx, it.inst, tx, yy + 18, tw);
+              drawTrace(ctx, it.inst, tx, yy + 18 + (instWarn(it.inst) ? 16 : 0) + 12, tw, TRACE_H - 14, col);
+            }
             return;
           }
           // Re-reads of the same tube: mean, spread, then each reading in order.
@@ -3346,6 +3766,25 @@
         // replicate's own value (and, for re-reads, its readings and their average).
         function drawGroupCell(ctx, row, c, lineX, ny, by, rd) {
           const { x, w, col } = c;
+          if (row.shared) {
+            // Whole-sample result (e.g. TapeStation of the stock): one marker, its value and trace.
+            const it = row.item, has = String(it.result).trim() !== '';
+            ctx.beginPath(); ctx.arc(lineX, ny, 17, 0, Math.PI * 2);
+            ctx.fillStyle = has ? rgba(col, 0.18) : C.panel; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = col; ctx.stroke();
+            const ik = typeIcon(it);
+            if (ik) drawIcon(ctx, ik, lineX - 10, ny - 10, 20, col);
+            const tx = lineX + 34, tw = w - (tx - x) - 12;
+            ctx.textAlign = 'left';
+            let yy = resultLines(ctx, it, tx, by + 30, tw);
+            ctx.font = F(600, 12); ctx.fillStyle = C.dim;
+            const tag = [typeTag(it), 'whole sample'].filter(Boolean).join(' · ');
+            ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2);
+            if (it.inst && it.inst.trace) {
+              drawInstFooter(ctx, it.inst, tx, yy + 18, tw);
+              drawTrace(ctx, it.inst, tx, yy + 18 + (instWarn(it.inst) ? 16 : 0) + 12, tw, TRACE_H - 14, col);
+            }
+            return;
+          }
           const n = row.vals.length, shown = Math.min(n, 4);
           const gap = 15, startX = lineX - ((shown - 1) * gap) / 2;
           ctx.fillStyle = C.panel;
@@ -3891,6 +4330,7 @@
               res = has
                 ? `<div class="jres ${isNumeric(it.result) ? '' : 'txt'}">${escapeHtml(it.result)}${unit}</div>`
                 : `<div class="jres result pending">${fillBox(it, `Result for ${j.name} at ${sec.name}`, 'result?')}${unit}</div>`;
+              if (it.inst) extra = instBlock(it.inst);
             } else {
               // Re-reads of this tube: the mean, then every reading in order.
               const st = readStats(m.reads);
@@ -3931,12 +4371,26 @@
         // each replicate's own value. Re-reads are averaged within a replicate first.
         const groupHtml = (g, k) => {
           const rowsData = measureRows(g, secOf, stepIndex);
-          const items = g.members.flatMap((m) => m.items);
+          const items = g.members.flatMap((m) => m.items).concat(g.shared || []);
           const done = items.filter((i) => String(i.result).trim()).length;
           const rows = rowsData.map((row) => {
             const sec = steps.find((x) => x.id === row.sid) || GENERAL;
             const it = row.item, st = rowStats(row);
             const rd = rowsData.filter((x) => x.sid === row.sid).indexOf(row) + 1;
+            if (row.shared) {
+              // A result for the whole sample (e.g. a TapeStation of the stock), not one replicate.
+              const has = String(it.result).trim() !== '';
+              const unit = it.unit ? `<span class="unit">${escapeHtml(it.unit)}</span>` : '';
+              return `<li class="jstep" data-goto="${escapeHtml(it.id)}" title="Show in log">
+                  <div class="jnode"><span class="jdot ${has ? 'done' : ''}">${iconSvg(typeIcon(it))}</span></div>
+                  <div class="jwhat">
+                    <div class="jstepname">${stepLine(row.sid, sec, rd)}</div>
+                    <div class="jtype">${iconSvg(typeIcon(it))}${escapeHtml(typeName(it))}<span class="whole">whole sample</span></div>
+                  </div>
+                  ${has ? `<div class="jres ${isNumeric(it.result) ? '' : 'txt'}">${escapeHtml(it.result)}${unit}</div>` : `<div class="jres result pending">${fillBox(it, `Result for ${g.base} at ${sec.name}`, 'result?')}${unit}</div>`}
+                  ${it.inst ? instBlock(it.inst) : ''}
+                </li>`;
+            }
             const shown = row.reads.slice(0, 5);
             const tubesHtml = `<span class="jtubes">${shown.map((reads) => (reads.length ? tubeSvg(reads.every((v) => String(v.result).trim() !== '')) : '<svg viewBox="0 0 17 42" style="opacity:.2"><path d="M3 8.5h11v24a5.5 5.5 0 0 1-11 0z" fill="none" stroke="var(--dim)" stroke-width="1.5"/></svg>')).join('')}${row.reads.length > 5 ? `<span class="more">+${row.reads.length - 5}</span>` : ''}</span>`;
             const tag = typeName(it);
