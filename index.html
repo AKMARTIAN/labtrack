@@ -3618,7 +3618,8 @@
         let createdTypes = 0;
         const typeFor = (name, unit) => {
           if (!name || name.toLowerCase() === 'general') return BUILTIN_TYPES[0];
-          let t = allTypes().find((x) => x.name.toLowerCase() === name.toLowerCase());
+          let t = allTypes().find((x) => x.name.toLowerCase() === name.toLowerCase())
+            || BUILTIN_TYPES.find((x) => BUILTIN_DEFAULTS[x.id].name.toLowerCase() === name.toLowerCase());
           if (!t) {
             t = { id: newId('type_'), name, units: [], color: CUSTOM_COLORS[prefs.customTypes.length % CUSTOM_COLORS.length] };
             prefs.customTypes.push(t);
@@ -3692,7 +3693,16 @@
         for (const u of candidates) {
           if (text.endsWith(' ' + u)) return { result: text.slice(0, -u.length - 1), unit: u };
         }
+        // A number followed by a unit this device doesn't know yet (e.g. "7.2 RINe").
+        const m = text.match(/^([<>~≈]?\s*-?[\d.,]+(?:e-?\d+)?)\s+(\S{1,12})$/i);
+        if (m) return { result: m[1], unit: m[2] };
         return { result: text, unit: '' };
+      }
+      // A type name from a file: one of this device's types, or a built-in by its original
+      // name (e.g. "Qubit" when it's been renamed here).
+      function knownTypeName(name) {
+        const n = String(name || '').trim().toLowerCase();
+        return !!n && (allTypes().some((t) => t.name.toLowerCase() === n) || Object.values(BUILTIN_DEFAULTS).some((d) => d.name.toLowerCase() === n));
       }
 
       function runFromText(text) {
@@ -3720,7 +3730,11 @@
               const ex = res.match(/^(.*) \(([^()]*)\)$/);
               if (ex) {
                 const parts = ex[2].split(' | ');
-                const ok = parts.every((p) => p.startsWith('Vol: ') || p.startsWith('Dilution: ') || p.startsWith('From: ') || (parts.indexOf(p) === 0 && allTypes().some((t) => t.name === p)));
+                const tagged = (p) => p.startsWith('Vol: ') || p.startsWith('Dilution: ') || p.startsWith('From: ');
+                // The first part is the type when it's a known type, or when the result before
+                // the brackets is a number or pending (so "band (faint)" stays a text result).
+                const looksLikeReading = /^([<>~≈]?\s*-?\d|\(pending\))/.test(ex[1].trim());
+                const ok = parts.every((p, k) => tagged(p) || (k === 0 && p.trim() && (knownTypeName(p) || looksLikeReading)));
                 if (ok) {
                   res = ex[1];
                   parts.forEach((p) => {

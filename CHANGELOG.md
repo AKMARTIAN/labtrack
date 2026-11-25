@@ -2,6 +2,15 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.15.2] - 2026-11-25
+
+### Fixed
+- **Continuing a run from a text report could misread results.** If the device opening the file didn't have a type with exactly the same name (e.g. *Qubit* renamed to *Qubit HS*, or a type created on another phone), a line like `54.8 ng/µL (Qubit)` was read as the text "54.8 ng/µL (Qubit)" with no unit or type.
+  - The type in brackets is now recognised whenever the result is a number or pending.
+  - Built-in types are matched by their original names too.
+  - Units this device hasn't seen yet are kept (e.g. `7.2 RINe`).
+  - Text results with brackets, like *band (faint)*, still stay text.
+
 ## [3.15.1] - 2026-11-25
 
 ### Fixed
