@@ -54,7 +54,7 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 | Format | Use it for |
 |---|---|
 | **CSV (.csv)** | Excel, Google Sheets, R, Python. One row per entry with date, time, section, type, tube, record, result, unit and note. Can be uploaded again to continue the run. |
-| **Picture (.png)** | A shareable image of the run in LabTrack's look: each section is a numbered step, top to bottom, and every record with a tube number gets a drawn tube (filled once its result is in, empty while pending). Known steps and measurement types get icons (DNA for extraction, thermocycler for PCR, magnet and beads for clean-up, thermometer for temperature…), and notes get a pen and notebook. Light or dark. |
+| **Picture (.png)** | A shareable image of the run in LabTrack's look: each section is a numbered step, top to bottom, and every record with a tube number gets a drawn tube (filled once its result is in, empty while pending). Known steps and measurement types get icons (DNA for extraction, thermocycler for PCR, magnet and beads for clean-up, thermometer for temperature…), and notes get a pen and notebook. Switch to **sample journey** to show each sample as a column followed through every step, with a trend chart of its main reading (e.g. Qubit ng/µL) at the bottom. Light or dark. |
 | **Text report (.txt)** | Readable summary for ELNs, emails or printing. Can be uploaded again to continue the run. |
 | **Copy to clipboard** | Paste straight into a notebook entry or chat |
 | **JSON backup** | Save a full run and restore it later, or move it to another device |

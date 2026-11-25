@@ -2,6 +2,24 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.12.0] - 2026-11-25
+
+### Added
+- **Sample journey picture:** in *export → picture of the run*, switch from **steps** to **sample journey**.
+  - Each sample becomes a column. A coloured line runs down through every step it went through, with its tube, result and type at each step.
+  - The steps are listed down the left with their icons.
+  - A sample that stopped early (e.g. failed QC) shows where its line ends.
+  - **Trend:** at the bottom, a small chart of each sample's main reading across the steps (e.g. Qubit ng/µL), with first → last values, % change and the step numbers it was measured at.
+  - Samples are matched by their follow-up links, and by records with the same name and tube.
+  - Larger runs make a wider picture, which suits slides.
+- **More step presets for Illumina and ONT library prep,** each with its own icon:
+  - Fragmentation (scissors)
+  - End repair & A-tailing (wrench)
+  - Adapter ligation (Y-adapter)
+  - Index PCR / Barcoding (barcode)
+  - Size selection (beads)
+  - Flow cell loading (flow cell)
+
 ## [3.11.0] - 2026-11-25
 
 ### Added

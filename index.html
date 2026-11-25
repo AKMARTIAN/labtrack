@@ -709,17 +709,21 @@
   <div id="pngModal" class="modal hidden no-print">
     <div class="sheet png-sheet">
       <div class="sheet-head">
-        <div><h3>picture of the run</h3><p>each section is a step, top to bottom. records with a tube number get a tube; an empty tube is still waiting for its result.</p></div>
+        <div><h3>picture of the run</h3><p id="pngSub">each section is a step, top to bottom. records with a tube number get a tube; an empty tube is still waiting for its result.</p></div>
         <button type="button" data-close class="close" aria-label="Close">✕</button>
       </div>
       <div class="sheet-body">
         <div class="png-frame" id="pngFrame"><div class="png-wait">drawing…</div></div>
         <div class="png-bar">
+          <div class="png-theme" role="group" aria-label="Picture layout">
+            <button type="button" data-png-layout="steps">steps</button>
+            <button type="button" data-png-layout="journey">sample journey</button>
+          </div>
           <div class="png-theme" role="group" aria-label="Picture colours">
             <button type="button" data-png-theme="light">light</button>
             <button type="button" data-png-theme="dark">dark</button>
           </div>
-          <p class="png-tip">on a phone you can also press and hold the picture to save it.</p>
+          <p class="png-tip" id="pngTip">on a phone you can also press and hold the picture to save it.</p>
         </div>
         <div class="row-2">
           <button id="btnSharePng" type="button" class="btn hidden">share…</button>
@@ -1445,7 +1449,7 @@
         $('extraChevron').classList.toggle('rotate-90', !hidden);
       });
       /* ---------- Section box: type a name or pick one ---------- */
-      const SECTION_PRESETS = ['Sample receipt', 'Extraction', 'Quantification', 'PCR', 'Clean-up', 'Library prep', 'Normalisation', 'Pooling', 'QC', 'Sequencing'];
+      const SECTION_PRESETS = ['Sample receipt', 'Extraction', 'Quantification', 'Fragmentation', 'End repair & A-tailing', 'Adapter ligation', 'PCR', 'Index PCR', 'Clean-up', 'Size selection', 'Library prep', 'Barcoding', 'Normalisation', 'Pooling', 'QC', 'Flow cell loading', 'Sequencing'];
       function presetNames() {
         const seen = new Set();
         return [...prefs.recentSections, ...SECTION_PRESETS].filter((n) => {
@@ -2206,7 +2210,8 @@
       /* ---------- Picture export (PNG) ---------- */
       // Draws the run on a canvas in the app's own terminal look: one card per section,
       // joined top to bottom as steps, with a drawn tube for every record that has a tube number.
-      let pngTheme = null, pngBlob = null, pngUrl = null;
+      let pngTheme = null, pngLayout = 'steps', pngBlob = null, pngUrl = null;
+      const pngName = () => `${fileBase()}${pngLayout === 'journey' ? '_journey' : ''}.png`;
       function themeColors(theme) {
         const root = document.documentElement;
         const before = root.dataset.theme;
@@ -2320,6 +2325,12 @@
         gel:     { s: 'M3 3h18v18H3zM5.5 5.5h3v1.5h-3zM10.5 5.5h3v1.5h-3zM15.5 5.5h3v1.5h-3z', f: 'M5.5 9.5h3v1.6h-3zM5.5 13h3v1.6h-3zM5.5 16.5h3v1.6h-3zM10.5 11.5h3v1.6h-3zM15.5 10.2h3v1.6h-3zM15.5 15h3v1.6h-3z' },
         qc:      { s: 'M10.5 3a7.5 7.5 0 1 0 0 15a7.5 7.5 0 1 0 0-15zM16 16l5 5M7.3 10.6l2.2 2.2 4.2-4.4' },
         seq:     { s: 'M2.5 20.5h19M3 18c1.6 0 1.6-7 3.2-7s1.6 7 3.2 7 1.6-12 3.2-12 1.6 12 3.2 12 1.6-5 3.2-5 1.5 5 3 5' },
+        cut:     { s: 'M6 3.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5zM6 15.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5zM8.2 7.3L20.5 18M8.2 16.7L20.5 6' },
+        repair:  { s: 'M15 3a5 5 0 0 0-4.6 6.9l-6.9 6.9a2.1 2.1 0 0 0 3 3l6.9-6.9A5 5 0 0 0 20.6 8l-3 3-2.6-.6-.6-2.6 3-3A5 5 0 0 0 15 3z' },
+        ligate:  { s: 'M2.5 12h8.5M11 12l5-5h5.5M11 12l5 5h5.5M13 9.9l2-2M13 14.1l2 2' },
+        barcode: { s: 'M3 5v14M6.5 5v14M12 5v14M15 5v14M20.5 5v14', f: 'M8.3 5h2v14h-2zM16.8 5h2.2v14h-2.2z' },
+        flowcell:{ s: 'M2.5 7h19v10h-19zM6 10.2h12M6 13.8h12', f: 'M5.7 7.8a1 1 0 1 1-2 0zM20.3 7.8a1 1 0 1 1-2 0z' },
+        trend:   { s: 'M3 3v18h18M7 15l4-5 3 3 6-7' },
         // measurement types
         reader:  { s: 'M7 2.5h10a2 2 0 0 1 2 2v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-15a2 2 0 0 1 2-2zM8 5.5h8v5H8z', f: 'M9.9 14a.9.9 0 1 1-1.8 0a.9.9 0 1 1 1.8 0zM12.9 14a.9.9 0 1 1-1.8 0a.9.9 0 1 1 1.8 0zM15.9 14a.9.9 0 1 1-1.8 0a.9.9 0 1 1 1.8 0zM9.9 17.2a.9.9 0 1 1-1.8 0a.9.9 0 1 1 1.8 0zM12.9 17.2a.9.9 0 1 1-1.8 0a.9.9 0 1 1 1.8 0zM15.9 17.2a.9.9 0 1 1-1.8 0a.9.9 0 1 1 1.8 0z' },
         drop:    { s: 'M12 2.5C9 7.5 5.5 10.5 5.5 14.5a6.5 6.5 0 0 0 13 0c0-4-3.5-7-6.5-12zM9 14.5a3 3 0 0 0 3 3' },
@@ -2333,14 +2344,20 @@
         note:    { s: 'M5 3h10a2 2 0 0 1 2 2v4.5M17 18.5v.5a2 2 0 0 1-2 2H5zM3 7h4M3 11h4M3 15h4M9.5 8h4M9.5 12h2.5M19.6 10.6l1.8 1.8-7.2 7.2-2.6.8.8-2.6zM18 12.2l1.8 1.8' }
       };
       const SECTION_ICON_RULES = [
+        [/size[\s-]*select/i, 'beads'],
+        [/end[\s-]*repair|a[\s-]*tail|dna[\s-]*repair|ffpe/i, 'repair'],
+        [/ligat|adapter/i, 'ligate'],
+        [/barcod|index/i, 'barcode'],
+        [/fragmentation|fragmentase|shear|sonicat|covaris|enzymatic\s*frag/i, 'cut'],
+        [/flow\s*cell|load|prim(e|ing)\b/i, 'flowcell'],
         [/bead|clean[\s-]*up|ampure|spri|purif/i, 'beads'],
         [/pcr|amplif|thermo\s*cycl/i, 'pcr'],
         [/quant|qubit|nanodrop|concentration/i, 'gauge'],
         [/\bgel\b|electrophor|tape\s*station|bioanaly[sz]er|fragment/i, 'gel'],
-        [/librar|lib\s*prep|tagment|ligation|adapter|indexing/i, 'library'],
+        [/librar|lib\s*prep|tagment/i, 'library'],
         [/normali[sz]/i, 'balance'],
         [/pool/i, 'funnel'],
-        [/sequenc|\bseq\b|miseq|nextseq|novaseq|iseq|nanopore|minion|flow\s*cell/i, 'seq'],
+        [/sequenc|\bseq\b|miseq|nextseq|novaseq|iseq|nanopore|minion|promethion|gridion/i, 'seq'],
         [/\bqc\b|quality|check|validat/i, 'qc'],
         [/extract|isolat|lysis|\bdna\b|\brna\b/i, 'dna'],
         [/receipt|receiv|intake|accession|arriv/i, 'box']
@@ -2622,8 +2639,12 @@
         });
         const H = Math.ceil(foot + 30 + PAD);
 
+        return paintPicture(W, H, ops, C, theme);
+      }
+
+      function paintPicture(W, H, ops, C, theme) {
         // Keep under phone canvas limits (about 16 million pixels).
-        const scale = Math.max(0.5, Math.min(2, Math.sqrt(16e6 / (W * H)), 32000 / H));
+        const scale = Math.max(0.4, Math.min(2, Math.sqrt(16e6 / (W * H)), 32000 / H, 32000 / W));
         const canvas = document.createElement('canvas');
         canvas.width = Math.round(W * scale);
         canvas.height = Math.round(H * scale);
@@ -2642,17 +2663,279 @@
         return canvas;
       }
 
+      /* ----- Sample journey: one column per sample, one row per step ----- */
+      // A sample is every record joined by follow-up links, plus records with the same name and tube.
+      function sampleJourneys() {
+        const recs = state.quickItems.filter((i) => i.kind === 'result');
+        const parent = new Map(recs.map((r) => [r.id, r.id]));
+        const find = (id) => { while (parent.get(id) !== id) { parent.set(id, parent.get(parent.get(id))); id = parent.get(id); } return id; };
+        const union = (a, b) => { a = find(a); b = find(b); if (a !== b) parent.set(b, a); };
+        recs.forEach((r) => { if (r.fromId && parent.has(r.fromId)) union(r.fromId, r.id); });
+        const byKey = new Map();
+        recs.forEach((r) => {
+          const nm = String(r.name || '').trim().toLowerCase();
+          if (!nm) return;
+          const key = nm + '|' + String(r.tube || '').trim().toLowerCase();
+          if (byKey.has(key)) union(byKey.get(key), r.id); else byKey.set(key, r.id);
+        });
+        const secs = displaySections();
+        const secOf = (i) => (isOrphan(i) ? GENERAL.id : i.sectionId);
+        const secIdx = new Map(secs.map((x, k) => [x.id, k]));
+        const order = new Map(state.quickItems.map((x, k) => [x.id, k]));
+        const groups = new Map();
+        recs.forEach((r) => { const k = find(r.id); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); });
+        const journeys = [...groups.values()].map((items) => {
+          items.sort((a, b) => (secIdx.get(secOf(a)) - secIdx.get(secOf(b))) || (order.get(a.id) - order.get(b.id)));
+          const first = items[0];
+          return { items, name: first.name || '(unnamed)', tube: first.tube || '', start: Math.min(...items.map((i) => order.get(i.id))) };
+        }).sort((a, b) => a.start - b.start);
+        const steps = secs.filter((x) => recs.some((r) => secOf(r) === x.id));
+        return { journeys, steps, secOf };
+      }
+
+      function drawJourneyPicture(theme) {
+        const C = themeColors(theme);
+        const F = (wt, px) => `${wt} ${px}px 'JetBrains Mono', ui-monospace, Menlo, monospace`;
+        const { journeys, steps, secOf } = sampleJourneys();
+        const PAD = 44, LABEL = 250, COLW = 214, HEADH = 84, BLOCK = 70, TRENDH = 168;
+        const W = Math.max(1080, PAD * 2 + LABEL + journeys.length * COLW);
+        const gridX = PAD, gridW = W - PAD * 2;
+        const colsX = gridX + LABEL;
+        const colW = (gridW - LABEL) / Math.max(1, journeys.length);
+        const palette = ['cyan', 'violet', 'orange', 'pink', 'teal', 'sky', 'lime', 'rose', 'indigo', 'amber', 'emerald', 'fuchsia'];
+        const colorOf = (k) => C.type[palette[k % palette.length]];
+        const meas = document.createElement('canvas').getContext('2d');
+        const ops = [], back = [], front = [];
+        let y;
+
+        // Window bar and title
+        ops.push((ctx) => {
+          rrect(ctx, PAD, PAD, W - PAD * 2, 44, 12);
+          ctx.fillStyle = C.panel; ctx.fill(); ctx.strokeStyle = C.border; ctx.lineWidth = 1.5; ctx.stroke();
+          [C.red, C.amber, C.green].forEach((col, k) => { ctx.beginPath(); ctx.arc(PAD + 24 + k * 20, PAD + 22, 6, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); });
+          ctx.font = F(500, 15); ctx.fillStyle = C.muted; ctx.textAlign = 'center';
+          ctx.fillText(fitText(ctx, `labtrack ~ ${state.meta.id || 'untitled run'} ~ sample journey`, W - PAD * 2 - 220), W / 2, PAD + 27);
+        });
+        y = PAD + 44 + 40;
+        meas.font = F(800, 34);
+        const titleLines = wrapLines(meas, state.meta.id || 'untitled run', W - PAD * 2 - 34);
+        const ty = y;
+        ops.push((ctx) => {
+          ctx.font = F(800, 34); ctx.textAlign = 'left';
+          titleLines.forEach((ln, k) => {
+            if (k === 0) { ctx.fillStyle = C.green; ctx.fillText('>', PAD, ty + 32); }
+            ctx.fillStyle = C.text; ctx.fillText(ln, PAD + 34, ty + 32 + k * 44);
+          });
+        });
+        y += titleLines.length * 44;
+        const dates = state.quickItems.map((i) => i.date).filter(Boolean).sort();
+        const span = dates.length ? (dates[0] === dates[dates.length - 1] ? dates[0] : `${dates[0]} → ${dates[dates.length - 1]}`) : todayISO();
+        const meta = ['sample journey', span, state.meta.operator ? `by ${state.meta.operator}` : '',
+          `${journeys.length} ${journeys.length === 1 ? 'sample' : 'samples'}`, `${steps.length} ${steps.length === 1 ? 'step' : 'steps'}`].filter(Boolean).join('  ·  ');
+        const my = y;
+        ops.push((ctx) => { ctx.font = F(500, 17); ctx.fillStyle = C.muted; ctx.textAlign = 'left'; ctx.fillText(fitText(ctx, meta, W - PAD * 2 - 34), PAD + 34, my + 14); });
+        y += 50;
+
+        const gridTop = y;
+        // Column headers
+        ops.push((ctx) => {
+          ctx.font = F(800, 13); ctx.fillStyle = C.dim; ctx.textAlign = 'left';
+          ctx.fillText('STEP', gridX + 20, gridTop + 48);
+          journeys.forEach((j, k) => {
+            const cx = colsX + k * colW, col = colorOf(k);
+            ctx.fillStyle = col; rrect(ctx, cx + 14, gridTop + 18, 6, 46, 3); ctx.fill();
+            ctx.font = F(800, 19); ctx.fillStyle = C.text;
+            ctx.fillText(fitText(ctx, j.name, colW - 44), cx + 30, gridTop + 38);
+            const done = j.items.filter((i) => String(i.result).trim()).length;
+            ctx.font = F(500, 13); ctx.fillStyle = C.muted;
+            ctx.fillText(fitText(ctx, [j.tube ? `tube ${j.tube}` : '', `${done}/${j.items.length} done`].filter(Boolean).join(' · '), colW - 44), cx + 30, gridTop + 60);
+          });
+        });
+        y = gridTop + HEADH;
+
+        // Rows
+        const nodes = journeys.map(() => []);
+        steps.forEach((sec, r) => {
+          const rowTop = y;
+          const cells = journeys.map((j) => j.items.filter((i) => secOf(i) === sec.id));
+          meas.font = F(800, 18);
+          const nameLines = wrapLines(meas, sec.name, LABEL - 80).slice(0, 3);
+          const labelH = 28 + nameLines.length * 23 + 18;
+          const rowH = Math.max(labelH, ...cells.map((c) => c.length * BLOCK + 16), BLOCK + 16);
+          const sk = sectionIcon(sec);
+          back.push((ctx) => {
+            if (r % 2 === 0) { ctx.fillStyle = rgba(C.text, theme === 'dark' ? 0.02 : 0.018); ctx.fillRect(gridX + 1, rowTop, gridW - 2, rowH); }
+            ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.setLineDash([4, 5]);
+            ctx.beginPath(); ctx.moveTo(gridX, rowTop + 0.5); ctx.lineTo(gridX + gridW, rowTop + 0.5); ctx.stroke(); ctx.setLineDash([]);
+            let lx = gridX + 18;
+            if (sk) {
+              rrect(ctx, lx, rowTop + 16, 38, 38, 9);
+              ctx.fillStyle = rgba(C.cyan, 0.1); ctx.fill(); ctx.strokeStyle = rgba(C.cyan, 0.35); ctx.stroke();
+              drawIcon(ctx, sk, lx + 6, rowTop + 22, 26, C.cyan);
+            }
+            lx += 50;
+            ctx.font = F(800, 13); ctx.fillStyle = C.cyan; ctx.textAlign = 'left';
+            ctx.fillText(`step ${String(r + 1).padStart(2, '0')}`, lx, rowTop + 30);
+            ctx.font = F(800, 18); ctx.fillStyle = C.text;
+            nameLines.forEach((ln, k) => ctx.fillText(ln, lx, rowTop + 54 + k * 23));
+          });
+          cells.forEach((items, k) => {
+            const cx = colsX + k * colW, col = colorOf(k), lineX = cx + 34;
+            items.forEach((it, m) => {
+              const by = rowTop + 8 + m * BLOCK, ny = by + BLOCK / 2;
+              nodes[k].push(ny);
+              const has = String(it.result).trim() !== '';
+              const num = has && isNumeric(it.result);
+              front.push((ctx) => {
+                const tx = lineX + 28, tw = colW - (tx - cx) - 12;
+                if (it.tube) {
+                  ctx.save(); ctx.translate(lineX, ny); ctx.scale(0.78, 0.78);
+                  drawTube(ctx, -13, -36, col, has, C);
+                  ctx.restore();
+                } else {
+                  ctx.beginPath(); ctx.arc(lineX, ny, 17, 0, Math.PI * 2);
+                  ctx.fillStyle = has ? rgba(col, 0.18) : C.panel; ctx.fill();
+                  ctx.lineWidth = 2.5; ctx.strokeStyle = col; ctx.stroke();
+                  const ik = typeIcon(it);
+                  if (ik) drawIcon(ctx, ik, lineX - 10, ny - 10, 20, col);
+                  else { ctx.beginPath(); ctx.arc(lineX, ny, 4.5, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); }
+                }
+                ctx.textAlign = 'left';
+                let yy = by + 30;
+                if (has) {
+                  ctx.font = num ? F(800, 23) : F(700, 15); ctx.fillStyle = num ? C.green : C.text;
+                  if (num && theme === 'dark') { ctx.shadowColor = rgba(C.green, 0.4); ctx.shadowBlur = 12; }
+                  const lines = num ? [fitText(ctx, it.result, tw)] : wrapLines(ctx, it.result, tw).slice(0, 2);
+                  let endX = tx;
+                  lines.forEach((ln) => { ctx.fillText(ln, tx, yy); endX = tx + ctx.measureText(ln).width; yy += num ? 22 : 18; });
+                  ctx.shadowBlur = 0;
+                  if (it.unit) {
+                    ctx.font = F(500, 13); ctx.fillStyle = C.muted;
+                    const uw = ctx.measureText(it.unit).width;
+                    if (endX + 7 + uw <= tx + tw) ctx.fillText(it.unit, endX + 7, yy - (num ? 22 : 18));
+                    else { ctx.fillText(fitText(ctx, it.unit, tw), tx, yy); yy += 17; }
+                  }
+                } else {
+                  ctx.font = F(700, 14);
+                  const label = it.unit ? `pending · ${it.unit}` : 'pending';
+                  const pw = Math.min(ctx.measureText(label).width + 16, tw);
+                  rrect(ctx, tx, yy - 17, pw, 24, 6);
+                  ctx.setLineDash([4, 4]); ctx.strokeStyle = C.amber; ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+                  ctx.fillStyle = C.amber; ctx.fillText(fitText(ctx, label, pw - 16), tx + 8, yy);
+                  yy += 24;
+                }
+                const t = typeById(it.typeId);
+                const tag = it.typeId && it.typeId !== 'general' ? (t ? t.name : it.typeName) : '';
+                if (tag) { ctx.font = F(600, 12); ctx.fillStyle = C.dim; ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2); }
+              });
+            });
+          });
+          y += rowH;
+        });
+
+        // Trend row: the main numeric reading of each sample across the steps
+        const trendTop = y;
+        const trends = journeys.map((j) => {
+          const pts = j.items.filter((i) => isNumeric(i.result) && i.unit).map((i) => ({ i, v: parseFloat(String(i.result).replace(/[^\d.eE+-]/g, '')), step: steps.findIndex((x) => x.id === secOf(i)) + 1 })).filter((p) => isFinite(p.v));
+          const count = {};
+          pts.forEach((p) => { count[p.i.unit] = (count[p.i.unit] || 0) + 1; });
+          const unit = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
+          const use = unit ? pts.filter((p) => p.i.unit === unit) : [];
+          return use.length >= 2 ? { unit, pts: use } : null;
+        });
+        const anyTrend = trends.some(Boolean);
+        if (anyTrend) {
+          front.push((ctx) => {
+            ctx.strokeStyle = C['border-2']; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(gridX, trendTop + 0.5); ctx.lineTo(gridX + gridW, trendTop + 0.5); ctx.stroke();
+            rrect(ctx, gridX + 18, trendTop + 16, 38, 38, 9);
+            ctx.fillStyle = rgba(C.green, 0.1); ctx.fill(); ctx.strokeStyle = rgba(C.green, 0.35); ctx.lineWidth = 1; ctx.stroke();
+            drawIcon(ctx, 'trend', gridX + 24, trendTop + 22, 26, C.green);
+            ctx.font = F(800, 13); ctx.fillStyle = C.green; ctx.textAlign = 'left'; ctx.fillText('trend', gridX + 68, trendTop + 30);
+            ctx.font = F(800, 18); ctx.fillStyle = C.text; ctx.fillText('through steps', gridX + 68, trendTop + 54);
+            ctx.font = F(500, 13); ctx.fillStyle = C.muted; ctx.fillText('main reading,', gridX + 68, trendTop + 76);
+            ctx.fillText('numbers = step', gridX + 68, trendTop + 94);
+            trends.forEach((tr, k) => {
+              const cx = colsX + k * colW + 14, cw = colW - 28, col = colorOf(k);
+              const top = trendTop + 18, ch = 70;
+              if (!tr) { ctx.font = F(500, 13); ctx.fillStyle = C.dim; ctx.fillText('—', cx + 6, top + 40); return; }
+              rrect(ctx, cx, top, cw, ch + 38, 8);
+              ctx.fillStyle = C.panel; ctx.fill(); ctx.strokeStyle = C.border; ctx.lineWidth = 1; ctx.stroke();
+              const vs = tr.pts.map((p) => p.v), lo = Math.min(...vs), hi = Math.max(...vs), rng = hi - lo || 1;
+              const px = (n) => cx + 14 + (n / (vs.length - 1)) * (cw - 28);
+              const py = (v) => top + 12 + (1 - (v - lo) / rng) * (ch - 10);
+              ctx.beginPath();
+              vs.forEach((v, n) => (n ? ctx.lineTo(px(n), py(v)) : ctx.moveTo(px(n), py(v))));
+              ctx.lineTo(px(vs.length - 1), top + ch + 10); ctx.lineTo(px(0), top + ch + 10); ctx.closePath();
+              ctx.fillStyle = rgba(col, 0.12); ctx.fill();
+              ctx.beginPath();
+              vs.forEach((v, n) => (n ? ctx.lineTo(px(n), py(v)) : ctx.moveTo(px(n), py(v))));
+              ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.lineJoin = 'round'; ctx.stroke();
+              vs.forEach((v, n) => { ctx.beginPath(); ctx.arc(px(n), py(v), 3.8, 0, Math.PI * 2); ctx.fillStyle = C.panel; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = col; ctx.stroke(); });
+              ctx.font = F(700, 11); ctx.fillStyle = C.dim; ctx.textAlign = 'center';
+              tr.pts.forEach((p, n) => ctx.fillText(String(p.step).padStart(2, '0'), px(n), top + ch + 32));
+              const a = vs[0], b = vs[vs.length - 1];
+              const pct = a ? Math.round(((b - a) / Math.abs(a)) * 100) : 0;
+              ctx.font = F(700, 13); ctx.fillStyle = C.text; ctx.textAlign = 'left';
+              ctx.fillText(fitText(ctx, `${tr.pts[0].i.result} → ${tr.pts[tr.pts.length - 1].i.result} ${tr.unit}`, cw), cx, top + ch + 60);
+              ctx.font = F(800, 13); ctx.fillStyle = pct < 0 ? C.amber : C.green;
+              ctx.fillText(`${pct > 0 ? '+' : ''}${pct}%`, cx, top + ch + 78);
+              ctx.font = F(500, 12); ctx.fillStyle = C.dim; ctx.textAlign = 'right';
+              ctx.fillText(`at steps ${tr.pts.map((p) => p.step).join(', ')}`.length < 22 ? `steps ${tr.pts.map((p) => p.step).join(', ')}` : `${vs.length} readings`, cx + cw, top + ch + 78);
+            });
+          });
+          y += TRENDH + 10;
+        }
+        const gridBottom = y;
+
+        // Grid card, row stripes and labels, then each sample's line, then the nodes on top.
+        const grid = (ctx) => {
+          rrect(ctx, gridX, gridTop, gridW, gridBottom - gridTop, 14);
+          ctx.fillStyle = C.panel; ctx.fill(); ctx.strokeStyle = C.border; ctx.lineWidth = 1.5; ctx.stroke();
+          ctx.save(); rrect(ctx, gridX, gridTop, gridW, gridBottom - gridTop, 14); ctx.clip();
+          ctx.fillStyle = C['bg-2']; ctx.fillRect(gridX, gridTop, LABEL, gridBottom - gridTop);
+          ctx.fillRect(gridX, gridTop, gridW, HEADH);
+          ctx.restore();
+          ctx.strokeStyle = C.border; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(colsX + 0.5, gridTop); ctx.lineTo(colsX + 0.5, gridBottom); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(gridX, gridTop + HEADH + 0.5); ctx.lineTo(gridX + gridW, gridTop + HEADH + 0.5); ctx.stroke();
+        };
+        const lines = (ctx) => {
+          nodes.forEach((ys, k) => {
+            if (!ys.length) return;
+            const lineX = colsX + k * colW + 34, col = colorOf(k);
+            ctx.strokeStyle = rgba(col, 0.5); ctx.lineWidth = 4; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(lineX, gridTop + HEADH + 4); ctx.lineTo(lineX, ys[ys.length - 1]); ctx.stroke();
+          });
+        };
+        const footY = y + 34;
+        front.push((ctx) => {
+          ctx.font = F(500, 14); ctx.fillStyle = C.dim; ctx.textAlign = 'left';
+          ctx.fillText(`exported ${todayISO()} ${nowTime()}`, PAD, footY);
+          ctx.textAlign = 'right'; ctx.fillStyle = C.muted;
+          ctx.fillText('each column is one sample, followed through its steps', W - PAD, footY);
+        });
+        const H = Math.ceil(footY + PAD - 10);
+        return paintPicture(W, H, [grid, ...ops, ...back, lines, ...front], C, theme);
+      }
+
       async function renderPng() {
         $('pngFrame').innerHTML = '<div class="png-wait">drawing…</div>';
         document.querySelectorAll('[data-png-theme]').forEach((b) => b.classList.toggle('on', b.dataset.pngTheme === pngTheme));
+        document.querySelectorAll('[data-png-layout]').forEach((b) => b.classList.toggle('on', b.dataset.pngLayout === pngLayout));
+        $('pngSub').textContent = pngLayout === 'journey'
+          ? 'each sample is a column, followed down through every step it went through, with a trend of its main reading at the bottom.'
+          : 'each section is a step, top to bottom. records with a tube number get a tube; an empty tube is still waiting for its result.';
         try { await Promise.all([500, 700, 800].map((w) => document.fonts.load(`${w} 20px 'JetBrains Mono'`))); } catch (e) {}
-        const canvas = drawRunPicture(pngTheme);
+        let canvas;
+        if (pngLayout === 'journey') canvas = drawJourneyPicture(pngTheme);
+        else canvas = drawRunPicture(pngTheme);
         pngBlob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
         if (pngUrl) URL.revokeObjectURL(pngUrl);
         pngUrl = pngBlob ? URL.createObjectURL(pngBlob) : null;
         if (!pngUrl) { $('pngFrame').innerHTML = '<div class="png-wait">could not draw the picture on this device.</div>'; return; }
         $('pngFrame').innerHTML = `<img src="${pngUrl}" alt="Picture of ${escapeHtml(state.meta.id || 'this run')}" />`;
-        const file = new File([pngBlob], `${fileBase()}.png`, { type: 'image/png' });
+        const file = new File([pngBlob], pngName(), { type: 'image/png' });
         $('btnSharePng').classList.toggle('hidden', !(navigator.canShare && navigator.canShare({ files: [file] })));
       }
       $('btnOpenPng').addEventListener('click', () => {
@@ -2662,6 +2945,11 @@
         openModal('pngModal');
         renderPng();
       });
+      document.querySelectorAll('[data-png-layout]').forEach((b) => b.addEventListener('click', () => {
+        if (pngLayout === b.dataset.pngLayout) return;
+        pngLayout = b.dataset.pngLayout;
+        renderPng();
+      }));
       document.querySelectorAll('[data-png-theme]').forEach((b) => b.addEventListener('click', () => {
         if (pngTheme === b.dataset.pngTheme) return;
         pngTheme = b.dataset.pngTheme;
@@ -2671,14 +2959,14 @@
         if (!pngBlob) return;
         const a = document.createElement('a');
         a.href = URL.createObjectURL(pngBlob);
-        a.download = `${fileBase()}.png`;
+        a.download = pngName();
         document.body.appendChild(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(a.href), 4000);
         showToast('Downloaded picture');
       });
       $('btnSharePng').addEventListener('click', async () => {
         if (!pngBlob) return;
-        try { await navigator.share({ files: [new File([pngBlob], `${fileBase()}.png`, { type: 'image/png' })], title: state.meta.id || 'LabTrack run' }); } catch (e) {}
+        try { await navigator.share({ files: [new File([pngBlob], pngName(), { type: 'image/png' })], title: state.meta.id || 'LabTrack run' }); } catch (e) {}
       });
 
       $('btnDownloadTxt').addEventListener('click', () => {
