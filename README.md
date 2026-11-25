@@ -33,9 +33,9 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
   </tr>
 </table>
 
-**Picture export:** share or present a run as an image, here as a sample journey with a TapeStation result (DIN, average fragment size and electropherogram) imported onto Blood 1.
+**Picture export:** share or present a run as an image, here as a sample journey with a TapeStation result (DIN, average fragment size and electropherogram) imported onto Blood 1, and notes written along the way.
 
-<img src="Examples_and_screenshots/07_picture_journey_tapestation_light.png" alt="Sample journey of three samples through Illumina library prep, with a TapeStation genomic DNA result and electropherogram on Blood 1 at extraction" />
+<img src="Examples_and_screenshots/07_picture_journey_tapestation_light.png" alt="Sample journey of three samples through Illumina library prep, with a TapeStation genomic DNA result and electropherogram on Blood 1 at extraction, a note at the bead clean-up step and a note on Blood 3" />
 
 More examples, in light and dark, are in [`Examples_and_screenshots`](Examples_and_screenshots/README.md).
 

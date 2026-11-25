@@ -2,6 +2,18 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.19.0] - 2026-11-25
+
+### Added
+- **Notes in the sample journey:**
+  - **In the picture:** a step's notes appear once, under the step name in the left column. A note on a record appears under that sample's result (*└─ low yield, carried on anyway*).
+  - **In the app:** the journey view shows a record's note under its row.
+  - The automatic TapeStation summary isn't repeated as a note.
+
+### Changed
+- The help guide's top-bar screenshot shows the new logo.
+- Example 07 on the GitHub page now also shows notes written along the way.
+
 ## [3.18.1] - 2026-11-25
 
 ### Changed

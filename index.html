@@ -415,6 +415,7 @@
     .inst-top .well { font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 5px; color: var(--t-indigo); border: 1px solid color-mix(in srgb, var(--t-indigo) 40%, transparent); }
     .inst-top .inst-hl { margin-left: auto; font-weight: 800; color: var(--green); }
     .whole { display: inline-block; margin-left: 5px; padding: 0 5px; border-radius: 5px; font-size: 10px; font-weight: 800; line-height: 16px; color: var(--t-indigo); border: 1px solid color-mix(in srgb, var(--t-indigo) 40%, transparent); }
+    .jnote { grid-column: 2 / -1; font-size: 11.5px; color: var(--note-text); margin-top: -2px; }
     .jflash { animation: jflash 1.6s ease-out; }
     @keyframes jflash { 0%, 30% { background: color-mix(in srgb, var(--cyan) 18%, transparent); } 100% { background: transparent; } }
 
@@ -698,7 +699,7 @@
   </main>
 
   <footer class="no-print">
-    <span class="c-dim">//</span> saved on this device only · <a href="help.html">help</a> · <a href="https://github.com/AKMARTIAN/labtrack" target="_blank" rel="noopener">about labtrack</a> · <a id="appVersion" class="ver" href="https://github.com/AKMARTIAN/labtrack/releases/tag/v3.18.1" target="_blank" rel="noopener" title="What's new in this version">v3.18.1</a><!-- keep in step with CACHE in sw.js -->
+    <span class="c-dim">//</span> saved on this device only · <a href="help.html">help</a> · <a href="https://github.com/AKMARTIAN/labtrack" target="_blank" rel="noopener">about labtrack</a> · <a id="appVersion" class="ver" href="https://github.com/AKMARTIAN/labtrack/releases/tag/v3.19.0" target="_blank" rel="noopener" title="What's new in this version">v3.19.0</a><!-- keep in step with CACHE in sw.js -->
   </footer>
 
   <!-- Record types -->
@@ -3661,7 +3662,9 @@
           return out;
         }
         const instH = (it, tw) => (it.inst && it.inst.trace ? TRACE_H + 20 + (footLines(it.inst, tw).length - 1) * 15 : 0);
-        const singleH = (m, w) => (m.reads.length > 1 ? BLOCK + 22 : BLOCK) + instH(m.reads[0], w - 74);
+        const ownNote = (it) => (it.notes && !(it.inst && it.notes === it.inst.autoNote) ? it.notes : '');
+        const noteLines = (it, tw) => { const n = ownNote(it); if (!n) return []; meas.font = F(500, 12); return wrapLines(meas, `└─ ${n}`, tw).slice(0, 4); };
+        const singleH = (m, w) => (m.reads.length > 1 ? BLOCK + 22 : BLOCK) + (m.reads.length === 1 ? noteLines(m.reads[0], w - 74).length * 15 : 0) + instH(m.reads[0], w - 74);
         const groupH = (row, w) => (row.shared ? BLOCK + instH(row.item, w - 80) : GBLOCK + (row.multi ? row.reads.length * READ_LINE + 4 : 0));
         // A small electropherogram, drawn like the one in the app.
         function drawTrace(ctx, inst, x, y, w, h, col) {
@@ -3705,7 +3708,10 @@
             : c.rows.filter((row) => row.sid === sec.id).reduce((a, row) => a + groupH(row, c.w), 0)) + 16);
           meas.font = F(800, 18);
           const nameLines = wrapLines(meas, sec.name, LABEL - 80).slice(0, 3);
-          const labelH = 28 + nameLines.length * 23 + 18;
+          meas.font = F(500, 12);
+          const stepNotes = state.quickItems.filter((i) => i.kind === 'note' && secOf(i) === sec.id && String(i.text || '').trim());
+          const noteTxt = stepNotes.flatMap((nt) => wrapLines(meas, nt.text, LABEL - 80).slice(0, 6).map((l, k) => [l, k === 0]));
+          const labelH = noteTxt.length ? 54 + nameLines.length * 23 + 29 + (noteTxt.length - 1) * 15 + 18 : 28 + nameLines.length * 23 + 18;
           const rowH = Math.max(labelH, ...cellH, BLOCK + 16);
           const sk = sectionIcon(sec);
           back.push((ctx) => {
@@ -3723,6 +3729,13 @@
             ctx.fillText(`step ${String(r + 1).padStart(2, '0')}`, lx, rowTop + 30);
             ctx.font = F(800, 18); ctx.fillStyle = C.text;
             nameLines.forEach((ln, k) => ctx.fillText(ln, lx, rowTop + 54 + k * 23));
+            if (noteTxt.length) {
+              const ny0 = rowTop + 54 + nameLines.length * 23 + 2;
+              drawIcon(ctx, 'note', lx, ny0 - 3, 15, C.amber);
+              ctx.font = F(800, 11); ctx.fillStyle = C.amber; ctx.fillText('note', lx + 20, ny0 + 9);
+              ctx.font = F(500, 12); ctx.fillStyle = C['note-text'];
+              noteTxt.forEach(([l], k) => ctx.fillText(l, lx, ny0 + 27 + k * 15));
+            }
           });
           cols.forEach((c, k) => {
             const { x, w, col } = c;
@@ -3806,9 +3819,13 @@
           if (m.reads.length === 1) {
             const yy = resultLines(ctx, it, tx, by + 30, tw);
             if (tag) { ctx.font = F(600, 12); ctx.fillStyle = C.dim; ctx.fillText(fitText(ctx, tag, tw), tx, yy + 2); }
+            const nls = noteLines(it, tw);
+            ctx.font = F(500, 12); ctx.fillStyle = C['note-text'];
+            nls.forEach((l, k) => ctx.fillText(l, tx, yy + 18 + k * 15));
+            const off = nls.length * 15;
             if (it.inst && it.inst.trace) {
-              const nl = drawInstFooter(ctx, it.inst, tx, yy + 18, tw);
-              drawTrace(ctx, it.inst, tx, yy + 18 + (nl - 1) * 15 + 12, tw, TRACE_H - 14, col);
+              const nl = drawInstFooter(ctx, it.inst, tx, yy + 18 + off, tw);
+              drawTrace(ctx, it.inst, tx, yy + 18 + off + (nl - 1) * 15 + 12, tw, TRACE_H - 14, col);
             }
             return;
           }
@@ -4393,6 +4410,7 @@
                 ? `<div class="jres ${isNumeric(it.result) ? '' : 'txt'}">${escapeHtml(it.result)}${unit}</div>`
                 : `<div class="jres result pending">${fillBox(it, `Result for ${j.name} at ${sec.name}`, 'result?')}${unit}</div>`;
               if (it.inst) extra = instBlock(it.inst);
+              if (it.notes && !(it.inst && it.notes === it.inst.autoNote)) extra = `<div class="jnote">└─ ${escapeHtml(it.notes)}</div>` + extra;
             } else {
               // Re-reads of this tube: the mean, then every reading in order.
               const st = readStats(m.reads);
