@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>LabTrack Help</title>
+  <meta name="description" content="How to use LabTrack: log results, prepare records, replicates, re-reads, follow samples through steps, the sample journey, picture export and TapeStation import, step by step with screenshots." />
+  <meta name="color-scheme" content="light dark" />
+  <script>
+    try { document.documentElement.dataset.theme = localStorage.getItem('labtrack_theme') === 'dark' ? 'dark' : 'light'; }
+    catch (e) { document.documentElement.dataset.theme = 'light'; }
+  </script>
+  <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f5f8; --panel: #ffffff; --panel-2: #edf1f5; --border: #dde3ea; --border-2: #c9d2dd;
+      --text: #18212d; --muted: #566377; --dim: #8995a6;
+      --green: #1a7f37; --cyan: #0b7285; --violet: #7246c9; --amber: #9a6700; --orange: #f97316;
+      --font: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0b0f14; --panel: #121821; --panel-2: #18202b; --border: #222c39; --border-2: #2e3a4a;
+      --text: #dce3ec; --muted: #8492a3; --dim: #56637a;
+      --green: #7ee787; --cyan: #56d4dd; --violet: #c4a7ff; --amber: #f2cc60;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.6; }
+    a { color: var(--cyan); }
+    .top { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+    .top-in { max-width: 760px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .brand { font-weight: 800; white-space: nowrap; }
+    .brand .g { color: var(--green); }
+    .back { display: inline-flex; align-items: center; height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--border-2); background: var(--panel); color: var(--text); text-decoration: none; font-weight: 700; font-size: 13px; white-space: nowrap; }
+    main { max-width: 760px; margin: 0 auto; padding: 18px 16px 60px; }
+    h1 { font-size: 22px; margin: 6px 0 4px; }
+    h1::before { content: '# '; color: var(--green); }
+    .lead { color: var(--muted); margin: 0 0 16px; }
+    h2 { font-size: 17px; margin: 0 0 6px; scroll-margin-top: 70px; }
+    h2::before { content: '## '; color: var(--green); }
+    h3 { font-size: 14px; margin: 18px 0 6px; color: var(--cyan); }
+    section { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin: 0 0 16px; }
+    .toc { columns: 2 240px; column-gap: 20px; padding: 0; margin: 0; list-style: none; font-size: 13px; }
+    .toc li { break-inside: avoid; margin: 2px 0; }
+    .toc a { text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    .toc .n { color: var(--dim); display: inline-block; width: 2.2em; }
+    p { margin: 6px 0 10px; }
+    ol.steps { list-style: none; padding: 0; margin: 8px 0 12px; counter-reset: none; }
+    ol.steps li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; margin: 7px 0; }
+    .n-badge { width: 22px; height: 22px; border-radius: 50%; background: var(--orange); color: #fff; font-weight: 800; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
+    .shot { display: block; margin: 10px auto 6px; max-width: 100%; width: 420px; border-radius: 12px; border: 1px solid var(--border-2); box-shadow: 0 8px 24px -16px rgba(0, 0, 0, 0.4); }
+    .shot.wide { width: 560px; }
+    .cap { text-align: center; font-size: 11.5px; color: var(--dim); margin: 0 0 10px; }
+    .k { display: inline-block; padding: 0 6px; border-radius: 6px; border: 1px solid var(--border-2); background: var(--panel-2); font-weight: 700; font-size: 12.5px; white-space: nowrap; }
+    .tip { border-left: 3px solid var(--cyan); background: color-mix(in srgb, var(--cyan) 7%, transparent); padding: 8px 12px; border-radius: 0 9px 9px 0; margin: 10px 0; font-size: 13px; }
+    .warn { border-left-color: var(--amber); background: color-mix(in srgb, var(--amber) 8%, transparent); }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0 12px; }
+    th, td { text-align: left; vertical-align: top; padding: 7px 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 700; }
+    td:first-child { width: 44%; }
+    td code { white-space: normal; word-break: break-word; }
+    td code, p code, li code { font-family: var(--font); font-size: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 5px; padding: 0 4px; overflow-wrap: anywhere; }
+    .req { color: var(--green); font-weight: 800; }
+    .opt { color: var(--dim); }
+    details { border-top: 1px solid var(--border); padding: 8px 0; }
+    details:first-of-type { border-top: 0; }
+    summary { cursor: pointer; font-weight: 700; }
+    .foot { text-align: center; color: var(--dim); font-size: 12px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <span class="brand"><span class="g">$</span> labtrack help</span>
+      <a class="back" href="./">← back to labtrack</a>
+    </div>
+  </header>
+
+  <main>
+    <h1>How to use LabTrack</h1>
+    <p class="lead">LabTrack is a lab notebook for the bench. Log results as you go, follow samples through each step, then export a spreadsheet, a report or a picture. Everything stays on your device. In the screenshots, the <span class="n-badge">1</span> numbers show where to tap, in order.</p>
+
+    <section>
+      <h2>Contents</h2>
+      <ol class="toc">
+        <li><a href="#tour"><span class="n">01</span>The buttons at the top</a></li>
+        <li><a href="#log"><span class="n">02</span>Log your first result</a></li>
+        <li><a href="#later"><span class="n">03</span>Prepare records, fill in later</a></li>
+        <li><a href="#record"><span class="n">04</span>Change or add to a record</a></li>
+        <li><a href="#replicates"><span class="n">05</span>Replicates (R1, R2, R3)</a></li>
+        <li><a href="#readings"><span class="n">06</span>Re-reads and extra measurements</a></li>
+        <li><a href="#steps"><span class="n">07</span>Follow samples through steps</a></li>
+        <li><a href="#sections"><span class="n">08</span>Sections: rename, copy, reorder</a></li>
+        <li><a href="#journey"><span class="n">09</span>The sample journey</a></li>
+        <li><a href="#export"><span class="n">10</span>Export and back up</a></li>
+        <li><a href="#picture"><span class="n">11</span>Pictures for slides</a></li>
+        <li><a href="#continue"><span class="n">12</span>Continue a run later</a></li>
+        <li><a href="#tapestation"><span class="n">13</span>Add TapeStation results</a></li>
+        <li><a href="#privacy"><span class="n">14</span>Your data and shared computers</a></li>
+        <li><a href="#faq"><span class="n">15</span>Questions</a></li>
+      </ol>
+    </section>
+
+    <section id="tour">
+      <h2>The buttons at the top</h2>
+      <img class="shot wide" src="assets/help/00_top_bar.jpg" alt="Top bar with help, theme, open, new and export buttons, numbered 1 to 5" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span><b>?</b> opens this guide.</span></li>
+        <li><span class="n-badge">2</span><span><b>☾ / ☀</b> switches between light and dark mode.</span></li>
+        <li><span class="n-badge">3</span><span><b>↑ open</b>: <i>continue a run</i> from a file you exported, or <i>add instrument results</i> (TapeStation).</span></li>
+        <li><span class="n-badge">4</span><span><b>+ new</b> starts a fresh run. Export the current one first if you still need it.</span></li>
+        <li><span class="n-badge">5</span><span><b>↓ export</b>: spreadsheet, text report, picture or backup.</span></li>
+      </ol>
+    </section>
+
+    <section id="log">
+      <h2>Log your first result</h2>
+      <img class="shot" src="assets/help/01_log_a_result.jpg" alt="Entry form with type, section, tube, record, result and the add result button numbered 1 to 6" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span><b>Type:</b> pick what you're measuring, e.g. <i>Qubit</i>. The unit (ng/µL) is filled in for you.</span></li>
+        <li><span class="n-badge">2</span><span><b>Section:</b> the step you're at. Type any name, or pick a preset such as <i>Extraction</i>, <i>PCR</i> or <i>Bead clean-up</i>.</span></li>
+        <li><span class="n-badge">3</span><span><b>Tube</b> (optional): the number written on the tube. It counts up by itself for the next record.</span></li>
+        <li><span class="n-badge">4</span><span><b>Record:</b> the sample name. Leave it blank to use the grey suggestion (e.g. <i>Blood 2</i> after <i>Blood 1</i>).</span></li>
+        <li><span class="n-badge">5</span><span><b>Result:</b> the number. Choose <i>no unit</i> to type text instead, e.g. <i>band at 300 bp</i>.</span></li>
+        <li><span class="n-badge">6</span><span>Tap <span class="k">↵ add result</span>. The cursor jumps back to Result, ready for the next tube.</span></li>
+      </ol>
+      <div class="tip">Need volume, dilution or a note? Tap <b>▸ volume, dilution &amp; note</b> under the date. The date is today unless you change it, and the time is saved automatically.</div>
+    </section>
+
+    <section id="later">
+      <h2>Prepare records, fill in later</h2>
+      <p>Setting up a batch before the readings? Leave <b>Result</b> empty and keep pressing <span class="k">↵ add record · fill result later</span>. Each record waits in the log with a dashed box:</p>
+      <img class="shot" src="assets/help/03_fill_later.jpg" alt="A record in the log with an empty result box marked 1" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span>Tap the <b>result?</b> box, type the reading and press <b>Enter</b>. You jump straight to the next empty box.</span></li>
+      </ol>
+    </section>
+
+    <section id="record">
+      <h2>Change or add to a record</h2>
+      <img class="shot" src="assets/help/02_record_actions.jpg" alt="A record in the log with its name, result, action row and drag handle numbered 1 to 4" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span>Tap the <b>name</b> (or the tube tag) to rename it. You can rename its linked steps too.</span></li>
+        <li><span class="n-badge">2</span><span>Tap the <b>result</b> (or unit, or type tag) to change it.</span></li>
+        <li><span class="n-badge">3</span><span><b>The action row:</b>
+          <br><span class="k">+ note</span> adds a note to this record.
+          <br><span class="k">↳ follow</span> carries this sample on to its next step (<a href="#steps">see 07</a>).
+          <br><span class="k">+ read</span> adds another reading of the same tube (<a href="#readings">see 06</a>).
+          <br><span class="k">+ rep</span> adds one more replicate of this sample (<a href="#replicates">see 05</a>).
+          <br><span class="k">edit</span> opens all fields, and <span class="k">del</span> deletes (it asks first).</span></li>
+        <li><span class="n-badge">4</span><span><b>⠿</b> Press and drag to move the record up or down, or into another section.</span></li>
+      </ol>
+    </section>
+
+    <section id="replicates">
+      <h2>Replicates (R1, R2, R3)</h2>
+      <p>Doing the same sample in triplicate? Type the name once:</p>
+      <img class="shot" src="assets/help/04_replicates.jpg" alt="Entry form with the record name, the replicates plus button, the hint and the add button numbered 1 to 4" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span>Type the sample name, e.g. <i>Zebra blood</i>, and its first tube number.</span></li>
+        <li><span class="n-badge">2</span><span>Tap <span class="k">+</span> next to <b>replicates</b> until it says ×3.</span></li>
+        <li><span class="n-badge">3</span><span>Check the hint: <i>Zebra blood R1–R3 · tubes 5–7</i>.</span></li>
+        <li><span class="n-badge">4</span><span>Tap <span class="k">↵ add 3 replicates</span>. You get <i>R1, R2, R3</i>, each with its own tube, ready for results.</span></li>
+      </ol>
+      <div class="tip">Forgot one? Tap <span class="k">+ rep</span> on any replicate to add the next one (R4), with the next free tube. Each replicate is still its own record, so you can rename or edit any of them.</div>
+    </section>
+
+    <section id="readings">
+      <h2>Re-reads and extra measurements</h2>
+      <p>Read the same tube again, or measure it a second way at the same step (e.g. Qubit <i>and</i> TapeStation after a clean-up). Tap <span class="k">+ read</span> on the record:</p>
+      <img class="shot" src="assets/help/05_add_reading.jpg" alt="Add a reading window with the measurement menu, result, add button and TapeStation import link numbered 1 to 4" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span><b>What are you measuring?</b> <i>Re-read · same as before</i> is the default. Or pick another type, or <i>other…</i> to type your own name and unit.</span></li>
+        <li><span class="n-badge">2</span><span>Type the result, or leave it empty to fill in later.</span></li>
+        <li><span class="n-badge">3</span><span>Tap <span class="k">+ add reading</span>. It appears straight under the first one, marked <i>↳ reading 2</i>.</span></li>
+        <li><span class="n-badge">4</span><span>Have a TapeStation export? Use this link to import it for this sample (<a href="#tapestation">see 13</a>).</span></li>
+      </ol>
+      <div class="tip">Re-reads are averaged. With replicates, each replicate's re-reads are averaged first, and the mean ± SD is then taken across replicates (n = number of replicates).</div>
+    </section>
+
+    <section id="steps">
+      <h2>Follow samples through steps</h2>
+      <p>Took your samples on to the next step (e.g. clean-up → library prep)? Tap <span class="k">↳ next step</span> on the section header to carry <b>every sample</b> on at once, or <span class="k">↳ follow</span> on one record for just that sample.</p>
+      <img class="shot" src="assets/help/07_next_step.jpg" alt="Next step window with section, new section name, reading type and follow up button numbered 1 to 4" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span>Choose where the next step goes: an existing section or <i>+ new section…</i>.</span></li>
+        <li><span class="n-badge">2</span><span>For a new section, type its name (presets are suggested).</span></li>
+        <li><span class="n-badge">3</span><span>Keep <i>same as before</i>, or pick the reading you'll take at this step.</span></li>
+        <li><span class="n-badge">4</span><span>Tap <span class="k">↳ follow up</span>. Each sample gets a new record with the same name and tube, linked to where it came from (<i>↳ from Bead clean-up: 29.8 ng/µL</i>), ready for its result.</span></li>
+      </ol>
+      <div class="tip">The new section appears directly below the one it came from, so the log reads from top to bottom.</div>
+    </section>
+
+    <section id="sections">
+      <h2>Sections: rename, copy, reorder</h2>
+      <img class="shot" src="assets/help/06_section_header.jpg" alt="Section header with drag handle, name, next step, copy and remove numbered 1 to 5" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span><b>⠿</b> Drag to move the whole section.</span></li>
+        <li><span class="n-badge">2</span><span>Tap the <b>name</b> to rename it. Tap the ▾ arrow beside it to fold the section away.</span></li>
+        <li><span class="n-badge">3</span><span><span class="k">↳ next step</span> carries every sample in this section on to the next step.</span></li>
+        <li><span class="n-badge">4</span><span><span class="k">⧉ copy</span> duplicates the section with its records, either with blank results (for a repeat) or as an exact copy.</span></li>
+        <li><span class="n-badge">5</span><span><span class="k">rm</span> removes the section. Its records move to <i>General</i>; nothing is deleted.</span></li>
+      </ol>
+      <img class="shot wide" src="assets/help/08_log_tools.jpg" alt="Log header with journey, reorder and section buttons numbered 1 to 3" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span><span class="k">◎ journey</span> switches to the sample journey (<a href="#journey">see 09</a>).</span></li>
+        <li><span class="n-badge">2</span><span><span class="k">⇅ reorder</span> shows ↑ ↓ buttons and lets you sort a section by name or by tube number.</span></li>
+        <li><span class="n-badge">3</span><span><span class="k">+ section</span> adds an empty section.</span></li>
+      </ol>
+    </section>
+
+    <section id="journey">
+      <h2>The sample journey</h2>
+      <p>Tap <span class="k">◎ journey</span> to see each sample followed through every step: one card per sample (replicates grouped together), with a trend of its main reading.</p>
+      <img class="shot" src="assets/help/09_journey.jpg" alt="Journey card for a replicated sample with header, mean and SD, per-replicate readings and trend numbered 1 to 4" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span>The sample: <i>×3</i> means three replicates, with their tubes and how many results are still to fill in.</span></li>
+        <li><span class="n-badge">2</span><span>At each step: the <b>mean ± SD</b> across replicates and <b>n</b>.</span></li>
+        <li><span class="n-badge">3</span><span>Each replicate's own readings and their average (<i>R1 29.8 · 30.2 → 30.0</i>). Empty boxes can be filled in right here.</span></li>
+        <li><span class="n-badge">4</span><span>The trend of the main reading from step to step, with the % change.</span></li>
+      </ol>
+      <div class="tip">Tap any step in a card to jump to that record in the log. Tap <span class="k">≡ log</span> to switch back.</div>
+    </section>
+
+    <section id="export">
+      <h2>Export and back up</h2>
+      <p>Tap <span class="k">↓ export</span> at the top right.</p>
+      <img class="shot" src="assets/help/10_export.jpg" alt="Export window with spreadsheet, picture, text report and save backup numbered 1 to 4" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span><b>Spreadsheet (.csv)</b> for Excel or Google Sheets, one row per entry.</span></li>
+        <li><span class="n-badge">2</span><span><b>Picture (.png)</b> to share or present (<a href="#picture">see 11</a>).</span></li>
+        <li><span class="n-badge">3</span><span><b>Text report (.txt)</b>, a readable notebook summary. <i>Copy summary</i> puts the same text on the clipboard.</span></li>
+        <li><span class="n-badge">4</span><span><b>Save backup (.json)</b> keeps everything, including TapeStation traces. Best for moving a run to another device.</span></li>
+      </ol>
+      <div class="tip warn">LabTrack saves to this browser only. <b>Export or back up at the end of each session</b>, especially on a shared or borrowed device.</div>
+    </section>
+
+    <section id="picture">
+      <h2>Pictures for slides</h2>
+      <p><span class="k">↓ export</span> → <b>picture of the run</b>:</p>
+      <img class="shot" src="assets/help/11_picture.jpg" alt="Picture window with a preview, the steps or sample journey switch, light or dark, and download numbered 1 to 3" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span><b>steps</b> shows one card per section. <b>sample journey</b> shows one column per sample, followed through every step, with trends.</span></li>
+        <li><span class="n-badge">2</span><span><b>light</b> or <b>dark</b>.</span></li>
+        <li><span class="n-badge">3</span><span><span class="k">download .png</span>. On a phone you can also press and hold the preview to save it to Photos, or use <i>share…</i> if it appears.</span></li>
+      </ol>
+    </section>
+
+    <section id="continue">
+      <h2>Continue a run later</h2>
+      <img class="shot" src="assets/help/12_open.jpg" alt="Open window with continue a run and add instrument results numbered 1 and 2" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span><span class="k">↑ open</span> → <b>continue a run</b>, then pick a LabTrack <code>.csv</code>, <code>.txt</code> or backup <code>.json</code>. Everything is loaded back in, ready to keep adding to.</span></li>
+        <li><span class="n-badge">2</span><span><b>add instrument results</b> brings in a TapeStation export (next section).</span></li>
+      </ol>
+    </section>
+
+    <section id="tapestation">
+      <h2>Add TapeStation results</h2>
+      <p>Get DIN (or RINe), concentration, peak size, average fragment size and the electropherogram onto your samples, straight from the files the TapeStation exports.</p>
+
+      <h3>1. Export from the TapeStation computer</h3>
+      <p>In the TapeStation Analysis software, export the run's results as CSV and copy them to a USB stick or a shared folder. The files are named after the run, for example:</p>
+      <table>
+        <tr><th>File name ends in</th><th>What LabTrack takes from it</th></tr>
+        <tr><td><code>_sampleTable.csv</code></td><td><span class="req">needed</span> wells, sample names, <b>DIN / RINe</b>, <b>concentration</b>, instrument warnings</td></tr>
+        <tr><td><code>_compactPeakTable.csv</code></td><td><span class="req">needed</span> <b>peak sizes</b>, % of area, the From–To region, and the ladder sizes</td></tr>
+        <tr><td><code>_Electropherogram.csv</code></td><td><span class="req">recommended</span> the <b>trace</b> LabTrack draws, and the <b>average fragment size</b></td></tr>
+        <tr><td><code>_runProperties.csv</code></td><td><span class="opt">optional</span> assay name and run date/time</td></tr>
+        <tr><td><code>_screenTape­DeviceProperties.csv</code></td><td><span class="opt">optional</span> ScreenTape expiry (warns if it was out of date)</td></tr>
+        <tr><td><code>_A1_Ladder.png</code> etc.</td><td><span class="opt">not needed</span> LabTrack draws its own trace</td></tr>
+      </table>
+      <p>Example run folder: <code>2026-11-25 - 12-41-41-gDNA/</code> containing <code>2026-11-25 - 12-41-41-gDNA_sampleTable.csv</code>, <code>…_compactPeakTable.csv</code>, <code>…_Electropherogram.csv</code> and so on. The middle part (<i>gDNA</i>) changes with the assay, e.g. <i>D1000</i> or <i>RNA</i>.</p>
+
+      <h3>2. Choose the files</h3>
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span>Open the run you want to add to (or start it), then tap <span class="k">↑ open</span> → <b>add instrument results</b>.</span></li>
+        <li><span class="n-badge">2</span><span>Tap <b>choose TapeStation export files</b> and select <b>all the CSV files</b> from the run folder at once. On a phone, tap <i>Select</i> in the file picker to pick several.</span></li>
+      </ol>
+
+      <h3>3. Match each well to your sample</h3>
+      <img class="shot" src="assets/help/13_tapestation_match.jpg" alt="Import window showing two wells; the other sample set to don't add, and LAMBDA matched to the Lambda sample, numbered 1 to 5" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span>Each well shows its name, <b>DIN</b>, trace, concentration, peak and average size.</span></li>
+        <li><span class="n-badge">2</span><span><b>add to:</b> which of your samples it belongs to. Wells whose name matches a sample are matched for you (<i>LAMBDA</i> → <i>Lambda · whole sample</i>). Choose <i>whole sample</i> for a replicated sample's stock, a single replicate, or <i>+ new sample</i>.</span></li>
+        <li><span class="n-badge">3</span><span><b>at step:</b> the section to put it in (or <i>+ new step: TapeStation</i>).</span></li>
+        <li><span class="n-badge">4</span><span>Wells that aren't yours (other people's samples, the ladder) stay on <b>don't add</b> and never enter your run.</span></li>
+        <li><span class="n-badge">5</span><span>Tap <span class="k">+ add 1 result</span>.</span></li>
+      </ol>
+
+      <h3>4. What you get</h3>
+      <img class="shot" src="assets/help/14_tapestation_result.jpg" alt="TapeStation result in the log with DIN, trace, summary, average size note and warning numbered 1 to 5" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span>The headline: <b>DIN</b> (or RINe), with the run's date and time.</span></li>
+        <li><span class="n-badge">2</span><span>The electropherogram, redrawn from the export: lower marker (LM), the labelled main peak and the ladder sizes underneath.</span></li>
+        <li><span class="n-badge">3</span><span>Concentration, main peak (size and % of area), average fragment size and well. These are the instrument's own values, except the average (see 4).</span></li>
+        <li><span class="n-badge">4</span><span><b>Average fragment size:</b> calculated by LabTrack across the main peak's region, weighting each size by its signal. Above the largest ladder band (48,500 bp on genomic DNA tapes) sizes can only be estimated, so it's shown with <b>≈</b>. For libraries on D1000/D5000 tapes, everything sits inside the ladder and the value is precise.</span></li>
+        <li><span class="n-badge">5</span><span>Any warning from the instrument, e.g. an expired ScreenTape or a concentration outside the recommended range.</span></li>
+      </ol>
+      <div class="tip">The result also appears in the <a href="#journey">journey</a> and in the <a href="#picture">picture</a> export with its trace. CSV and text exports keep the values; the backup (.json) also keeps the trace.</div>
+    </section>
+
+    <section id="privacy">
+      <h2>Your data and shared computers</h2>
+      <p>Your runs are stored only in this browser on this device. Nothing is uploaded, and nobody else using the same link can see them.</p>
+      <p>If LabTrack hasn't been used for 30 minutes and a run is open, it asks whether to <b>continue</b> it or <b>start a new one</b>, so results from different people on a shared computer don't get mixed.</p>
+      <div class="tip warn">Clearing your browser's data, or using a private/incognito window, erases saved runs. Export or back up when you finish.</div>
+    </section>
+
+    <section id="faq">
+      <h2>Questions</h2>
+      <details><summary>Can I use it without internet?</summary><p>Yes. After your first visit it works offline. On a phone, add it to your home screen (iPhone: Share → Add to Home Screen; Android: Install app) to open it like an app.</p></details>
+      <details><summary>How do I move a run to another phone or computer?</summary><p><span class="k">↓ export</span> → <b>save backup</b>, send the .json file to the other device, then <span class="k">↑ open</span> → <b>continue a run</b> there.</p></details>
+      <details><summary>I logged something in the wrong section.</summary><p>Drag it by its <b>⠿</b> handle into the right section, or tap <span class="k">edit</span> and change the section.</p></details>
+      <details><summary>How are replicate averages calculated?</summary><p>Each replicate's re-reads are averaged first. Then the mean and sample standard deviation (SD) are taken across replicates, so n is the number of replicates. A replicate still waiting for a result is left out until it's filled in.</p></details>
+      <details><summary>My TapeStation well wasn't matched to my sample.</summary><p>Matching uses the sample description typed on the TapeStation. If it differs from your record name, just pick your sample in the <b>add to</b> menu.</p></details>
+      <details><summary>Does LabTrack read the TapeStation's own run files?</summary><p>No. Those are in Agilent's own format. Use the CSV export from the TapeStation Analysis software (see <a href="#tapestation">13</a>).</p></details>
+      <details><summary>Something looks wrong or I have an idea.</summary><p>Open an issue on <a href="https://github.com/AKMARTIAN/labtrack/issues" target="_blank" rel="noopener">GitHub</a>.</p></details>
+    </section>
+
+    <p class="foot"><a href="./">← back to labtrack</a> · LabTrack is free and open source (MIT)</p>
+  </main>
+</body>
+</html>

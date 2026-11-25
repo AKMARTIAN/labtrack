@@ -2,6 +2,21 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.17.0] - 2026-11-25
+
+### Added
+- **Help guide:** tap **?** in the top bar (or *help* at the bottom of the page) for a step-by-step guide.
+  - Real screenshots, with numbered markers showing where to tap.
+  - Covers logging, preparing records, replicates, re-reads, following samples through steps, sections, the journey, exports, pictures, continuing a run, TapeStation import (including exactly which exported files to choose) and data privacy, plus a short FAQ.
+  - Works offline once visited.
+- **Average fragment size for TapeStation results:**
+  - **How it's calculated:** each size is weighted by its signal across the main peak's region (From–To in the peak table), with the background subtracted. Sizes come from the ladder.
+  - **Where it shows:** in the import window, the log, the journey, the picture and the exports.
+  - **Above the top ladder band** (48,500 bp on genomic DNA tapes) sizes are estimated, so the value is shown with **≈** and a note. Inside the ladder range (e.g. libraries on D1000/D5000) it's precise.
+
+### Changed
+- A record's note button reads **✎ note** once it has a note, so the action row still fits on one line on small phones.
+
 ## [3.16.0] - 2026-11-25
 
 ### Added
