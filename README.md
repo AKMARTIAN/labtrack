@@ -37,6 +37,10 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 
 <img src="Examples_and_screenshots/07_picture_journey_tapestation_light.png" alt="Sample journey of three samples through Illumina library prep, with a TapeStation genomic DNA result and electropherogram on Blood 1 at extraction, a note at the bead clean-up step and a note on Blood 3" />
 
+**Protocol presets:** start a run from a kit protocol and every step and checkpoint is laid out for your samples, ready to fill in. Here, the ONT Native Barcoding Kit 24 V14 for three samples, pooled after barcoding.
+
+<img src="Examples_and_screenshots/08_picture_journey_ont_protocol_light.png" alt="Sample journey of an ONT native barcoding run started from a protocol preset: three samples with Qubit readings and barcodes NB01 to NB03, then a single pool through to flow cell loading, with each step's note" />
+
 More examples, in light and dark, are in [`Examples_and_screenshots`](Examples_and_screenshots/README.md).
 
 ## Features
