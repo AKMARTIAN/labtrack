@@ -237,6 +237,17 @@
     .rec-grid .res-col { grid-column: 1 / -1; }
     .rep-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: -2px; }
     .rep-row .lbl { margin: 0; }
+    .proto-opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 11px; background: var(--bg-2); cursor: pointer; }
+    .proto-opt:has(input:checked) { border-color: var(--green); background: color-mix(in srgb, var(--green) 6%, var(--bg-2)); }
+    .proto-opt input { margin-top: 3px; accent-color: var(--green); }
+    .proto-opt strong { display: block; font-size: 13px; }
+    .proto-opt small { display: block; font-size: 11.5px; color: var(--muted); }
+    .proto-opt small.flow { color: var(--dim); margin-top: 2px; }
+    .proto-row { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: end; }
+    #protoCount { width: 46px; height: 32px; border: 0; background: transparent; text-align: center; font: inherit; font-weight: 800; color: var(--text); -moz-appearance: textfield; }
+    #protoCount::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .proto-names { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; max-height: 220px; overflow-y: auto; }
+    .empty-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .stepper { display: inline-flex; align-items: center; border: 1px solid var(--border-2); border-radius: 9px; overflow: hidden; background: var(--input); }
     .stepper button { width: 34px; height: 32px; font-size: 16px; font-weight: 800; color: var(--muted); }
     .stepper button:hover:not(:disabled) { background: var(--hover); color: var(--text); }
@@ -691,15 +702,15 @@
       <div class="term-line c-muted">nothing logged yet<span class="cursor" aria-hidden="true">▊</span></div>
       <p>pick a type, enter a record and a result above, then hit <span class="c-green">add result</span>.</p>
       <p class="tiny">prepping a batch? leave the result blank and keep pressing enter. each record is added, ready to fill in from the log.</p>
-      <button type="button" data-continue class="btn btn-accent">↑ continue a previous run</button>
-      <p class="tiny">upload a labtrack .csv or .txt export to pick up where you left off.</p>
+      <div class="empty-actions"><button type="button" data-proto class="btn btn-primary">▤ start from a protocol</button><button type="button" data-continue class="btn btn-accent">↑ continue a previous run</button></div>
+      <p class="tiny">a protocol (e.g. NEBNext Ultra II or ONT native barcoding) sets up every step for your samples. or upload a labtrack .csv or .txt export to pick up where you left off.</p>
     </div>
     <div id="sectionsContainer" class="stack-lg" style="margin-top:10px"></div>
     <div id="journeyContainer" class="journey hidden"></div>
   </main>
 
   <footer class="no-print">
-    <span class="c-dim">//</span> saved on this device only · <a href="help.html">help</a> · <a href="https://github.com/AKMARTIAN/labtrack" target="_blank" rel="noopener">about labtrack</a> · <a id="appVersion" class="ver" href="https://github.com/AKMARTIAN/labtrack/releases/tag/v3.19.0" target="_blank" rel="noopener" title="What's new in this version">v3.19.0</a><!-- keep in step with CACHE in sw.js -->
+    <span class="c-dim">//</span> saved on this device only · <a href="help.html">help</a> · <a href="https://github.com/AKMARTIAN/labtrack" target="_blank" rel="noopener">about labtrack</a> · <a id="appVersion" class="ver" href="https://github.com/AKMARTIAN/labtrack/releases/tag/v3.20.0" target="_blank" rel="noopener" title="What's new in this version">v3.20.0</a><!-- keep in step with CACHE in sw.js -->
   </footer>
 
   <!-- Record types -->
@@ -922,9 +933,33 @@
         <button type="button" data-close class="close" aria-label="Close">✕</button>
       </div>
       <div class="sheet-body">
+        <button type="button" data-proto class="btn btn-primary btn-block" style="height:44px">▤ start from a protocol</button>
         <button id="btnConfirmBlank" type="button" class="btn btn-danger btn-block" style="height:44px">clear &amp; start new run</button>
         <button type="button" data-continue class="btn btn-accent btn-block" style="height:44px">↑ continue a previous run instead</button>
         <button type="button" data-close class="btn btn-ghost btn-block" style="height:40px">cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start from a protocol -->
+  <div id="protoModal" class="modal hidden no-print">
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><h3>start from a protocol</h3><p>lays out every step and quantification checkpoint for your samples, so you only fill in the results as you go.</p></div>
+        <button type="button" data-close class="close" aria-label="Close">✕</button>
+      </div>
+      <div class="sheet-body">
+        <div id="protoList" class="stack"></div>
+        <div class="proto-row">
+          <div><label class="lbl">samples</label>
+            <div class="stepper"><button type="button" id="protoMinus" aria-label="Fewer samples">−</button><input id="protoCount" type="number" inputmode="numeric" min="1" max="96" value="3" aria-label="Number of samples" /><button type="button" id="protoPlus" aria-label="More samples">+</button></div>
+          </div>
+          <div><label for="protoTube" class="lbl">first tube</label><input id="protoTube" type="text" class="field" autocomplete="off" placeholder="1" /></div>
+        </div>
+        <div><label class="lbl">sample names</label><div id="protoNames" class="proto-names"></div></div>
+        <p id="protoPreview" class="hint"></p>
+        <button id="btnProtoNew" type="button" class="btn btn-primary btn-block" style="height:44px">start new run from protocol</button>
+        <button id="btnProtoAdd" type="button" class="btn btn-block hidden" style="height:40px">add these steps to the current run</button>
       </div>
     </div>
   </div>
@@ -2890,6 +2925,134 @@
         showToast('Started a new run');
       }
       $('btnConfirmBlank').addEventListener('click', startNewRun);
+      /* ---------- Protocol presets ---------- */
+      // Each step becomes a section. Steps with readings get an empty record per sample
+      // (linked step to step); steps without get a short note so the flow is still visible.
+      // pool: true = after the samples are combined, one "Pool" record instead.
+      const PROTOCOLS = [
+        {
+          id: 'neb-ultra2', name: 'Illumina · NEBNext Ultra II DNA', kit: 'NEB E7645 / E7103', runName: 'NEBNext Ultra II DNA library prep',
+          flow: 'fragmentation → end prep → adaptor ligation → index PCR → library QC → pooling',
+          steps: [
+            { name: 'Input DNA QC', reads: [['qubit', 'ng/µL']], note: 'Check integrity too (e.g. TapeStation) if you can.' },
+            { name: 'Fragmentation', reads: [['size', 'bp']], note: 'Shearing (e.g. Covaris) or the enzymatic FS kit. Check the fragment size.' },
+            { name: 'End prep', reads: [], note: 'End repair and dA-tailing. No clean-up: carries straight on into adaptor ligation.' },
+            { name: 'Adaptor ligation', reads: [], note: 'NEBNext adaptor ligation, then USER enzyme.' },
+            { name: 'Ligation clean-up', reads: [['qubit', 'ng/µL']], note: 'Bead clean-up (or size selection) of the adaptor-ligated DNA.' },
+            { name: 'Index PCR', reads: [], note: 'PCR enrichment with index primers.' },
+            { name: 'PCR clean-up', reads: [['qubit', 'ng/µL']] },
+            { name: 'Library QC', reads: [['size', 'bp'], ['molarity', 'nM']], note: 'Library size (TapeStation or Bioanalyzer) and molarity.' },
+            { name: 'Normalisation', reads: [['molarity', 'nM']] },
+            { name: 'Pooling', reads: [['volume', 'µL']], note: 'Volume of each library added to the pool.' }
+          ]
+        },
+        {
+          id: 'ont-nbd114', name: 'ONT · Native Barcoding Kit 24 V14', kit: 'SQK-NBD114.24', runName: 'ONT native barcoding',
+          flow: 'repair & end-prep → native barcodes → pool → adapter ligation → flow cell',
+          steps: [
+            { name: 'Input DNA QC', reads: [['qubit', 'ng/µL']], note: 'Check integrity and length too if you can.' },
+            { name: 'DNA repair & end-prep', reads: [], note: 'FFPE DNA repair and Ultra II end-prep.' },
+            { name: 'End-prep clean-up', reads: [['qubit', 'ng/µL']], note: 'AMPure XP bead clean-up.' },
+            { name: 'Native barcode ligation', reads: [['general', '']], note: 'One native barcode per sample: type the barcode used (e.g. NB01). Stop with EDTA, then pool the barcoded samples.' },
+            { name: 'Pooled clean-up', pool: true, reads: [['qubit', 'ng/µL']], note: 'All barcoded samples combined into one pool.' },
+            { name: 'Native adapter ligation', pool: true, reads: [], note: 'Native Adapter ligation to the pool.' },
+            { name: 'Final clean-up', pool: true, reads: [['qubit', 'ng/µL']], note: 'Wash with Long or Short Fragment Buffer, elute in EB.' },
+            { name: 'Flow cell loading', pool: true, reads: [['general', 'fmol']], note: 'Prime the flow cell, then load the library. Record the amount loaded.' }
+          ]
+        }
+      ];
+      let protoId = PROTOCOLS[0].id;
+      const protoOf = () => PROTOCOLS.find((p) => p.id === protoId) || PROTOCOLS[0];
+      function protoCounts(p, n) {
+        const each = p.steps.filter((s) => !s.pool).reduce((a, s) => a + s.reads.length, 0) * n;
+        const pool = p.steps.filter((s) => s.pool).reduce((a, s) => a + s.reads.length, 0);
+        return { steps: p.steps.length, records: each + pool };
+      }
+      function renderProtoNames() {
+        const n = Math.max(1, Math.min(96, Number($('protoCount').value) || 1));
+        const box = $('protoNames');
+        const have = [...box.querySelectorAll('input')].map((i) => i.value);
+        box.innerHTML = Array.from({ length: n }, (_, k) => `<input type="text" class="field" data-proto-name="${k}" placeholder="Sample ${k + 1}" value="${escapeHtml(have[k] || '')}" autocomplete="off" aria-label="Name of sample ${k + 1}" />`).join('');
+        updateProtoPreview();
+      }
+      function updateProtoPreview() {
+        const p = protoOf();
+        const n = Math.max(1, Math.min(96, Number($('protoCount').value) || 1));
+        const c = protoCounts(p, n);
+        const tube = $('protoTube').value.trim();
+        let last = tube;
+        for (let k = 1; k < n; k++) last = last ? nextRecordName(last) : '';
+        $('protoPreview').innerHTML = `<b>${c.steps} steps</b> · <b>${c.records}</b> results to fill in${tube ? ` · tubes ${escapeHtml(tube)}${n > 1 && last ? `–${escapeHtml(last)}` : ''}` : ''}${p.steps.some((s) => s.pool) ? ' · samples pooled after barcoding' : ''}`;
+        $('btnProtoAdd').classList.toggle('hidden', !state.quickItems.length);
+      }
+      function openProtocol() {
+        closeModals();
+        $('protoList').innerHTML = PROTOCOLS.map((p) => `
+          <label class="proto-opt">
+            <input type="radio" name="proto" value="${p.id}" ${p.id === protoId ? 'checked' : ''} />
+            <span><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.kit)} · ${p.steps.length} steps</small><small class="flow">${escapeHtml(p.flow)}</small></span>
+          </label>`).join('');
+        if (!$('protoTube').value) $('protoTube').value = '1';
+        renderProtoNames();
+        openModal('protoModal');
+      }
+      // Builds the protocol's sections, empty records (linked step to step) and step notes.
+      function buildProtocol(p, names, firstTube, intoCurrent) {
+        if (!intoCurrent) {
+          state = createBlankState();
+          state.meta.id = `${p.runName} ${todayISO()}`;
+          openEditor = null;
+        }
+        const now = nowTime(), today = todayISO();
+        const tubes = [];
+        let t = firstTube;
+        names.forEach(() => { tubes.push(t || ''); t = t ? nextRecordName(t) : ''; });
+        const last = {};
+        let afterId = null;
+        p.steps.forEach((step, si) => {
+          // Adding to a run: reuse a step with the same name, and put new steps at the end, in order.
+          let sec = intoCurrent && state.quickSections.find((x) => x.name.toLowerCase() === step.name.toLowerCase());
+          if (!sec) { sec = { id: newId('qsec_'), name: step.name, collapsed: false }; insertSectionAfter(sec, afterId); afterId = sec.id; }
+          const add = (it) => state.quickItems.push(it);
+          if (si === 0) add({ id: newId('qi_'), kind: 'note', sectionId: sec.id, date: today, timestamp: now, typeId: 'general', typeName: 'General', name: '', tube: '', result: '', unit: '', volume: '', dilution: '', notes: '', text: `Protocol: ${p.name} (${p.kit}). Check these steps against your kit's protocol version.` });
+          if (step.note) add({ id: newId('qi_'), kind: 'note', sectionId: sec.id, date: today, timestamp: now, typeId: 'general', typeName: 'General', name: '', tube: '', result: '', unit: '', volume: '', dilution: '', notes: '', text: step.note });
+          const who = step.pool ? [['Pool', '']] : names.map((nm, k) => [nm, tubes[k]]);
+          who.forEach(([nm, tube]) => {
+            step.reads.forEach(([typeId, unit]) => {
+              const type = typeById(typeId) || BUILTIN_TYPES[0];
+              const it = { id: newId('qi_'), kind: 'result', sectionId: sec.id, date: today, timestamp: now, typeId: type.id, typeName: type.name, name: nm, tube, result: '', unit, volume: '', dilution: '', notes: '', text: '' };
+              if (last[nm]) it.fromId = last[nm];
+              last[nm] = it.id;
+              add(it);
+            });
+          });
+          rememberSectionName(step.name);
+        });
+        currentSection = state.quickSections.length ? state.quickSections[0].id : '';
+      }
+      document.querySelectorAll('[data-proto]').forEach((b) => b.addEventListener('click', openProtocol));
+      $('protoList').addEventListener('change', (e) => { if (e.target.name === 'proto') { protoId = e.target.value; updateProtoPreview(); } });
+      $('protoMinus').addEventListener('click', () => { $('protoCount').value = Math.max(1, (Number($('protoCount').value) || 1) - 1); renderProtoNames(); });
+      $('protoPlus').addEventListener('click', () => { $('protoCount').value = Math.min(96, (Number($('protoCount').value) || 1) + 1); renderProtoNames(); });
+      $('protoCount').addEventListener('input', renderProtoNames);
+      $('protoTube').addEventListener('input', updateProtoPreview);
+      const protoGo = (intoCurrent) => {
+        const p = protoOf();
+        const names = [...$('protoNames').querySelectorAll('input')].map((i, k) => i.value.trim() || `Sample ${k + 1}`);
+        if (!intoCurrent && state.quickItems.length && !confirm(`Start a new run from "${p.name}"?\n\nThis clears "${state.meta.id || 'Untitled run'}" (${state.quickItems.length} entries). Export it first if you still need it.`)) return;
+        buildProtocol(p, names, $('protoTube').value.trim(), intoCurrent);
+        saveState();
+        renderAll();
+        closeModals();
+        const c = protoCounts(p, names.length);
+        showToast(`${p.name}: ${c.steps} steps ready, ${c.records} results to fill in`);
+        const box = document.querySelector('#sectionsContainer [data-fill]');
+        if (box) box.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      };
+      $('btnProtoNew').addEventListener('click', () => protoGo(false));
+      $('btnProtoAdd').addEventListener('click', () => protoGo(true));
+
+
 
       // Shared-device safeguard: when the app opens (or is come back to after a
       // while) with a run already in it, ask whether to continue it or start fresh.
@@ -3408,7 +3571,8 @@
           const first = items[0];
           return { items, name: first.name || '(unnamed)', tube: first.tube || '', start: Math.min(...items.map((i) => order.get(i.id))) };
         }).sort((a, b) => a.start - b.start);
-        const steps = secs.filter((x) => recs.some((r) => secOf(r) === x.id));
+        // Steps with results, plus steps that only have notes (e.g. a protocol step with no reading).
+        const steps = secs.filter((x) => recs.some((r) => secOf(r) === x.id) || state.quickItems.some((i) => i.kind === 'note' && secOf(i) === x.id && String(i.text || '').trim()));
         return { journeys, steps, secOf };
       }
 
@@ -3647,6 +3811,7 @@
 
         // Rows
         const nodes = cols.map(() => []);
+        let firstRowBottom = null;
         cols.forEach((c) => { if (c.e.j) c.measures = measuresOf(c.e.j.items, secOf); });
         const READ_LINE = 17;
         const TRACE_H = 104;
@@ -3758,6 +3923,7 @@
             }
           });
           y += rowH;
+          if (firstRowBottom === null) firstRowBottom = y;
         });
 
         function resultLines(ctx, it, tx, yy, tw) {
@@ -4020,7 +4186,9 @@
             if (!ys.length) return;
             const lineX = cols[k].x + 34;
             ctx.strokeStyle = rgba(cols[k].col, 0.5); ctx.lineWidth = cols[k].e.members ? 6 : 4; ctx.lineCap = 'round';
-            ctx.beginPath(); ctx.moveTo(lineX, gridTop + HEADH + 4); ctx.lineTo(lineX, ys[ys.length - 1]); ctx.stroke();
+            // A sample that joins later (e.g. a pool) starts its line at its first step.
+            const y0 = ys[0] < firstRowBottom ? gridTop + HEADH + 4 : ys[0];
+            ctx.beginPath(); ctx.moveTo(lineX, y0); ctx.lineTo(lineX, ys[ys.length - 1]); ctx.stroke();
           });
         };
         const footY = y + 34;

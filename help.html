@@ -93,19 +93,20 @@
       <ol class="toc">
         <li><a href="#tour"><span class="n">01</span>The buttons at the top</a></li>
         <li><a href="#log"><span class="n">02</span>Log your first result</a></li>
-        <li><a href="#later"><span class="n">03</span>Prepare records, fill in later</a></li>
-        <li><a href="#record"><span class="n">04</span>Change or add to a record</a></li>
-        <li><a href="#replicates"><span class="n">05</span>Replicates (R1, R2, R3)</a></li>
-        <li><a href="#readings"><span class="n">06</span>Re-reads and extra measurements</a></li>
-        <li><a href="#steps"><span class="n">07</span>Follow samples through steps</a></li>
-        <li><a href="#sections"><span class="n">08</span>Sections: rename, copy, reorder</a></li>
-        <li><a href="#journey"><span class="n">09</span>The sample journey</a></li>
-        <li><a href="#export"><span class="n">10</span>Export and back up</a></li>
-        <li><a href="#picture"><span class="n">11</span>Pictures for slides</a></li>
-        <li><a href="#continue"><span class="n">12</span>Continue a run later</a></li>
-        <li><a href="#tapestation"><span class="n">13</span>Add TapeStation results</a></li>
-        <li><a href="#privacy"><span class="n">14</span>Your data and shared computers</a></li>
-        <li><a href="#faq"><span class="n">15</span>Questions</a></li>
+        <li><a href="#protocol"><span class="n">03</span>Start from a protocol</a></li>
+        <li><a href="#later"><span class="n">04</span>Prepare records, fill in later</a></li>
+        <li><a href="#record"><span class="n">05</span>Change or add to a record</a></li>
+        <li><a href="#replicates"><span class="n">06</span>Replicates (R1, R2, R3)</a></li>
+        <li><a href="#readings"><span class="n">07</span>Re-reads and extra measurements</a></li>
+        <li><a href="#steps"><span class="n">08</span>Follow samples through steps</a></li>
+        <li><a href="#sections"><span class="n">09</span>Sections: rename, copy, reorder</a></li>
+        <li><a href="#journey"><span class="n">10</span>The sample journey</a></li>
+        <li><a href="#export"><span class="n">11</span>Export and back up</a></li>
+        <li><a href="#picture"><span class="n">12</span>Pictures for slides</a></li>
+        <li><a href="#continue"><span class="n">13</span>Continue a run later</a></li>
+        <li><a href="#tapestation"><span class="n">14</span>Add TapeStation results</a></li>
+        <li><a href="#privacy"><span class="n">15</span>Your data and shared computers</a></li>
+        <li><a href="#faq"><span class="n">16</span>Questions</a></li>
       </ol>
     </section>
 
@@ -135,6 +136,27 @@
       <div class="tip">Need volume, dilution or a note? Tap <b>▸ volume, dilution &amp; note</b> under the date. The date is today unless you change it, and the time is saved automatically.</div>
     </section>
 
+    <section id="protocol">
+      <h2>Start from a protocol</h2>
+      <p>Running a kit you know, like <b>NEBNext Ultra II DNA</b> (Illumina) or the <b>ONT Native Barcoding Kit 24 V14</b>? Let LabTrack lay out every step and quantification checkpoint for your samples, so you only fill in the numbers as you go.</p>
+      <p>Tap <span class="k">+ new</span> → <span class="k">▤ start from a protocol</span> (or the same button on an empty run).</p>
+      <img class="shot" src="Examples_and_screenshots/help_guide/15_protocol.jpg" alt="Start from a protocol window with the protocol, samples, first tube, sample names and start button numbered 1 to 5" loading="lazy" />
+      <ol class="steps">
+        <li><span class="n-badge">1</span><span>Pick the protocol. Each one shows its kit code, number of steps and the flow.</span></li>
+        <li><span class="n-badge">2</span><span>How many samples (up to 96).</span></li>
+        <li><span class="n-badge">3</span><span>The first tube number. The rest count up (1, 2, 3…).</span></li>
+        <li><span class="n-badge">4</span><span>Type each sample's name, or leave blank for <i>Sample 1, 2…</i>.</span></li>
+        <li><span class="n-badge">5</span><span><span class="k">start new run from protocol</span>, or <i>add these steps to the current run</i> to keep what you've already logged.</span></li>
+      </ol>
+      <p>You get every step as a section, in order:</p>
+      <ul>
+        <li><b>Checkpoints</b> (Qubit after extraction and after each clean-up, fragment size, molarity…) become empty records, waiting for you to fill in their results, linked from step to step so the <a href="#journey">journey</a> and trends work straight away.</li>
+        <li><b>Steps without a reading</b> (end prep, ligation…) get a short note, so the flow is still visible.</li>
+        <li><b>ONT:</b> after native barcode ligation the samples are pooled, so from there on there's one <b>Pool</b> record. At the barcode step, type the barcode each sample got (e.g. NB01).</li>
+      </ul>
+      <div class="tip warn">Protocols change between kit versions. The presets follow each kit's main steps; check them against your kit's protocol, and add, rename or remove steps as you need.</div>
+    </section>
+
     <section id="later">
       <h2>Prepare records, fill in later</h2>
       <p>Setting up a batch before the readings? Leave <b>Result</b> empty and keep pressing <span class="k">↵ add record · fill result later</span>. Each record waits in the log with a dashed box:</p>
@@ -152,9 +174,9 @@
         <li><span class="n-badge">2</span><span>Tap the <b>result</b> (or unit, or type tag) to change it.</span></li>
         <li><span class="n-badge">3</span><span><b>The action row:</b>
           <br><span class="k">+ note</span> adds a note to this record.
-          <br><span class="k">↳ follow</span> carries this sample on to its next step (<a href="#steps">see 07</a>).
-          <br><span class="k">+ read</span> adds another reading of the same tube (<a href="#readings">see 06</a>).
-          <br><span class="k">+ rep</span> adds one more replicate of this sample (<a href="#replicates">see 05</a>).
+          <br><span class="k">↳ follow</span> carries this sample on to its next step (<a href="#steps">see 08</a>).
+          <br><span class="k">+ read</span> adds another reading of the same tube (<a href="#readings">see 07</a>).
+          <br><span class="k">+ rep</span> adds one more replicate of this sample (<a href="#replicates">see 06</a>).
           <br><span class="k">edit</span> opens all fields, and <span class="k">del</span> deletes (it asks first).</span></li>
         <li><span class="n-badge">4</span><span><b>⠿</b> Press and drag to move the record up or down, or into another section.</span></li>
       </ol>
@@ -181,7 +203,7 @@
         <li><span class="n-badge">1</span><span><b>What are you measuring?</b> <i>Re-read · same as before</i> is the default. Or pick another type, or <i>other…</i> to type your own name and unit.</span></li>
         <li><span class="n-badge">2</span><span>Type the result, or leave it empty to fill in later.</span></li>
         <li><span class="n-badge">3</span><span>Tap <span class="k">+ add reading</span>. It appears straight under the first one, marked <i>↳ reading 2</i>.</span></li>
-        <li><span class="n-badge">4</span><span>Have a TapeStation export? Use this link to import it for this sample (<a href="#tapestation">see 13</a>).</span></li>
+        <li><span class="n-badge">4</span><span>Have a TapeStation export? Use this link to import it for this sample (<a href="#tapestation">see 14</a>).</span></li>
       </ol>
       <div class="tip">Re-reads are averaged. With replicates, each replicate's re-reads are averaged first, and the mean ± SD is then taken across replicates (n = number of replicates).</div>
     </section>
@@ -211,7 +233,7 @@
       </ol>
       <img class="shot wide" src="Examples_and_screenshots/help_guide/08_log_tools.jpg" alt="Log header with journey, reorder and section buttons numbered 1 to 3" loading="lazy" />
       <ol class="steps">
-        <li><span class="n-badge">1</span><span><span class="k">◎ journey</span> switches to the sample journey (<a href="#journey">see 09</a>).</span></li>
+        <li><span class="n-badge">1</span><span><span class="k">◎ journey</span> switches to the sample journey (<a href="#journey">see 10</a>).</span></li>
         <li><span class="n-badge">2</span><span><span class="k">⇅ reorder</span> shows ↑ ↓ buttons and lets you sort a section by name or by tube number.</span></li>
         <li><span class="n-badge">3</span><span><span class="k">+ section</span> adds an empty section.</span></li>
       </ol>
@@ -236,7 +258,7 @@
       <img class="shot" src="Examples_and_screenshots/help_guide/10_export.jpg" alt="Export window with spreadsheet, picture, text report and save backup numbered 1 to 4" loading="lazy" />
       <ol class="steps">
         <li><span class="n-badge">1</span><span><b>Spreadsheet (.csv)</b> for Excel or Google Sheets, one row per entry.</span></li>
-        <li><span class="n-badge">2</span><span><b>Picture (.png)</b> to share or present (<a href="#picture">see 11</a>).</span></li>
+        <li><span class="n-badge">2</span><span><b>Picture (.png)</b> to share or present (<a href="#picture">see 12</a>).</span></li>
         <li><span class="n-badge">3</span><span><b>Text report (.txt)</b>, a readable notebook summary. <i>Copy summary</i> puts the same text on the clipboard.</span></li>
         <li><span class="n-badge">4</span><span><b>Save backup (.json)</b> keeps everything, including TapeStation traces. Best for moving a run to another device.</span></li>
       </ol>
@@ -322,11 +344,11 @@
       <details><summary>I logged something in the wrong section.</summary><p>Drag it by its <b>⠿</b> handle into the right section, or tap <span class="k">edit</span> and change the section.</p></details>
       <details><summary>How are replicate averages calculated?</summary><p>Each replicate's re-reads are averaged first. Then the mean and sample standard deviation (SD) are taken across replicates, so n is the number of replicates. A replicate still waiting for a result is left out until it's filled in.</p></details>
       <details><summary>My TapeStation well wasn't matched to my sample.</summary><p>Matching uses the sample description typed on the TapeStation. If it differs from your record name, just pick your sample in the <b>add to</b> menu.</p></details>
-      <details><summary>Does LabTrack read the TapeStation's own run files?</summary><p>No. Those are in Agilent's own format. Use the CSV export from the TapeStation Analysis software (see <a href="#tapestation">13</a>).</p></details>
+      <details><summary>Does LabTrack read the TapeStation's own run files?</summary><p>No. Those are in Agilent's own format. Use the CSV export from the TapeStation Analysis software (see <a href="#tapestation">14</a>).</p></details>
       <details><summary>Something looks wrong or I have an idea.</summary><p>Open an issue on <a href="https://github.com/AKMARTIAN/labtrack/issues" target="_blank" rel="noopener">GitHub</a>.</p></details>
     </section>
 
-    <p class="foot"><a href="./">← back to labtrack</a> · LabTrack v3.19.0 · free and open source (MIT)</p>
+    <p class="foot"><a href="./">← back to labtrack</a> · LabTrack v3.20.0 · free and open source (MIT)</p>
   </main>
 </body>
 </html>

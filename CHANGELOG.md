@@ -2,6 +2,23 @@
 
 All notable changes to LabTrack are documented here. This project uses [Semantic Versioning](https://semver.org/).
 
+## [3.20.0] - 2026-11-25
+
+### Added
+- **Protocol presets:** **+ new → ▤ start from a protocol** (also on an empty run).
+  - **Choosing:** pick a protocol, set the number of samples and the first tube, and type the sample names.
+  - **What it creates:** every step as a section, in order. Quantification checkpoints (Qubit after extraction and each clean-up, fragment size, molarity…) become empty records for each sample, linked step to step so the journey and trends work straight away. Steps without a reading get a short note.
+  - **Illumina · NEBNext Ultra II DNA** (E7645 / E7103): input QC → fragmentation → end prep → adaptor ligation → ligation clean-up → index PCR → PCR clean-up → library QC → normalisation → pooling.
+  - **ONT · Native Barcoding Kit 24 V14** (SQK-NBD114.24): input QC → repair & end-prep → end-prep clean-up → native barcode ligation (type each sample's barcode) → pooled clean-up → native adapter ligation → final clean-up → flow cell loading. From the pooled clean-up there's a single **Pool** record.
+  - **Into an existing run:** start a new run, or add the steps to the current one. A step with the same name is reused, and new steps go at the end.
+  - A note in the first step reminds you to check the steps against your kit's protocol version.
+- **Help guide:** a new *Start from a protocol* section with a screenshot.
+
+### Changed
+- **Journey picture:**
+  - Steps that only have notes are now included, so a protocol's full flow shows.
+  - A sample that starts later (e.g. a pool) starts its line at its first step.
+
 ## [3.19.0] - 2026-11-25
 
 ### Added

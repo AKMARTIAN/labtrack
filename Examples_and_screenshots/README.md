@@ -13,6 +13,7 @@ Example pictures exported from LabTrack and screenshots of the app at phone size
 | `05_picture_journey_replicates_light.png`, `05_picture_journey_replicates_dark.png` | **Replicates.** Elephant blood ×3 and Rhino blood ×3 show mean ± SD at each step with every replicate's value, next to a negative control. |
 | `06_picture_journey_readings_light.png`, `06_picture_journey_readings_dark.png` | **Several readings per step.** After the bead clean-up each replicate's tube is read twice on the Qubit. The re-reads are averaged within each replicate (R1 29.8 · 30.2 → 30.0), then mean ± SD is taken across replicates. A TapeStation reading and a single sample's re-reads (*mean of 2 reads*) are also shown, plus a Bioanalyzer reading. |
 | `07_picture_journey_tapestation_light.png`, `07_picture_journey_tapestation_dark.png` | **TapeStation results in a journey.** Three samples go through Illumina library prep. Blood 1 has a TapeStation genomic DNA result at extraction, imported from the instrument's CSV export: DIN 8.7, 158 ng/µL, peak 56,938 bp, average fragment size ≈ 53,100 bp, the instrument's warnings and the redrawn electropherogram. Its column widens to fit. Notes show where they were written: a step note at bead clean-up (left column) and a note on Blood 3's reading. (The TapeStation values and trace are real, from a Lambda DNA run; the rest is demo data.) |
+| `08_picture_journey_ont_protocol_light.png`, `08_picture_journey_ont_protocol_dark.png` | **Started from a protocol preset** (ONT Native Barcoding Kit 24 V14) for three samples. Every step and checkpoint was laid out up front: per-sample Qubit readings and barcodes (NB01–NB03), then a single **Pool** from the pooled clean-up onwards, through to flow cell loading. Each step's note is shown beside it. |
 
 ## The app (phone size)
 
@@ -48,3 +49,4 @@ The annotated screenshots used by the in-app help guide (**?** in LabTrack, or [
 | `12_open.jpg` | The open menu: continue a run or add instrument results. |
 | `13_tapestation_match.jpg` | Matching TapeStation wells to samples. |
 | `14_tapestation_result.jpg` | A TapeStation result in the log: DIN, trace, average size, warnings. |
+| `15_protocol.jpg` | **Start from a protocol:** choose the protocol, number of samples, first tube and names. |
