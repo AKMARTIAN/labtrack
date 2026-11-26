@@ -25,21 +25,10 @@ LabTrack is a single-page web app for logging results at the bench. It runs in a
 
 ## Screenshots
 
-<table>
-  <tr>
-    <td align="center"><img src="Examples_and_screenshots/10_app_entry_form_replicates.jpg" width="230" alt="Entry form with three replicates set" /><br /><sub>Log a sample once, as replicates</sub></td>
-    <td align="center"><img src="Examples_and_screenshots/11_app_log_replicates_and_readings.jpg" width="230" alt="Log showing replicates and a second TapeStation reading" /><br /><sub>The log, with replicates and extra readings</sub></td>
-    <td align="center"><img src="Examples_and_screenshots/13_app_journey_view_light.jpg" width="230" alt="Journey view with mean and SD per step" /><br /><sub>Follow each sample through its steps</sub></td>
-  </tr>
-</table>
-
-**Picture export:** share or present a run as an image, here as a sample journey with a TapeStation result (DIN, average fragment size and electropherogram) imported onto Blood 1, and notes written along the way.
-
-<img src="Examples_and_screenshots/07_picture_journey_tapestation_light.png" alt="Sample journey of three samples through Illumina library prep, with a TapeStation genomic DNA result and electropherogram on Blood 1 at extraction, a note at the bead clean-up step and a note on Blood 3" />
-
-**Protocol presets:** start a run from a kit protocol and every step and checkpoint is laid out for your samples, ready to fill in. Here, the ONT Native Barcoding Kit 24 V14 for three samples, pooled after barcoding.
-
-<img src="Examples_and_screenshots/08_picture_journey_ont_protocol_light.png" alt="Sample journey of an ONT native barcoding run started from a protocol preset: three samples with Qubit readings and barcodes NB01 to NB03, then a single pool through to flow cell loading, with each step's note" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="Examples_and_screenshots/00_showcase_dark.png" />
+  <img src="Examples_and_screenshots/00_showcase_light.png" alt="LabTrack at a glance: the entry form with replicates, the log with re-reads, the journey view with mean and SD, an exported sample journey picture with a TapeStation result, and an ONT native barcoding run started from a protocol preset" />
+</picture>
 
 More examples, in light and dark, are in [`Examples_and_screenshots`](Examples_and_screenshots/README.md).
 

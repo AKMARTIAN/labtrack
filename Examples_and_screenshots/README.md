@@ -2,6 +2,12 @@
 
 Example pictures exported from LabTrack and screenshots of the app at phone size. All the data is made up for demonstration. Use them to show someone what LabTrack does, or on the GitHub page.
 
+## Showcase
+
+| File | What it shows |
+|---|---|
+| `00_showcase_light.png`, `00_showcase_dark.png` | The picture on the GitHub page: three app screenshots (log it, the log, journey) above two exported journey pictures (TapeStation result, ONT protocol preset). The page shows the dark one when GitHub is in dark mode. |
+
 ## Picture export (export → picture of the run)
 
 | File | What it shows |
