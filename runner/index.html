@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>LabTrack Bench</title>
+  <meta name="description" content="Walk through a lab SOP step by step: checkboxes, timers set to the protocol, and every volume calculated from your readings." />
+  <meta name="color-scheme" content="light dark" />
+  <script>
+    // Shares LabTrack's theme setting (same key), applied before the page paints.
+    try { document.documentElement.dataset.theme = localStorage.getItem('labtrack_theme') === 'dark' ? 'dark' : 'light'; }
+    catch (e) { document.documentElement.dataset.theme = 'light'; }
+  </script>
+  <link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f5f8; --panel: #ffffff; --panel-2: #edf1f5; --input: #fcfdfe;
+      --border: #dde3ea; --border-2: #c9d2dd;
+      --text: #18212d; --muted: #566377; --dim: #8995a6;
+      --green: #1a7f37; --cyan: #0b7285; --blue: #0969da; --amber: #9a6700; --violet: #7246c9; --red: #cf222e;
+      --primary: #1f883d; --on-primary: #ffffff;
+      --topbar: rgba(255, 255, 255, 0.9); --hover: #e6ebf1; --overlay: rgba(15, 23, 42, 0.34);
+      --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 26px -18px rgba(15, 23, 42, 0.3);
+      --radius: 12px;
+      --font: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0b0f14; --panel: #121821; --panel-2: #18202b; --input: #0b0f14;
+      --border: #222c39; --border-2: #2e3a4a;
+      --text: #dce3ec; --muted: #8492a3; --dim: #56637a;
+      --green: #7ee787; --cyan: #56d4dd; --blue: #79c0ff; --amber: #f2cc60; --violet: #c4a7ff; --red: #ff7b72;
+      --primary: #7ee787; --on-primary: #07210c;
+      --topbar: rgba(11, 15, 20, 0.88); --hover: #1d2632; --overlay: rgba(3, 6, 10, 0.72);
+      --shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.8);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-padding-top: 120px; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 13.5px/1.55 var(--font); }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    b { font-weight: 700; }
+    .hidden { display: none !important; }
+    .muted { color: var(--muted); } .dim { color: var(--dim); }
+
+    /* ---------- top bar ---------- */
+    .top { position: sticky; top: 0; z-index: 20; background: var(--topbar); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+    .top-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; max-width: 1200px; margin: 0 auto; }
+    .brand { font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; text-decoration: none; color: var(--text); }
+    .brand span { color: var(--cyan); font-weight: 500; }
+    .run-info { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+    .run-info b { color: var(--text); }
+    .top-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
+    .progress { height: 3px; background: var(--panel-2); }
+    .progress i { display: block; height: 100%; width: 0; background: var(--green); transition: width .3s ease; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid var(--border-2); border-radius: 8px; background: var(--panel); cursor: pointer; white-space: nowrap; font-size: 12.5px; }
+    .btn:hover { background: var(--hover); }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); font-weight: 700; }
+    .btn.primary:hover { filter: brightness(1.05); }
+    .btn.small { padding: 3px 8px; font-size: 12px; }
+    .btn.ghost { border-color: transparent; background: transparent; }
+    .btn.danger { color: var(--red); }
+    .btn:disabled { opacity: .45; cursor: default; }
+
+    /* ---------- layout ---------- */
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 18px 16px 140px; }
+    .layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 22px; align-items: start; }
+    .nav { position: sticky; top: 78px; display: flex; flex-direction: column; gap: 4px; }
+    .nav a { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 8px; text-decoration: none; color: var(--muted); border: 1px solid transparent; }
+    .nav a:hover { background: var(--hover); }
+    .nav a.cur { border-color: var(--border-2); background: var(--panel); color: var(--text); font-weight: 700; }
+    .nav a.done { color: var(--green); }
+    .nav .ring { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-2); display: grid; place-items: center; font-size: 10px; }
+    .nav a.done .ring { border-color: var(--green); background: var(--green); color: var(--on-primary); }
+    .nav a.cur .ring { border-color: var(--cyan); }
+    .nav .cnt { font-size: 11px; color: var(--dim); }
+    .nav-foot { margin-top: 12px; padding: 10px; border: 1px dashed var(--border-2); border-radius: 8px; color: var(--muted); font-size: 12px; }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      .nav { position: sticky; top: 56px; z-index: 10; flex-direction: row; overflow-x: auto; background: var(--bg); padding: 6px 0; margin: -6px 0 0; scrollbar-width: none; }
+      .nav a { grid-template-columns: 18px auto auto; white-space: nowrap; padding: 6px 9px; }
+      .nav-foot { display: none; }
+    }
+    @media (max-width: 520px) {
+      .brand, .run-info, .top-actions .wide { display: none; }
+      .top-actions .btn { padding: 6px 8px; }
+      .top-actions { margin-left: auto; }
+      html { scroll-padding-top: 130px; }
+    }
+
+    /* ---------- stages & steps ---------- */
+    .stage { margin-bottom: 30px; }
+    .stage-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 4px; }
+    .stage-head h2 { margin: 0; font-size: 17px; letter-spacing: -0.01em; }
+    .stage-head .tag { font-size: 11.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+    .stage-head .tag.ok { color: var(--green); border-color: var(--green); }
+    .stage-sum { color: var(--muted); margin: 0 0 12px; }
+    .steps { display: flex; flex-direction: column; gap: 8px; }
+
+    .step { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 4px 10px; padding: 12px 14px 12px 10px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .step.next { border-color: var(--cyan); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cyan) 16%, transparent), var(--shadow); }
+    .step.critical { border-left: 4px solid var(--red); padding-left: 7px; }
+    .step.done { background: transparent; box-shadow: none; padding-top: 7px; padding-bottom: 7px; }
+    .step.done .body > :not(.line) { display: none; }
+    .step.done.open .body > :not(.line) { display: block; }
+    .step.done .text { color: var(--muted); }
+    .check { width: 32px; height: 32px; border-radius: 8px; border: 2px solid var(--border-2); background: var(--input); cursor: pointer; display: grid; place-items: center; padding: 0; }
+    .check:hover { border-color: var(--green); }
+    .step.done .check { background: var(--green); border-color: var(--green); color: var(--on-primary); width: 26px; height: 26px; margin: 0 3px; }
+    .check svg { width: 16px; height: 16px; }
+    .line { display: flex; gap: 10px; align-items: baseline; }
+    .num { color: var(--dim); font-size: 11.5px; min-width: 22px; }
+    .text { flex: 1; }
+    .meta { font-size: 11.5px; color: var(--dim); white-space: nowrap; }
+    .step.done .line { cursor: pointer; }
+    .badge { display: inline-block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 0 6px; border-radius: 4px; margin-left: 6px; vertical-align: 1px; }
+    .badge.crit { color: var(--red); border: 1px solid var(--red); }
+    .badge.need { color: var(--amber); border: 1px solid var(--amber); }
+
+    .box { margin-top: 8px; padding: 8px 10px; border-radius: 8px; font-size: 12.5px; }
+    .box.tip { background: var(--panel-2); color: var(--muted); }
+    .box.warn { background: color-mix(in srgb, var(--red) 9%, transparent); color: var(--red); border: 1px solid color-mix(in srgb, var(--red) 30%, transparent); }
+    .box.stop { background: color-mix(in srgb, var(--blue) 9%, transparent); color: var(--blue); }
+    .box::before { font-weight: 800; margin-right: 6px; }
+    .box.tip::before { content: 'tip'; } .box.warn::before { content: '⚠'; } .box.stop::before { content: '⏸ safe stopping point:'; }
+
+    /* tubes */
+    .box.tube { background: color-mix(in srgb, var(--green) 8%, transparent); border: 1px solid color-mix(in srgb, var(--green) 28%, transparent); color: var(--text); }
+    .box.tube::before { content: none; }
+    .box.tube .th { font-weight: 800; margin-bottom: 6px; }
+    .box.tube .th::before { content: '🏷 '; }
+    .tchips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tchip { display: grid; padding: 4px 9px; border-radius: 7px; background: var(--panel); border: 1px solid var(--border-2); min-width: 92px; }
+    .tchip b { font-size: 14px; letter-spacing: .02em; }
+    .tchip span { font-size: 11px; color: var(--muted); }
+    .tcode { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 0 5px; border-radius: 4px; background: var(--panel-2); color: var(--muted); border: 1px solid transparent; white-space: nowrap; }
+    .tcode.keep { border-color: var(--green); color: var(--text); }
+    .jt.tubes td { vertical-align: middle; } .jt.tubes td:last-child { white-space: normal; line-height: 2.1; } .jt.tubes .arrow { color: var(--dim); margin: 0 4px; }
+    .samples-tbl td.tc input { width: 70px; }
+    .samples-tbl td.tc input.dup { border-color: var(--red); }
+
+    .card.redo { border: 1.5px solid var(--amber); }
+    .card.redo h3 { color: var(--amber); }
+    .rdos { display: grid; gap: 6px; } .rdo { display: block; font-size: 13px; }
+    .tfind { display: grid; gap: 6px; margin-top: 10px; }
+    .tres { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12.5px; }
+    .tres b.l { font-size: 14px; } .tres.redone b.l { text-decoration: line-through; color: var(--muted); }
+    .tcode.redone { text-decoration: line-through; opacity: .7; }
+
+    /* timers */
+    .timers { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .timer { display: inline-flex; align-items: center; gap: 8px; padding: 5px 6px 5px 11px; border: 1px solid var(--border-2); border-radius: 999px; background: var(--input); }
+    .timer .tl { color: var(--muted); font-size: 12px; }
+    .timer .tv { font-weight: 800; font-size: 16px; font-variant-numeric: tabular-nums; min-width: 52px; text-align: center; }
+    .timer.running { border-color: var(--cyan); }
+    .timer.running .tv { color: var(--cyan); }
+    .timer.paused .tv { color: var(--amber); }
+    .timer.done { border-color: var(--green); background: color-mix(in srgb, var(--green) 12%, transparent); }
+    .timer.done .tv { color: var(--green); }
+    .timer.alarm { animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--green) 30%, transparent); } }
+    .tbtn { border: 0; background: var(--panel-2); border-radius: 999px; padding: 3px 10px; cursor: pointer; font-size: 12px; }
+    .tbtn:hover { background: var(--hover); }
+    .tbtn.go { background: var(--cyan); color: var(--bg); font-weight: 700; }
+
+    /* readings */
+    .readings { margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+    .rd { display: flex; align-items: center; gap: 6px; padding: 4px 4px 4px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--input); }
+    .rd .nm { flex: 1; min-width: 0; font-size: 12.5px; display: grid; gap: 2px; }
+    .rd .n1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rd .n2 { display: flex; gap: 4px; flex-wrap: wrap; }
+    .rd input { width: 76px; padding: 4px 6px; border: 1px solid var(--border-2); border-radius: 6px; background: var(--panel); text-align: right; }
+    .rd input:focus { outline: 2px solid var(--cyan); border-color: transparent; }
+    .rd .u { font-size: 11px; color: var(--dim); }
+    .rd-label { margin-top: 10px; font-size: 12px; color: var(--muted); font-weight: 700; }
+    .chip { display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--violet); border: 1px solid color-mix(in srgb, var(--violet) 40%, transparent); border-radius: 4px; padding: 0 4px; }
+
+    /* calculators */
+    .calc { margin-top: 10px; border: 1px solid color-mix(in srgb, var(--cyan) 35%, var(--border)); border-radius: 10px; background: color-mix(in srgb, var(--cyan) 4%, var(--panel)); overflow: hidden; }
+    .calc-h { display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px; font-size: 11.5px; font-weight: 700; color: var(--cyan); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid color-mix(in srgb, var(--cyan) 20%, var(--border)); }
+    .calc-h span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--muted); }
+    .calc-b { padding: 8px 10px; }
+    .calc-b p { margin: 4px 0; }
+    .tbl-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+    th, td { padding: 4px 8px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; white-space: normal; }
+    th { font-size: 11px; color: var(--muted); font-weight: 700; }
+    tr.tot td { font-weight: 800; border-bottom: 0; }
+    td.v { font-weight: 700; font-variant-numeric: tabular-nums; }
+    td.flag, .flag { color: var(--amber); font-size: 11.5px; text-align: left; white-space: normal; }
+    .flag.bad { color: var(--red); }
+    .big { font-size: 22px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+    .big small { font-size: 13px; font-weight: 500; color: var(--muted); }
+    .why { color: var(--muted); font-size: 12px; }
+    select.bc { padding: 2px 4px; border: 1px solid var(--border-2); border-radius: 6px; background: var(--panel); }
+    select.bc.dup { border-color: var(--red); color: var(--red); }
+
+    /* notes */
+    .note-row { margin-top: 8px; }
+    .note-row textarea { width: 100%; min-height: 54px; padding: 6px 8px; border: 1px solid var(--border-2); border-radius: 8px; background: var(--input); resize: vertical; }
+    .linkish { border: 0; background: none; padding: 0; color: var(--dim); cursor: pointer; font-size: 12px; text-decoration: underline dotted; }
+    .linkish:hover { color: var(--text); }
+
+    /* ---------- setup ---------- */
+    .setup { max-width: 760px; margin: 0 auto; }
+    .setup h1 { font-size: 22px; letter-spacing: -0.02em; margin: 8px 0 4px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-top: 14px; }
+    .card h3 { margin: 0 0 10px; font-size: 14px; }
+    .proto { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; padding: 12px; border: 2px solid var(--cyan); border-radius: 10px; cursor: pointer; }
+    .proto + .proto { margin-top: 8px; }
+    .proto:not(.sel) { border-color: var(--border); }
+    .proto .k { font-size: 11.5px; color: var(--muted); }
+    .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 180px; }
+    .field label { font-size: 11.5px; color: var(--muted); font-weight: 700; }
+    .field input, .field select { padding: 7px 9px; border: 1px solid var(--border-2); border-radius: 8px; background: var(--input); }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .samples-tbl td, .samples-tbl th { text-align: left; padding: 4px 4px; }
+    .samples-tbl input { width: 100%; padding: 5px 7px; border: 1px solid var(--border-2); border-radius: 6px; background: var(--input); }
+    .samples-tbl td.ix { color: var(--dim); width: 26px; }
+    .samples-tbl td.q { width: 110px; }
+    .samples-tbl td.b { width: 92px; }
+    .samples-tbl td.x { width: 30px; }
+    .err { color: var(--red); font-size: 12.5px; margin-top: 8px; }
+    .how { color: var(--muted); font-size: 12.5px; }
+    .how li { margin: 3px 0; }
+
+    /* ---------- timer dock ---------- */
+    .dock { position: fixed; right: 16px; bottom: 16px; z-index: 30; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; max-width: calc(100vw - 32px); }
+    .dock .timer { box-shadow: var(--shadow); background: var(--panel); cursor: pointer; }
+    .fab { position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px; z-index: 29; }
+    @media (max-width: 600px) { .fab { left: 16px; transform: none; } }
+
+    /* ---------- dialog & toast ---------- */
+    dialog { border: 1px solid var(--border-2); border-radius: 14px; background: var(--panel); color: var(--text); padding: 0; width: min(720px, calc(100vw - 24px)); max-height: calc(100vh - 40px); box-shadow: var(--shadow); }
+    dialog::backdrop { background: var(--overlay); }
+    .dlg-h { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 800; }
+    .dlg-b { padding: 14px 16px; overflow: auto; max-height: calc(100vh - 170px); }
+    .dlg-f { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+    .toast { position: fixed; left: 50%; top: 70px; transform: translateX(-50%); z-index: 50; background: var(--panel); border: 1px solid var(--border-2); border-radius: 10px; padding: 9px 14px; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
+    .toast.ok { border-color: var(--green); }
+    .toast.alarm { border-color: var(--green); background: color-mix(in srgb, var(--green) 14%, var(--panel)); font-weight: 700; }
+    /* saved runs */
+    .runs { display: flex; flex-direction: column; gap: 8px; }
+    .run-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--input); }
+    .run-row .rn { font-weight: 800; }
+    .run-row .rm { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+    .run-row .acts { display: flex; gap: 6px; align-items: center; }
+    .minibar { height: 4px; background: var(--panel-2); border-radius: 2px; margin-top: 7px; overflow: hidden; }
+    .minibar i { display: block; height: 100%; background: var(--green); }
+    @media (max-width: 520px) { .run-row { grid-template-columns: 1fr; } }
+    .step.skipped .text { text-decoration: line-through; }
+    .step.skipped .check { background: var(--amber); border-color: var(--amber); font-weight: 800; }
+    input.dil { width: 52px; padding: 2px 5px; border: 1px solid var(--border-2); border-radius: 6px; background: var(--panel); text-align: right; }
+    /* sample journey */
+    .journey h1 { font-size: 22px; letter-spacing: -0.02em; }
+    .jt td, .jt th { vertical-align: top; text-align: left; }
+    .jv { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .js { display: block; font-size: 11px; color: var(--muted); }
+    .jbad .js { color: var(--red); }
+    .strip { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+    .strip .node { border: 1px solid var(--border-2); border-radius: 10px; padding: 8px 12px; background: var(--input); min-width: 140px; }
+    .strip .arrow { align-self: center; color: var(--dim); }
+    .jnotes { margin: 0; padding-left: 18px; } .jnotes li { margin: 4px 0; }
+    @media print {
+      .top, .nav, .dock, .fab, .check, .timers, .note-row .linkish { display: none !important; }
+      .layout { display: block; } .step.done .body > * { display: block !important; }
+      .step { break-inside: avoid; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="top-row">
+      <a class="brand" href="./">LabTrack <span>bench</span></a>
+      <div class="run-info" id="runInfo"></div>
+      <div class="top-actions" id="topActions"></div>
+    </div>
+    <div class="progress"><i id="progBar"></i></div>
+  </header>
+  <main class="wrap" id="app"></main>
+  <div class="dock" id="dock"></div>
+  <dialog id="dlg"></dialog>
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="protocols.js"></script>
+  <script>
+  (() => {
+    'use strict';
+    /* ================= basics ================= */
+    const STORE = 'labtrack_bench_v1';        // old single-run key, moved into RUNS on first load
+    const RUNS = 'labtrack_bench_runs_v1';    // { active: run id or null, runs: { id: run } }
+    const PROTOCOLS = window.BENCH_PROTOCOLS || [];
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const strip = (s) => String(s || '').replace(/<[^>]+>/g, '');
+    const uid = () => Math.random().toString(36).slice(2, 9);
+    const num = (v) => { if (v === '' || v == null) return null; const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : null; };
+    const pad = (n) => String(n).padStart(2, '0');
+    const fv = (v) => { if (v == null || !isFinite(v)) return '–'; const a = Math.abs(v); const d = a >= 1000 ? 0 : a >= 10 ? 1 : a >= 1 ? 2 : 3; return String(+v.toFixed(d)); };
+    const fvol = (ul) => (ul >= 1000 ? `${fv(ul / 1000)} mL` : `${fv(ul)} µL`);
+    const ul = (v) => (v >= 1000 ? `${Math.round(v).toLocaleString('en-US')} µL` : `${fv(v)} µL`);  // ethanol recipes stay in µL
+    const isoDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const hm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const mmss = (sec) => { sec = Math.max(0, Math.ceil(sec)); const h = Math.floor(sec / 3600); const m = Math.floor((sec % 3600) / 60); return (h ? h + ':' + pad(m) : m) + ':' + pad(sec % 60); };
+    const CHECK_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
+
+    function loadDb() {
+      let d = null;
+      try { d = JSON.parse(localStorage.getItem(RUNS) || 'null'); } catch (e) {}
+      if (!d || typeof d !== 'object' || !d.runs) d = { active: null, runs: {} };
+      try {
+        const old = JSON.parse(localStorage.getItem(STORE) || 'null');
+        if (old && old.protocolId) { old.id = old.id || uid(); d.runs[old.id] = old; d.active = old.id; localStorage.setItem(RUNS, JSON.stringify(d)); localStorage.removeItem(STORE); }
+      } catch (e) {}
+      return d;
+    }
+    // Older run files may miss newer fields: fill them in.
+    function fixRun(r) {
+      r.id = r.id || uid();
+      ['readings', 'readAt', 'done', 'notes', 'timers', 'skipped', 'dil', 'choices', 'params'].forEach((k) => { if (!r[k] || typeof r[k] !== 'object') r[k] = {}; });
+      r.samples = Array.isArray(r.samples) ? r.samples : [];
+      r.samples.forEach((sm, i) => { if (!sm.code) sm.code = `S${i + 1}`; });
+      if (!Array.isArray(r.redos)) r.redos = [];
+      if (!r.runCode) r.runCode = 'R' + isoDate(new Date(r.started || Date.now())).slice(5).replace('-', '');
+      return r;
+    }
+    const isRun = (r) => r && typeof r === 'object' && r.protocolId && PROTOCOLS.some((p) => p.id === r.protocolId) && Array.isArray(r.samples);
+    const db = loadDb();
+    let state = db.active && isRun(db.runs[db.active]) ? fixRun(db.runs[db.active]) : null;
+    let draft = null;            // setup form while no run is open
+    let view = 'steps';          // 'steps' or 'journey'
+    const openDone = new Set();  // completed steps the user expanded
+    const openNotes = new Set();
+
+    function persist() {
+      try { localStorage.setItem(RUNS, JSON.stringify(db)); }
+      catch (e) { toast('Could not save on this device (storage full?). Download the run file to keep it.', '', 6000); }
+    }
+    function save() {
+      if (state) { state.updated = Date.now(); db.runs[state.id] = state; db.active = state.id; } else db.active = null;
+      persist();
+    }
+    function openRun(id) {
+      if (!isRun(db.runs[id])) return;
+      state = fixRun(db.runs[id]); ensureTubeLog(state); draft = null; view = 'steps'; openDone.clear(); openNotes.clear();
+      save(); render(); keepAwake();
+      const n = nextStep();
+      if (n) setTimeout(() => scrollToStep(n.id, 'auto'), 50); else { view = 'journey'; render(); }
+    }
+    function closeRun() {
+      state = null; draft = null; view = 'steps'; save();
+      if ($('dlg').open) $('dlg').close();
+      render(); window.scrollTo(0, 0);
+    }
+
+    const P = () => PROTOCOLS.find((p) => p.id === (state ? state.protocolId : draft.protocolId)) || PROTOCOLS[0];
+    const prm = (key) => { const v = state && state.params ? num(state.params[key]) : null; if (v != null) return v; const d = P().params.find((x) => x.key === key); return d ? d.value : null; };
+    const samples = () => (state ? (scope ? state.samples.filter((s) => scope.includes(s.id)) : state.samples) : []);
+    const nS = () => samples().length;
+
+    /* ---- tubes ----
+       Every transfer to a new tube gets its own label, so a tube found in a box months later says which run, sample and
+       step it came from. Sample tubes: <tube code>-<suffix> (S1 → S1-ER1 → S1-ER2 → S1-ERC → S1-BC1); pool tubes:
+       <run code>-<suffix>. A tube made again after a redo gets -R2, -R3… Each tube goes into state.tubeLog when its
+       step is checked (label, sample, step, time, the tube it came from, and whether it was later redone). */
+    const codeOf = (sm) => (sm.code || '').trim() || `S${state.samples.indexOf(sm) + 1}`;
+    const runCode = (r = state) => (r.runCode || '').trim() || 'POOL';
+    const stepIdx = (id) => flat().findIndex((s) => s.id === id);
+    const fillBc = (t, sm) => t.replace(/\{barcode\}/g, sm && sm.barcode ? sm.barcode : 'its barcode');
+    const poolIdx = () => { const i = flat().findIndex((s) => s.tube && s.tube.per === 'pool'); return i < 0 ? 1e9 : i; };
+    // 1 + the redos that cover this sample (or the pool) at this step.
+    function attemptOf(sid, stepId) {
+      const i = stepIdx(stepId);
+      return 1 + (state.redos || []).filter((r) => r.kind === 'redo' && (r.all || r.sids.includes(sid)) && i >= stepIdx(r.from) && i < (r.until ? stepIdx(r.until) : 1e9)).length;
+    }
+    function tubeLabel(t, sm, stepId) {
+      const a = attemptOf(t.per === 'pool' ? 'pool' : sm.id, stepId);
+      return `${t.per === 'pool' ? runCode() : codeOf(sm)}-${t.suffix}${a > 1 ? '-R' + a : ''}`;
+    }
+    // The tube a sample (or the pool) is in once this step is done.
+    function tubeAt(stepId, per, sm) {
+      let t = null, at = null;
+      for (const s of flat()) { if (s.tube && s.tube.per === per) { t = s.tube; at = s.id; } if (s.id === stepId) break; }
+      if (!t) return per === 'pool' ? null : { label: codeOf(sm), what: 'original sample tube' };
+      return { label: tubeLabel(t, sm, at), what: fillBc(t.what, sm), keep: t.keep, step: at };
+    }
+    // The tube going into this step: where a redo takes its new aliquot from.
+    function tubeBefore(stepId, per, sm) {
+      const all = flat(), i = stepIdx(stepId);
+      if (i > 0) return tubeAt(all[i - 1].id, per, sm);
+      return per === 'pool' ? null : { label: codeOf(sm), what: 'original sample tube' };
+    }
+    const dateStr = (t) => { const d = new Date(t); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(2)}`; };
+    function tubeBoxHTML(step, doneAt) {
+      const t = step.tube, list = t.per === 'pool' ? [null] : samples();
+      const chips = list.map((sm) => { const l = tubeLabel(t, sm, step.id), pv = tubeBefore(step.id, t.per, sm);
+        return `<div class="tchip"><b>${esc(l)}</b><span>${esc(sm ? sm.name : 'pool of ' + state.samples.length + ' samples')}</span>${pv && pv.label !== l ? `<span class="dim">from ${esc(pv.label)}</span>` : ''}</div>`; }).join('');
+      return `<div class="box tube"><div class="th">Label the new ${esc(t.vessel || 'tube')}${list.length > 1 ? 's' : ''}</div><div class="tchips">${chips}</div>
+        <div class="dim" style="margin-top:6px">Lid: the code in bold. Side: <b>${esc(runCode())}</b> · the code · ${esc(fillBc(t.what, list.length === 1 ? list[0] : null))} · step ${stepNo(step.id)} · ${dateStr(doneAt || Date.now())}${state.operator ? ' · ' + esc(state.operator) : ''}.${t.keep ? ' <b>Keep this tube</b>: store it until the run is analysed.' : ''}</div></div>`;
+    }
+    // At a stopping point: what goes in the fridge.
+    function storeHTML(step) {
+      const out = [], i = stepIdx(step.id);
+      const pl = tubeAt(step.id, 'pool');
+      if (pl) {
+        out.push(`<b>${esc(pl.label)}</b> (${esc(pl.what)})`);
+        const kept = flat().slice(0, i + 1).filter((s) => s.tube && s.tube.per === 'pool' && s.tube.keep && s.id !== pl.step).pop();
+        if (!pl.keep && kept) out.push(`<b>${esc(tubeLabel(kept.tube, null, kept.id))}</b> (${esc(kept.tube.what)}, the rest of it)`);
+      } else if (samples().length) out.push(`<b>${samples().map((sm) => esc(tubeAt(step.id, 'sample', sm).label)).join(', ')}</b> (${esc(tubeAt(step.id, 'sample', samples()[0]).what.replace(/ \(.*\)$/, ''))})`);
+      return out.length ? `<div class="dim" style="margin-top:4px">Tubes to store: ${out.join('; ')}.</div>` : '';
+    }
+    // Tube log: written when a step that makes a tube is checked, so the record keeps the label that was written on it.
+    function logTubes(stepId, list, at = Date.now()) {
+      const st = flat().find((s) => s.id === stepId); if (!st || !st.tube) return;
+      const t = st.tube;
+      (t.per === 'pool' ? [null] : list).forEach((sm) => {
+        const sid = sm ? sm.id : 'pool', label = tubeLabel(t, sm, stepId), pv = tubeBefore(stepId, t.per, sm);
+        state.tubeLog = state.tubeLog.filter((x) => !(x.label === label && x.sid === sid));
+        state.tubeLog.push({ label, run: runCode(), sid, sample: sm ? sm.name : 'Pool', step: stepId, stepNo: stepNo(stepId), what: fillBc(t.what, sm), vessel: t.vessel || '', keep: !!t.keep, at, from: pv ? pv.label : '', op: state.operator || '', status: 'ok' });
+      });
+    }
+    function unlogTubes(stepId, list) {
+      const st = flat().find((s) => s.id === stepId); if (!st || !st.tube) return;
+      (st.tube.per === 'pool' ? [null] : list).forEach((sm) => {
+        const sid = sm ? sm.id : 'pool', label = tubeLabel(st.tube, sm, stepId);
+        state.tubeLog = state.tubeLog.filter((x) => !(x.label === label && x.sid === sid && x.status === 'ok'));
+      });
+    }
+    // Runs saved before the tube log existed: rebuild it from the checked steps.
+    function ensureTubeLog(r) {
+      if (Array.isArray(r.tubeLog)) return;
+      const prev = state; state = r; r.tubeLog = [];
+      try { flat().forEach((s) => { if (s.tube && r.done[s.id] && !r.skipped[s.id]) logTubes(s.id, r.samples, r.done[s.id]); }); } finally { state = prev; }
+    }
+    const rd = (key, sid) => num(state.readings[key] && state.readings[key][sid]);
+    // Run-wide choices asked at setup (e.g. which fragments to keep). Steps read them as {key.field} in their text,
+    // and any value written { by: key, <option>: value } (such as a bead ratio) resolves to the chosen option's value.
+    const curChoices = () => ((state || draft || {}).choices || {});
+    const choiceOpt = (key) => {
+      const c = (P().choices || []).find((x) => x.key === key); if (!c) return null;
+      return c.options.find((o) => o.value === curChoices()[key]) || c.options.find((o) => o.value === c.default) || c.options[0];
+    };
+    const fill = (str) => (typeof str !== 'string' ? str : str.replace(/\{(\w+)\.(\w+)\}/g, (m, k, f) => { const o = choiceOpt(k); return o && o[f] != null ? o[f] : m; }));
+    let stagesKey = '', stagesCache = null;
+    function stages() {
+      const key = P().id + JSON.stringify(curChoices());
+      if (key !== stagesKey) {
+        const deep = (v) => Array.isArray(v) ? v.map(deep)
+          : v && typeof v === 'object' ? (v.by && choiceOpt(v.by) ? v[choiceOpt(v.by).value] : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deep(x)])))
+          : fill(v);
+        stagesCache = deep(P().stages); stagesKey = key;
+      }
+      return stagesCache;
+    }
+    const defaultChoices = (p) => Object.fromEntries((p.choices || []).map((c) => [c.key, c.default || c.options[0].value]));
+    const flat = () => stages().flatMap((stg) => stg.steps.map((st) => Object.assign({ stage: stg }, st)));
+    const stepNo = (id) => flat().findIndex((s) => s.id === id) + 1;
+    const nextStep = () => flat().find((s) => !state.done[s.id]);
+
+    function toast(msg, kind = '', ms = 2600) {
+      const t = $('toast'); t.className = 'toast ' + kind; t.innerHTML = msg;
+      clearTimeout(toast._t); if (ms) toast._t = setTimeout(() => t.classList.add('hidden'), ms);
+    }
+
+    /* ================= calculators =================
+       Each returns { html, data } so the same numbers feed the screen and the export. */
+    function normaliseRow(c, s) {
+      const q = rd(c.readingKey, s.id), mass = prm(c.massParam), V = c.finalVol;
+      const dil = Math.max(1, num(state.dil[s.id]) || 1);   // pre-dilution factor typed in for this sample (1 = neat)
+      if (q == null || q <= 0) return { q, dil, missing: true };
+      const qd = q / dil;
+      let dna = mass / qd, water = V - dna, ng = mass, flag = '', bad = false;
+      if (dna > V) { dna = V; water = 0; ng = qd * V; flag = dil > 1 ? `too dilute at 1:${dil}: set the dilution back to 1` : `low: only ${fv(ng)} ng even undiluted`; bad = ng < mass * 0.5; }
+      else if (dna < 1) { flag = `< 1 µL is hard to pipette: type ${dil * 10} in "pre-dil" and make a 1:${dil * 10} dilution first`; }
+      return { q, dil, dna, water, ng, flag, bad };
+    }
+    const CALC = {
+      normalise(c) {
+        const mass = prm(c.massParam);
+        const rows = samples().map((s) => {
+          const r = normaliseRow(c, s);
+          const dilIn = `<input class="dil" inputmode="decimal" data-dil="${s.id}" value="${r.dil > 1 ? r.dil : ''}" placeholder="1" aria-label="Pre-dilution for ${esc(s.name)}" />`;
+          if (r.missing) return `<tr><td>${esc(s.name)}</td><td colspan="2" class="flag">enter the Qubit reading</td><td>${dilIn}</td><td colspan="3"></td></tr>`;
+          return `<tr><td>${esc(s.name)}</td><td>${fv(r.q)}</td><td></td><td>${dilIn}</td><td class="v">${fv(r.dna)}${r.dil > 1 ? `<span class="dim"> of 1:${r.dil}</span>` : ''}</td><td class="v">${fv(r.water)}</td><td>${fv(r.ng)}</td></tr>${r.flag ? `<tr><td></td><td colspan="6" class="flag ${r.bad ? 'bad' : ''}">${esc(r.flag)}</td></tr>` : ''}`;
+        }).join('');
+        return { title: 'Normalise input', sub: `${fv(mass)} ng in ${c.finalVol} µL`,
+          html: `<div class="tbl-wrap"><table><tr><th>Sample</th><th>ng/µL</th><th></th><th>pre-dil 1:</th><th>DNA µL</th><th>Water µL</th><th>ng</th></tr>${rows}</table></div>
+            <p class="why">Too concentrated to pipette accurately? Dilute the sample first (e.g. 1 µL + 9 µL water = 1:10), type the factor in "pre-dil" and the volumes update. Change the input mass in settings.</p>` };
+      },
+      mix(c) {
+        const n = nS(), ov = prm('overage') / 100;
+        const perTube = c.perTube || [], reag = c.reagents || [];
+        const sum = (a) => a.reduce((t, x) => t + x.vol, 0);
+        const total = sum(perTube) + sum(reag);
+        if (c.noMaster) {
+          const rows = perTube.map((x) => `<tr><td>${esc(x.name)}</td><td class="v">${fv(x.vol)}</td></tr>`).join('');
+          const need = (c.totals || []).map((x) => `<p class="why">${esc(x.name)} for ${n} sample${n === 1 ? '' : 's'} (+${fv(ov * 100)}%): <b>${fvol(x.vol * n * (1 + ov))}</b></p>`).join('');
+          return { title: c.title, sub: 'per tube', html: `<div class="tbl-wrap"><table><tr><th>Reagent</th><th>µL</th></tr>${rows}<tr class="tot"><td>Total</td><td>${fv(total)}</td></tr></table></div>${need}` };
+        }
+        const k = n * (1 + ov);
+        const rows = perTube.map((x) => `<tr><td>${esc(x.name)}</td><td class="v">${fv(x.vol)}</td><td class="dim">per tube</td></tr>`).join('')
+          + reag.map((x) => `<tr><td>${esc(x.name)}</td><td class="v">${fv(x.vol)}</td><td class="v">${fv(x.vol * k)}</td></tr>`).join('');
+        return { title: c.title, sub: `master mix for ${n} + ${fv(ov * 100)}%`,
+          html: `<div class="tbl-wrap"><table><tr><th>Reagent</th><th>1 tube µL</th><th>Master mix µL</th></tr>${rows}<tr class="tot"><td>Total</td><td>${fv(total)}</td><td>${fv(sum(reag) * k)}</td></tr></table></div>
+            <p class="why">Add <b>${fv(sum(reag))} µL</b> of master mix to each tube of ${fv(sum(perTube))} µL.</p>` };
+      },
+      beads(c) {
+        const n = nS();
+        const vol = c.volume != null ? c.volume : c.perSampleVolume * n;
+        const beads = c.ratio * vol;
+        const how = c.perSampleVolume != null ? ` (${n} samples × ${c.perSampleVolume} µL)` : '';
+        const per = c.per === 'sample'
+          ? `<p class="why">Each of ${n} tubes. Total beads needed: <b>${fvol(beads * n)}</b>.</p>` : '';
+        return { title: 'Bead volume', sub: `${c.ratio}× ratio`, data: { beads, vol },
+          html: `<div class="big">${fv(beads)} µL <small>AMPure XP ${c.per === 'sample' ? 'per tube' : 'into the pool'}</small></div>
+            <p class="why">${c.ratio} × ${fv(vol)} µL ${esc(c.what)}${how} = ${fv(beads)} µL</p>${per}${c.why ? `<p class="why">${esc(c.why)}</p>` : ''}` };
+      },
+      wash(c) {
+        const cnt = c.per === 'sample' ? nS() : 1;
+        const need = c.perWash * c.washes * cnt;
+        const why = `${c.per === 'sample' ? cnt + ' tube' + (cnt === 1 ? '' : 's') + ' × ' : ''}${c.washes} washes × ${c.perWash} µL = ${ul(need)}`;
+        if (!c.ethanol) {
+          return { title: 'Wash buffer', sub: '', html: `<div class="big">${ul(need)} <small>${esc(c.reagent)}</small></div>
+            <p class="why">${why}. Use it as supplied: do not dilute it and do not swap it for ethanol.</p>` };
+        }
+        // ~20% spare, rounded up to an easy volume to pipette (100 µL steps, 500 µL steps above 1 mL).
+        const step = need * 1.2 > 1000 ? 500 : 100;
+        const make = Math.ceil((need * 1.2) / step) * step;
+        const etoh = make * c.ethanol, water = make - etoh;
+        const tube = make <= 1800 ? '2 mL tube' : make <= 14000 ? '15 mL tube' : '50 mL tube';
+        return { title: 'Make 80% ethanol', sub: `for ${c.per === 'sample' ? cnt + ' sample' + (cnt === 1 ? '' : 's') : 'the pool'}`, data: { make, etoh, water },
+          html: `<div class="big">${ul(etoh)} ethanol + ${ul(water)} water</div>
+            <p>In a <b>${tube}</b>: add <b>${ul(etoh)}</b> of 100% ethanol, then <b>${ul(water)}</b> of nuclease-free water, and mix by inverting. That makes ${ul(make)} of 80% ethanol.</p>
+            <p class="why">You need ${why}, plus ~20% spare. Recipe: ${fv(c.ethanol * 1000)} µL ethanol + ${fv((1 - c.ethanol) * 1000)} µL water for every 1 mL. Make it fresh today: old 80% ethanol loses strength and can wash DNA off the beads.</p>` };
+      },
+      barcodes() {
+        const p = P(), used = {};
+        samples().forEach((s) => { used[s.barcode] = (used[s.barcode] || 0) + 1; });
+        const rows = samples().map((s) => {
+          const opts = p.barcodes.map((b) => `<option ${b === s.barcode ? 'selected' : ''}>${b}</option>`).join('');
+          return `<tr><td>${esc(s.name)}</td><td><select class="bc ${used[s.barcode] > 1 ? 'dup' : ''}" data-barcode="${s.id}">${opts}</select></td></tr>`;
+        }).join('');
+        const dups = Object.keys(used).filter((b) => used[b] > 1);
+        return { title: 'Barcode map', sub: `${nS()} samples`,
+          html: `<div class="tbl-wrap"><table><tr><th>Sample</th><th>Barcode</th></tr>${rows}</table></div>${dups.length ? `<p class="flag bad">${dups.join(', ')} used more than once. Every sample needs its own barcode.</p>` : ''}` };
+      },
+      pool(c) {
+        const n = nS(), vol = c.perSample * n;
+        const ngs = samples().map((s) => { const q = rd(c.readingKey, s.id); return q == null ? null : q * c.carry; });
+        const known = ngs.filter((x) => x != null);
+        let extra = '';
+        if (known.length) {
+          const tot = known.reduce((a, b) => a + b, 0), mx = Math.max(...known), mn = Math.min(...known);
+          extra = `<p>DNA going into the pool: <b>${fv(tot)} ng</b>${known.length < n ? ` <span class="why">(${known.length} of ${n} samples have a reading)</span>` : ''}</p>`;
+          if (mn > 0 && mx / mn > 3) extra += `<p class="flag">Uneven input: ${fv(mn)}–${fv(mx)} ng per sample. Expect uneven reads per barcode.</p>`;
+        }
+        return { title: 'Pool', sub: `${n} × ${c.perSample} µL`, data: { vol },
+          html: `<div class="big">${fv(vol)} µL <small>pooled volume</small></div><p class="why">${n} samples × ${c.perSample} µL (20 µL reaction + 2 µL EDTA)</p>${extra}` };
+      },
+      recovery(c, step) {
+        if (c.per === 'pool') {
+          const q = rd(c.readingKey, 'pool');
+          if (q == null) return { title: 'Yield', sub: '', html: '<p class="why">Enter the Qubit reading above.</p>' };
+          return { title: 'Yield', sub: `${c.eluate} µL eluate`, html: `<p><b>${fv(q * c.eluate)} ng</b> in ${c.eluate} µL · <b>${fv(q * c.carry)} ng</b> ${esc(c.carryLabel)}</p>` };
+        }
+        const norm = flat().find((s) => s.calc && s.calc.type === 'normalise');
+        const rows = samples().map((s) => {
+          const q = rd(c.readingKey, s.id);
+          if (q == null) return `<tr><td>${esc(s.name)}</td><td colspan="3" class="dim">–</td></tr>`;
+          const inR = norm ? normaliseRow(norm.calc, s) : null;
+          const inNg = inR && !inR.missing ? inR.ng : prm('inputNg');
+          const pct = inNg ? (q * c.eluate) / inNg * 100 : null;
+          return `<tr><td>${esc(s.name)}</td><td>${fv(q * c.eluate)}</td><td class="${pct != null && pct < 40 ? 'flag bad' : ''}">${pct == null ? '–' : fv(pct) + '%'}</td><td class="v">${fv(q * c.carry)}</td></tr>`;
+        }).join('');
+        return { title: 'Recovery', sub: `${c.eluate} µL eluate`, html: `<div class="tbl-wrap"><table><tr><th>Sample</th><th>ng recovered</th><th>of input</th><th>ng ${esc(c.carryLabel)}</th></tr>${rows}</table></div>` };
+      },
+      loading(c) {
+        const q = rd(c.readingKey, 'pool'), fmol = prm('targetFmol');
+        const tsLen = c.lengthKey ? rd(c.lengthKey, 'pool') : null, len = tsLen || prm('fragLen');
+        const lenFrom = tsLen ? 'from your TapeStation reading' : 'from settings (type the TapeStation size above to use it)';
+        if (q == null || q <= 0) return { title: 'Library dilution', sub: '', html: '<p class="why">Enter the final library Qubit reading in the step above.</p>' };
+        const nM = (q * 1e6) / (660 * len);                 // ng/µL → nM (= fmol/µL)
+        const ngNeed = (fmol * len * 660) / 1e6;
+        let lib = ngNeed / q, eb = c.finalVol - lib, loaded = fmol, flag = '';
+        if (lib > c.finalVol) { lib = c.finalVol; eb = 0; loaded = nM * c.finalVol; flag = `Not enough library for ${fmol} fmol: load all ${c.finalVol} µL (${fv(loaded)} fmol).`; }
+        else if (lib < 1) flag = `< 1 µL of library: dilute 1:10 in EB first, then take ${fv(lib * 10)} µL.`;
+        const data = { lib, eb, loaded, len, nM, ng: Math.min(ngNeed, q * c.finalVol) };
+        return { title: 'Library dilution', sub: `${fv(fmol)} fmol at ${fv(len)} bp`, data,
+          html: `<div class="big">${fv(lib)} µL library + ${fv(eb)} µL ${esc(c.diluent)}</div>
+            <p class="why">${fv(q)} ng/µL at ${fv(len)} bp = ${fv(nM)} fmol/µL · ${fv(fmol)} fmol = ${fv(ngNeed)} ng · ${fv(nM * 14)} fmol left in the tube</p>
+            ${flag ? `<p class="flag bad">${esc(flag)}</p>` : ''}<p class="why">Fragment length ${fv(len)} bp ${lenFrom}. Change the fmol to load in <b>settings</b>.</p>` };
+      }
+    };
+    function calcHTML(step) {
+      const f = CALC[step.calc.type]; if (!f) return '';
+      const r = f(step.calc, step);
+      return `<div class="calc-h">${esc(r.title)}<span>${esc(r.sub || '')}</span></div><div class="calc-b">${r.html}</div>`;
+    }
+    function calcData(step) { const f = CALC[step.calc.type]; return f ? f(step.calc, step).data : null; }
+
+    /* ================= readings ================= */
+    // A step has one reading (`reading`) or several (`readings`, e.g. Qubit + TapeStation). Optional ones are never "missing".
+    const readingsOf = (step) => step.readings || (step.reading ? [step.reading] : []);
+    function missingReadings(step) {
+      return readingsOf(step).filter((r) => !r.optional).reduce((n, r) =>
+        n + (r.per === 'pool' ? (rd(r.key, 'pool') == null ? 1 : 0) : samples().filter((s) => rd(r.key, s.id) == null).length), 0);
+    }
+    function readingsHTML(step) { return readingsOf(step).map((r) => readingHTML(r, step)).join(''); }
+    function readingHTML(r, step) {
+      const vals = state.readings[r.key] || {};
+      const tb = (sm) => (step && !r.noTube ? tubeAt(step.id, r.per === 'pool' ? 'pool' : 'sample', sm) : null);
+      const cell = (sid, name, chip, t) => `<label class="rd"><span class="nm"><span class="n1">${esc(name)}</span>${chip || t ? `<span class="n2">${chip ? `<span class="chip">${esc(chip)}</span>` : ''}${t ? `<span class="tcode" title="Tube: ${esc(t.what)}">${esc(t.label)}</span>` : ''}</span>` : ''}</span><input inputmode="decimal" data-reading="${r.key}" data-sid="${sid}" value="${esc(vals[sid] == null ? '' : vals[sid])}" placeholder="–" /><span class="u">${esc(r.unit)}</span></label>`;
+      const cells = r.per === 'pool' ? cell('pool', r.label, '', tb()) : samples().map((s) => cell(s.id, s.name, s.barcode, tb(s))).join('');
+      return `<div class="rd-label">${esc(r.label)} (${esc(r.unit)})${r.optional ? ' <span class="dim">· optional</span>' : ''}</div><div class="readings">${cells}</div>`;
+    }
+
+    /* ================= timers ================= */
+    const timerKey = (stepId, i) => `${stepId}:${i}`;
+    function tInfo(key) {
+      const [sid, i] = key.split(':'); const st = flat().find((s) => s.id === sid);
+      const def = st && st.timers && st.timers[+i];
+      return def ? { step: st, def, dur: def.min * 60 } : null;
+    }
+    function tLeft(key) {
+      const t = state.timers[key], inf = tInfo(key); if (!inf) return 0;
+      if (!t) return inf.dur;
+      if (t.status === 'running') return (t.endAt - Date.now()) / 1000;
+      if (t.status === 'paused') return t.left;
+      return 0;
+    }
+    function timerHTML(key, label, inDock) {
+      const t = state.timers[key] || { status: 'idle' }, left = tLeft(key);
+      const cls = t.status + (t.status === 'done' && !t.ack ? ' alarm' : '');
+      let btns;
+      if (t.status === 'running') btns = `<button class="tbtn" data-tact="pause" data-t="${key}">pause</button>`;
+      else if (t.status === 'paused') btns = `<button class="tbtn go" data-tact="start" data-t="${key}">resume</button><button class="tbtn" data-tact="reset" data-t="${key}">reset</button>`;
+      else if (t.status === 'done') btns = !t.ack ? `<button class="tbtn go" data-tact="ack" data-t="${key}">ok</button>` : `<button class="tbtn" data-tact="reset" data-t="${key}">reset</button>`;
+      else btns = `<button class="tbtn go" data-tact="start" data-t="${key}">▶ start</button>`;
+      return `<span class="timer ${cls}" data-timer="${key}" ${inDock ? `data-jump="${key.split(':')[0]}"` : ''}><span class="tl">${esc(label)}</span><span class="tv">${t.status === 'done' ? 'done' : mmss(left)}</span>${btns}</span>`;
+    }
+    let audio = null;
+    function beep(times = 3) {
+      if (state && state.sound === false) return;
+      try {
+        audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+        for (let k = 0; k < times; k++) {
+          const o = audio.createOscillator(), g = audio.createGain(), t0 = audio.currentTime + k * 0.35;
+          o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
+          g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.35, t0 + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.25);
+          o.start(t0); o.stop(t0 + 0.3);
+        }
+      } catch (e) {}
+    }
+    function timerAct(act, key) {
+      const inf = tInfo(key); if (!inf) return;
+      const t = state.timers[key] || { status: 'idle' };
+      if (act === 'start') {
+        const left = t.status === 'paused' ? t.left : inf.dur;
+        state.timers[key] = { status: 'running', endAt: Date.now() + left * 1000 };
+        beep(0); // unlock audio on this tap so the alarm can play later
+        if ('Notification' in window && Notification.permission === 'default') { try { Notification.requestPermission(); } catch (e) {} }
+      } else if (act === 'pause') state.timers[key] = { status: 'paused', left: tLeft(key) };
+      else if (act === 'reset') delete state.timers[key];
+      else if (act === 'ack') { t.ack = true; state.timers[key] = t; }
+      save(); refreshTimers(); keepAwake();
+    }
+    function tick() {
+      if (!state) return;
+      let changed = false;
+      Object.keys(state.timers).forEach((key) => {
+        const t = state.timers[key];
+        if (t.status === 'running' && Date.now() >= t.endAt) {
+          state.timers[key] = { status: 'done', doneAt: Date.now(), ack: false, rang: Date.now() };
+          changed = true; alarm(key);
+        } else if (t.status === 'done' && !t.ack && Date.now() - t.rang > 15000) { t.rang = Date.now(); beep(2); changed = true; }
+      });
+      if (changed) save();
+      refreshTimers();
+    }
+    function alarm(key) {
+      const inf = tInfo(key); if (!inf) return;
+      const msg = `⏰ Step ${stepNo(inf.step.id)}: ${inf.def.label} done`;
+      beep(4); toast(msg, 'alarm', 8000);
+      if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]);
+      if ('Notification' in window && Notification.permission === 'granted' && document.hidden) { try { new Notification('LabTrack bench', { body: msg }); } catch (e) {} }
+    }
+    // Update a timer in place: only the countdown text changes each second, so taps on its buttons are never lost.
+    function patchTimer(el, html) {
+      const tmp = document.createElement('div'); tmp.innerHTML = html;
+      const nu = tmp.firstElementChild;
+      const btns = (x) => [...x.querySelectorAll('button')].map((b) => b.outerHTML).join('');
+      if (el.className !== nu.className || btns(el) !== btns(nu)) { el.replaceWith(nu); return; }
+      const a = el.querySelector('.tv'), b = nu.querySelector('.tv'), la = el.querySelector('.tl'), lb = nu.querySelector('.tl');
+      if (a.textContent !== b.textContent) a.textContent = b.textContent;
+      if (la.textContent !== lb.textContent) la.textContent = lb.textContent;
+    }
+    function refreshTimers() {
+      document.querySelectorAll('#app [data-timer]').forEach((el) => {
+        const key = el.dataset.timer, inf = tInfo(key); if (!inf) return;
+        patchTimer(el, timerHTML(key, inf.def.label));
+      });
+      renderDock();
+    }
+    function renderDock() {
+      const dock = $('dock');
+      if (!state) { dock.innerHTML = ''; document.title = 'LabTrack Bench'; return; }
+      const keys = Object.keys(state.timers).filter((k) => { const t = state.timers[k]; return tInfo(k) && (t.status === 'running' || t.status === 'paused' || (t.status === 'done' && !t.ack)); });
+      const label = (k) => `#${stepNo(k.split(':')[0])} ${tInfo(k).def.label}`;
+      const have = [...dock.children].map((c) => c.dataset.timer);
+      if (have.join('|') !== keys.join('|')) dock.innerHTML = keys.map((k) => timerHTML(k, label(k), true)).join('');
+      else [...dock.children].forEach((c, i) => patchTimer(c, timerHTML(keys[i], label(keys[i]), true)));
+      const run = keys.filter((k) => state.timers[k].status === 'running').sort((a, b) => state.timers[a].endAt - state.timers[b].endAt)[0];
+      document.title = run ? `${mmss(tLeft(run))} · LabTrack Bench` : keys.length ? '⏰ LabTrack Bench' : 'LabTrack Bench';
+    }
+    let wakeLock = null;
+    async function keepAwake() {
+      if (!state || state.keepAwake === false || !('wakeLock' in navigator) || document.hidden) return;
+      try { if (!wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) {}
+    }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { keepAwake(); tick(); } });
+
+    /* ================= run view ================= */
+    function stepHTML(step, idx, nextId) {
+      const done = state.done[step.id];
+      const miss = missingReadings(step);
+      const skipped = done && state.skipped[step.id];
+      const cls = ['step', done ? 'done' : '', skipped ? 'skipped' : '', done && openDone.has(step.id) ? 'open' : '', step.id === nextId ? 'next' : '', step.critical && !done ? 'critical' : ''].join(' ');
+      const timers = step.timers ? `<div class="timers">${step.timers.map((t, i) => timerHTML(timerKey(step.id, i), t.label)).join('')}</div>` : '';
+      const note = state.notes[step.id];
+      const noteOpen = note || openNotes.has(step.id);
+      return `<div class="${cls}" id="s-${step.id}">
+        <button class="check" data-act="check" data-step="${step.id}" title="${done ? 'Mark as not done' : 'Mark as done'}" aria-label="Step ${idx}">${skipped ? '–' : done ? CHECK_SVG : ''}</button>
+        <div class="body">
+          <div class="line" ${done ? `data-act="expand" data-step="${step.id}"` : ''}>
+            <span class="num">${idx}</span>
+            <span class="text">${step.text}${step.critical && !done ? '<span class="badge crit">critical</span>' : ''}${miss && !done ? `<span class="badge need" data-need="${step.id}">${miss} to enter</span>` : ''}</span>
+            ${done ? `<span class="meta">${skipped ? 'skipped' : '✓'} ${hm(new Date(done))}${note ? ' · note' : ''}</span>` : ''}
+          </div>
+          ${step.warn ? `<div class="box warn">${step.warn}</div>` : ''}
+          ${step.tube ? tubeBoxHTML(step, done) : ''}
+          ${step.id === nextId && activeRedos().length ? `<div class="box warn">Still catching up: ${activeRedos().map((r) => `<a href="#redo-${r.id}">${esc(redoNames(r))}</a>`).join(', ')}. Finish ${activeRedos().length > 1 ? 'those lists' : 'that list'} at the top before this step if it involves them.</div>` : ''}
+          ${timers}
+          ${readingsHTML(step)}
+          ${step.calc ? `<div class="calc" data-calc="${step.id}">${calcHTML(step)}</div>` : ''}
+          ${step.tip ? `<div class="box tip">${step.tip}</div>` : ''}
+          ${step.stop ? `<div class="box stop">${step.stop}${storeHTML(step)}</div>` : ''}
+          <div class="note-row">${noteOpen ? `<textarea data-note="${step.id}" placeholder="${skipped ? 'Why was this step skipped?' : 'Note or deviation for this step (goes into the export)'}">${esc(note || '')}</textarea>` : `<button class="linkish" data-act="note" data-step="${step.id}">+ note</button>`}${!done ? ` <button class="linkish" data-act="skip" data-step="${step.id}" title="Not doing this step in this run">skip step</button>` : ''}${(done || step.id === nextId) && !skipped ? ` <button class="linkish" data-act="redo" data-step="${step.id}" title="Something went wrong: go back to here and take a new aliquot">↺ redo from here</button>` : ''}</div>
+        </div>
+      </div>`;
+    }
+    function renderRun() { if (view === 'journey') renderJourney(); else renderSteps(); }
+    function renderTop() {
+      const all = flat(), done = all.filter((s) => state.done[s.id]).length;
+      $('progBar').style.width = (done / all.length * 100) + '%';
+      $('runInfo').innerHTML = `<b>${esc(state.runName)}</b> · ${done}/${all.length} steps`;
+      $('topActions').innerHTML = `<button class="btn" data-act="close-run" title="Save this run and go to your runs">◂ runs</button>`
+        + (view === 'journey' ? `<button class="btn" data-act="view" data-view="steps">steps</button>` : `<button class="btn" data-act="view" data-view="journey">journey</button>`)
+        + `<button class="btn wide" data-act="samples">samples</button><button class="btn" data-act="settings">settings</button><button class="btn" data-act="export">export</button><button class="btn ghost" data-act="theme" title="Light / dark">☾</button>`;
+    }
+    function renderSteps() {
+      const p = P(), all = flat(), next = nextStep();
+      let i = 0;
+      const curStage = next ? next.stage.id : null;
+      const nav = stages().map((stg) => {
+        const d = stg.steps.filter((s) => state.done[s.id]).length, ok = d === stg.steps.length;
+        return `<a href="#st-${stg.id}" class="${ok ? 'done' : ''} ${stg.id === curStage ? 'cur' : ''}"><span class="ring">${ok ? '✓' : ''}</span><span>${esc(stg.title)}</span><span class="cnt">${d}/${stg.steps.length}</span></a>`;
+      }).join('');
+      const body = stages().map((stg) => {
+        const d = stg.steps.filter((s) => state.done[s.id]).length, ok = d === stg.steps.length;
+        return `<section class="stage" id="st-${stg.id}">
+          <div class="stage-head"><h2>${esc(stg.title)}</h2><span class="tag">${esc(stg.time || '')}</span>${ok ? '<span class="tag ok">done</span>' : `<span class="tag">${d}/${stg.steps.length}</span>`}</div>
+          <p class="stage-sum">${esc(stg.summary || '')}</p>
+          <div class="steps">${stg.steps.map((s) => stepHTML(Object.assign({ stage: stg }, s), ++i, next && next.id)).join('')}</div>
+        </section>`;
+      }).join('');
+      const finished = !next;
+      $('app').innerHTML = `<div class="layout">
+        <nav class="nav">${nav}<div class="nav-foot">${esc(p.kit)} · ${nS()} samples${(p.choices || []).map((c) => `<br>Keeping: <b>${esc(choiceOpt(c.key).label.toLowerCase())}</b>`).join('')}<br><br>${esc(p.source)}</div></nav>
+        <div>${activeRedos().map(redoPanelHTML).join('')}${body}
+          ${finished ? `<div class="card"><h3>✓ Protocol complete</h3><p class="muted">See every sample's results on one page in the <b>sample journey</b>, and save it as a picture. To add the results to LabTrack, export the CSV, then in LabTrack tap <b>↑ open → continue a run</b> and choose it.</p><div class="row"><button class="btn primary" data-act="view" data-view="journey">sample journey →</button><button class="btn" data-act="export-csv">export for LabTrack (.csv)</button><button class="btn" data-act="close-run">close run</button></div></div>` : ''}
+        </div></div>
+        ${next ? `<button class="btn fab" data-act="jump">↓ next: step ${stepNo(next.id)}</button>` : ''}`;
+      renderTop(); renderDock();
+    }
+    function refreshCalcs() {
+      flat().forEach((s) => {
+        const el = document.querySelector(`[data-calc="${s.id}"]`);
+        if (el && s.calc && !el.contains(document.activeElement)) el.innerHTML = calcHTML(s);
+        const b = document.querySelector(`[data-need="${s.id}"]`);
+        if (b) { const m = missingReadings(s); if (m) b.textContent = `${m} to enter`; else b.remove(); }
+      });
+      document.querySelectorAll('[data-rcalc]').forEach((el) => {
+        const [rid, sid] = el.dataset.rcalc.split('|'), r = state.redos.find((x) => x.id === rid), st = flat().find((x) => x.id === sid);
+        if (r && st && !el.contains(document.activeElement)) el.innerHTML = withScope(r.sids, () => calcHTML(st));
+      });
+    }
+    function scrollToStep(id, behavior = 'smooth') {
+      if (view !== 'steps') { view = 'steps'; renderRun(); }
+      const el = $('s-' + id); if (el) el.scrollIntoView({ behavior, block: 'center' });
+    }
+
+    /* ================= redo & late samples =================
+       Something went wrong (a bad dilution, a dropped tube): go back to a step and take a new aliquot from the tube
+       before it. For the whole run the steps from there on are unchecked; for some samples they get a catch-up list
+       with their own checkboxes, then rejoin the run. A sample added mid-run catches up the same way.
+       state.redos[]: { id, kind: 'redo' | 'added', from, until, all, sids, steps, done, reason, at, prevDone, old } */
+    const activeRedos = () => (state.redos || []).filter((r) => r.steps.length && r.steps.some((id) => !r.done[id]));
+    function redoNames(r) { return r.all ? 'all samples' : r.sids.map((id) => (state.samples.find((s) => s.id === id) || {}).name).filter(Boolean).join(', '); }
+    function startRedo(fromId, sids, reason) {
+      const all = flat(), F = nextStep(), fIdx = F ? stepIdx(F.id) : all.length, fromIdx = stepIdx(fromId);
+      const whole = sids === 'all' || fromIdx >= poolIdx();
+      const untilIdx = fromIdx < fIdx ? fIdx : fromIdx + 1;
+      const r = { id: uid(), kind: 'redo', from: fromId, until: all[untilIdx] ? all[untilIdx].id : null, all: whole, sids: whole ? state.samples.map((s) => s.id) : sids,
+        steps: [], done: {}, reason, at: Date.now(), prevDone: {}, old: {} };
+      const range = all.slice(fromIdx, untilIdx), who = whole ? [...state.samples.map((s) => s.id), 'pool'] : r.sids;
+      // keep what is being replaced: readings (up to the step you are on: they came from the first-try tubes), and the tubes now marked as redone
+      all.slice(fromIdx, Math.max(untilIdx, fIdx + 1)).forEach((s) => readingsOf(s).forEach((rd0) => {
+        const v = state.readings[rd0.key] || {};
+        who.forEach((sid) => { if (v[sid] != null && v[sid] !== '') { (r.old[rd0.key] = r.old[rd0.key] || {})[sid] = v[sid]; delete v[sid]; } });
+      }));
+      const ids = new Set(range.map((s) => s.id));
+      state.tubeLog.forEach((x) => { if (ids.has(x.step) && who.includes(x.sid) && x.status === 'ok') { x.status = 'redone'; x.redoId = r.id; } });
+      if (whole) range.forEach((s) => {
+        if (state.done[s.id]) r.prevDone[s.id] = state.done[s.id];
+        delete state.done[s.id]; delete state.skipped[s.id]; openDone.delete(s.id);
+        Object.keys(state.timers).forEach((k) => { if (k.split(':')[0] === s.id) delete state.timers[k]; });
+      });
+      else r.steps = range.filter((s) => state.done[s.id] && !state.skipped[s.id] && stepIdx(s.id) < poolIdx()).map((s) => s.id);
+      state.redos.push(r); save(); return r;
+    }
+    function addLateSample(sm) {
+      const all = flat(), F = nextStep(), fIdx = F ? stepIdx(F.id) : all.length;
+      const steps = all.slice(0, Math.min(fIdx, poolIdx())).filter((s) => state.done[s.id] && !state.skipped[s.id]).map((s) => s.id);
+      if (!steps.length) return;
+      state.redos.push({ id: uid(), kind: 'added', from: steps[0], until: null, all: false, sids: [sm.id], steps, done: {}, reason: 'added after the run started', at: Date.now(), prevDone: {}, old: {} });
+      if (fIdx > poolIdx()) toast(`${esc(sm.name)} was added after pooling: it can't join this pool. Start a new run for it, or note what you did.`, '', 7000);
+    }
+    // Undo a redo started by mistake, while nothing of it has been done yet.
+    function cancelRedo(r) {
+      const range = flat().slice(stepIdx(r.from), r.until ? stepIdx(r.until) : 1e9);
+      if (r.all ? range.some((s) => state.done[s.id]) : Object.keys(r.done).length) return toast('Part of this redo is already checked, so it can’t be cancelled. Uncheck those steps first.');
+      Object.assign(state.done, r.all ? r.prevDone : {});
+      Object.entries(r.old).forEach(([k, v]) => Object.entries(v).forEach(([sid, x]) => { const o = (state.readings[k] = state.readings[k] || {}); if (o[sid] == null || o[sid] === '') o[sid] = x; }));
+      state.tubeLog.forEach((x) => { if (x.redoId === r.id) { x.status = 'ok'; delete x.redoId; } });
+      state.redos = state.redos.filter((x) => x !== r); save(); renderRun();
+    }
+    function redoText(r) {
+      const old = Object.entries(r.old).flatMap(([k, v]) => { const rr = flat().flatMap(readingsOf).find((x) => x.key === k);
+        return Object.entries(v).map(([sid, x]) => `${sid === 'pool' ? 'pool' : (state.samples.find((sm) => sm.id === sid) || {}).name} ${rr ? rr.short || rr.label : k} ${x}${rr ? ' ' + rr.unit : ''}`); });
+      const bad = state.tubeLog.filter((x) => x.redoId === r.id).map((x) => x.label);
+      return r.kind === 'added' ? `${redoNames(r)} added after the run started, caught up from step ${stepNo(r.from)}`
+        : `redone from step ${stepNo(r.from)} for ${redoNames(r)}: ${r.reason}${bad.length ? `. First-try tubes: ${bad.join(', ')}` : ''}${old.length ? `. First-try readings: ${old.join('; ')}` : ''}`;
+    }
+    let scope = null;  // while drawing a catch-up list, samples() returns only its samples
+    function withScope(sids, fn) { const prev = scope; scope = sids; try { return fn(); } finally { scope = prev; } }
+    function redoStepHTML(r, step) {
+      const done = r.done[step.id];
+      const timers = step.timers ? `<div class="timers">${step.timers.map((t, i) => timerHTML(`${step.id}:${i}:${r.id}`, t.label)).join('')}</div>` : '';
+      return `<div class="step ${done ? 'done' : ''}" id="r-${r.id}-${step.id}">
+        <button class="check" data-act="rcheck" data-rid="${r.id}" data-step="${step.id}" aria-label="Step ${stepNo(step.id)}">${done ? CHECK_SVG : ''}</button>
+        <div class="body"><div class="line"><span class="num">${stepNo(step.id)}</span><span class="text">${step.text}</span>${done ? `<span class="meta">✓ ${hm(new Date(done))}</span>` : ''}</div>
+          ${done ? '' : `${step.warn ? `<div class="box warn">${step.warn}</div>` : ''}${step.tube ? tubeBoxHTML(step) : ''}${timers}${readingsHTML(step)}${step.calc ? `<div class="calc" data-rcalc="${r.id}|${step.id}">${calcHTML(step)}</div>` : ''}`}
+        </div></div>`;
+    }
+    function redoPanelHTML(r) {
+      return withScope(r.sids, () => {
+        const steps = r.steps.map((id) => flat().find((s) => s.id === id)), left = steps.filter((s) => !r.done[s.id]).length;
+        const src = samples().map((sm) => `<b>${esc(tubeBefore(r.from, 'sample', sm).label)}</b>`).join(', ');
+        const head = r.kind === 'added'
+          ? `<h3>＋ ${esc(redoNames(r))} joined late · catch up ${steps.length} steps</h3><p class="muted">Do these steps for ${esc(redoNames(r))} only, then it carries on with the rest of the run.</p>`
+          : `<h3>↺ Redo for ${esc(redoNames(r))} · from step ${stepNo(r.from)}</h3><p class="muted">${r.reason ? `Why: ${esc(r.reason)}. ` : ''}Take a new aliquot from ${src} and redo these steps. The new tubes get <b>-R${attemptOf(r.sids[0], r.from)}</b> labels so they can’t be mixed up with the first try.</p>`;
+        return `<section class="card redo" id="redo-${r.id}">${head}
+          <div class="steps">${steps.map((s) => redoStepHTML(r, s)).join('')}</div>
+          <div class="row" style="margin-top:8px"><span class="dim" style="align-self:center">${left} of ${steps.length} left</span>${Object.keys(r.done).length ? '' : `<button class="btn small ghost" data-act="redo-cancel" data-rid="${r.id}">cancel this redo</button>`}</div></section>`;
+      });
+    }
+    function redoDialog(stepId) {
+      const st = flat().find((s) => s.id === stepId), pooled = stepIdx(stepId) >= poolIdx();
+      const F = nextStep(), crosses = !pooled && F && stepIdx(F.id) > poolIdx();
+      const rows = state.samples.map((sm) => `<label class="rdo"><input type="checkbox" data-rsid="${sm.id}" checked /> <b>${esc(sm.name)}</b> <span class="dim">new aliquot from <b>${esc(tubeBefore(stepId, 'sample', sm).label)}</b>${st.tube && st.tube.per === 'sample' ? ` → new tube <b>${esc(tubeLabel(st.tube, sm, stepId))}-R${attemptOf(sm.id, stepId) + 1}</b>`.replace(/-R(\d+)-R/, '-R') : ''}</span></label>`).join('');
+      const pv = tubeBefore(stepId, 'pool');
+      dialog(`Redo from step ${stepNo(stepId)}`, `<p style="margin-top:0" class="muted">${strip(st.text)}</p>
+        ${pooled ? `<p>The samples are pooled by this step, so the redo is for the pool: take a new aliquot from <b>${esc(pv ? pv.label : 'the tube before this step')}</b>. Steps ${stepNo(stepId)} onwards are unchecked and done again; the new tubes get -R labels.</p>`
+          : `<h4 style="margin:12px 0 6px">Which samples?</h4><div class="rdos">${rows}</div>
+          <p class="dim" style="font-size:12px">All ticked = the whole run goes back to step ${stepNo(stepId)}. Some ticked = those samples get their own catch-up list and the rest carry on.</p>
+          ${crosses ? `<div class="box warn">The pool is already made. A redone sample can't join it by itself: add its new tube to the pool and note it, or redo from the pooling step for everyone.</div>` : ''}`}
+        <h4 style="margin:12px 0 6px">What went wrong?</h4><textarea id="redoWhy" placeholder="e.g. pipetted 10 µL instead of 1 µL into the dilution" style="width:100%;min-height:60px"></textarea>
+        <p class="dim" style="font-size:12px">The first try is kept in the run: its readings and tubes are marked as redone, and the reason goes into the notes and the export.</p>`,
+        `<button class="btn" data-act="close">cancel</button><button class="btn primary" data-act="redo-go" data-step="${stepId}">start redo</button>`);
+    }
+
+    /* ================= setup view ================= */
+    function newDraft() {
+      const p = PROTOCOLS[0];
+      const base = `${p.short} ${isoDate(new Date())}`, names = new Set(Object.values(db.runs).map((r) => r.runName));
+      let runName = base; for (let k = 2; names.has(runName); k++) runName = `${base} (${k})`;
+      const codes = new Set(Object.values(db.runs).map((r) => r.runCode)), cbase = 'R' + isoDate(new Date()).slice(5).replace('-', '');
+      let runCode = cbase; for (let k = 0; codes.has(runCode); k++) runCode = cbase + 'bcdefghijk'[k];
+      return { protocolId: p.id, choices: defaultChoices(p), runName, runCode, operator: '', samples: [1, 2, 3, 4].map((k) => ({ id: uid(), name: `Sample ${k}`, code: `S${k}`, barcode: p.barcodes ? p.barcodes[k - 1] : '', q: '' })) };
+    }
+    function freeCode(list) { const used = new Set(list.map((s) => (s.code || '').toLowerCase())); for (let k = 1; ; k++) if (!used.has('s' + k)) return 'S' + k; }
+    function freeBarcode(list, p) { const used = new Set(list.map((s) => s.barcode)); return (p.barcodes || []).find((b) => !used.has(b)) || ''; }
+    function choicesHTML(cur, prefix) {
+      return (P().choices || []).map((c) => `<div class="card"><h3>${prefix}${esc(c.question)}</h3>
+        ${c.options.map((o) => `<div class="proto ${(cur[c.key] || c.default) === o.value ? 'sel' : ''}" data-act="choose" data-key="${c.key}" data-val="${o.value}"><b>${esc(o.label)}</b><span class="k">${esc(o.short || '')}</span><span class="k" style="grid-column:1/-1">${esc(o.detail || '')}</span></div>`).join('')}
+        <p class="dim" style="margin:10px 0 0;font-size:12px">The steps, wash buffer and bead ratios follow this choice. You can change it later in settings.</p></div>`).join('');
+    }
+    function samplesTable(list, p, withQ) {
+      const opts = (cur) => (p.barcodes || []).map((b) => `<option ${b === cur ? 'selected' : ''}>${b}</option>`).join('');
+      const used = {}; list.forEach((s) => { used[s.barcode] = (used[s.barcode] || 0) + 1; });
+      const dupC = {}; list.forEach((s, k) => { const c = (s.code || 'S' + (k + 1)).toLowerCase(); dupC[c] = (dupC[c] || 0) + 1; });
+      return `<div class="tbl-wrap"><table class="samples-tbl"><tr><th></th><th>Sample name</th><th>Tube code</th>${p.barcodes ? '<th>Barcode</th>' : ''}${withQ ? '<th>Qubit ng/µL</th>' : ''}<th></th></tr>
+        ${list.map((s, k) => `<tr><td class="ix">${k + 1}</td><td><input data-sf="name" data-sid="${s.id}" value="${esc(s.name)}" /></td><td class="tc"><input data-sf="code" data-sid="${s.id}" value="${esc(s.code || '')}" placeholder="S${k + 1}" maxlength="6" class="${dupC[(s.code || 'S' + (k + 1)).toLowerCase()] > 1 ? 'dup' : ''}" /></td>
+          ${p.barcodes ? `<td class="b"><select class="bc ${used[s.barcode] > 1 ? 'dup' : ''}" data-sf="barcode" data-sid="${s.id}">${opts(s.barcode)}</select></td>` : ''}
+          ${withQ ? `<td class="q"><input inputmode="decimal" data-sf="q" data-sid="${s.id}" value="${esc(s.q)}" placeholder="optional" /></td>` : ''}
+          <td class="x"><button class="btn small ghost" data-act="rm-sample" data-sid="${s.id}" title="Remove">✕</button></td></tr>`).join('')}
+      </table></div>
+      <div class="row" style="margin-top:8px"><button class="btn small" data-act="add-sample">+ add sample</button><button class="btn small" data-act="paste-samples">paste a list…</button><span class="dim" style="align-self:center">${list.length}${p.maxSamples ? ' / ' + p.maxSamples : ''} samples · Enter in a name adds the next</span></div>`;
+    }
+    // Step list of a saved run without opening it (its choices filled into the text).
+    function runSummary(r) {
+      const p = PROTOCOLS.find((x) => x.id === r.protocolId);
+      const all = p.stages.flatMap((st) => st.steps), done = all.filter((st) => r.done && r.done[st.id]).length;
+      const nx = all.find((st) => !(r.done || {})[st.id]);
+      const fillR = (t) => strip(t).replace(/\{(\w+)\.(\w+)\}/g, (m, k, f) => {
+        const c = (p.choices || []).find((x) => x.key === k); if (!c) return m;
+        const o = c.options.find((x) => x.value === (r.choices || {})[k]) || c.options.find((x) => x.value === c.default);
+        return o && o[f] != null ? o[f] : m;
+      });
+      return { p, total: all.length, done, nxNo: nx ? all.indexOf(nx) + 1 : 0, nxText: nx ? fillR(nx.text) : '' };
+    }
+    const when = (t) => (t ? new Date(t).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–');
+    // Find a tube from any run on this device by the label written on it (e.g. "S3-ERC" or "R1126 S3-ERC").
+    function findTubes(q) {
+      const key = q.toUpperCase().replace(/[\s·_]+/g, '-').replace(/^-+|-+$/g, ''); if (key.length < 2) return [];
+      const out = [];
+      Object.values(db.runs).filter(isRun).forEach((r) => { fixRun(r); ensureTubeLog(r);
+        r.samples.forEach((sm, i) => { const c = ((sm.code || '').trim() || `S${i + 1}`).toUpperCase(); if (c === key || `${(r.runCode || '').toUpperCase()}-${c}` === key) out.push({ r, x: { label: c, sample: sm.name, what: 'original sample tube', stepNo: 0, at: Date.parse(r.started), status: 'ok', from: '' } }); });
+        r.tubeLog.forEach((x) => { const a = x.label.toUpperCase(), b = `${(x.run || '').toUpperCase()}-${a}`; if (a.includes(key) || b.includes(key)) out.push({ r, x }); });
+      });
+      return out.sort((a, b) => b.x.at - a.x.at).slice(0, 30);
+    }
+    function findHTML(q) {
+      const res = findTubes(q);
+      if (!q.trim()) return '';
+      if (!res.length) return '<p class="dim" style="margin:6px 0 0">No tube with that label on this device.</p>';
+      return res.map(({ r, x }) => `<div class="tres ${x.status === 'redone' ? 'redone' : ''}"><b class="l">${esc(r.runCode || '')} ${esc(x.label)}</b>${x.status === 'redone' ? ' <span class="badge need">first try · redone</span>' : ''}${x.keep && x.status !== 'redone' ? ' <span class="badge" style="border:1px solid var(--green);color:var(--green)">kept</span>' : ''}
+        <div>${esc(x.sample)} · ${esc(x.what)}${x.stepNo ? ` · made at step ${x.stepNo}` : ''}${x.from ? ` from ${esc(x.from)}` : ''}</div>
+        <div class="dim">${esc(r.runName)} · ${esc(PROTOCOLS.find((p) => p.id === r.protocolId).kit)} · ${esc(when(x.at))}${x.op ? ' · ' + esc(x.op) : ''} <button class="linkish" data-act="open-run" data-rid="${r.id}">open run</button></div></div>`).join('');
+    }
+    function savedRunsHTML() {
+      const runs = Object.values(db.runs).filter(isRun).sort((a, b) => (b.updated || 0) - (a.updated || 0));
+      if (!runs.length) return '';
+      return `<div class="card"><h3>Find a tube</h3><input id="tubeQ" data-tubeq="1" placeholder="Type the label on the tube, e.g. S3-ERC" autocomplete="off" style="width:100%" /><div class="tfind" id="tubeRes"></div>
+        <p class="dim" style="font-size:12px;margin:8px 0 0">Shows the run, sample and step the tube came from, from every run on this device.</p></div>
+      <div class="card"><h3>Continue a run</h3><div class="runs">${runs.map((r) => {
+        const m = runSummary(r), pct = m.done / m.total * 100;
+        return `<div class="run-row"><div><div class="rn">${esc(r.runName)}</div>
+            <div class="rm">${esc(m.p.kit)} · ${r.samples.length} sample${r.samples.length === 1 ? '' : 's'} · ${m.done}/${m.total} steps · saved ${esc(when(r.updated || Date.parse(r.started)))}</div>
+            <div class="rm">${m.nxNo ? `next: step ${m.nxNo} · ${esc(m.nxText.length > 80 ? m.nxText.slice(0, 79) + '…' : m.nxText)}` : '✓ complete'}</div>
+            <div class="minibar"><i style="width:${pct}%"></i></div></div>
+          <div class="acts"><button class="btn primary" data-act="open-run" data-rid="${r.id}">${m.nxNo ? 'continue' : 'open'}</button><button class="btn small" data-act="export-json" data-rid="${r.id}" title="Download the run file">file</button><button class="btn small ghost danger" data-act="delete-run" data-rid="${r.id}" title="Delete from this device">✕</button></div></div>`;
+      }).join('')}</div>
+      <p class="dim" style="font-size:12px;margin:10px 0 0">Runs are saved on this device as you go. Use <b>file</b> to keep a copy or carry on on another device.</p>
+      <div class="row" style="margin-top:10px"><button class="btn" data-act="import">open a run file…</button></div></div>`;
+    }
+    function renderSetup() {
+      if (!draft) draft = newDraft();
+      const p = P(), saved = savedRunsHTML();
+      $('app').innerHTML = `<div class="setup">
+        ${saved}
+        <h1${saved ? ' style="margin-top:28px"' : ''}>Start a new run</h1>
+        <p class="muted">Pick an SOP, name your samples, and work through it at the bench. Every step has a checkbox, waits have a timer set to the protocol's time, and volumes are worked out from your readings.</p>
+        <div class="card"><h3>1 · Protocol</h3>
+          ${PROTOCOLS.map((x) => `<div class="proto ${x.id === draft.protocolId ? 'sel' : ''}" data-act="pick" data-pid="${x.id}"><b>${esc(x.name)}</b><span class="k">${esc(x.kit)}</span><span class="k" style="grid-column:1/-1">${esc(x.vendor)} · ${x.stages.length} stages · ${x.stages.reduce((a, s) => a + s.steps.length, 0)} steps · ${esc(x.stages.map((s) => s.title).join(' → '))}</span></div>`).join('')}
+          <p class="dim" style="margin:10px 0 0;font-size:12px">${esc(p.source)}</p>
+        </div>
+        <div class="card"><h3>2 · Run</h3><div class="row">
+          <div class="field"><label for="fRun">Run name</label><input id="fRun" data-df="runName" value="${esc(draft.runName)}" /></div>
+          <div class="field"><label for="fOp">Operator</label><input id="fOp" data-df="operator" value="${esc(draft.operator)}" placeholder="initials" /></div>
+          <div class="field"><label for="fRc">Run code (on pool tubes)</label><input id="fRc" data-df="runCode" value="${esc(draft.runCode)}" maxlength="8" style="width:110px" /></div>
+        </div><p class="dim" style="font-size:12px;margin:8px 0 0">Each time a sample moves to a new tube it gets a new short label, e.g. S1 → S1-EP (end-prepped) → S1-NB01 (barcoded). The pool and library are labelled with the run code, e.g. ${esc(draft.runCode || 'R1126')}-LIB.</p></div>
+        ${choicesHTML(draft.choices, '3 · ')}
+        <div class="card"><h3>${(p.choices || []).length ? 4 : 3} · Samples</h3><div id="sampleBox">${samplesTable(draft.samples, p, true)}</div>
+          <p class="dim" style="font-size:12px;margin:8px 0 0">Qubit readings are optional here: you can type them at the QC step too.</p></div>
+        <div id="setupErr" class="err"></div>
+        <div class="row" style="margin-top:16px"><button class="btn primary" data-act="start">start run →</button>
+          ${saved ? '' : '<button class="btn" data-act="import">open a run file…</button>'}</div>
+      </div>`;
+      $('runInfo').innerHTML = '';
+      $('topActions').innerHTML = `<button class="btn ghost" data-act="theme" title="Light / dark">☾</button>`;
+      $('progBar').style.width = '0';
+      renderDock();
+    }
+    function startRun() {
+      const p = P(), list = draft.samples.filter((s) => s.name.trim());
+      const err = (m) => { $('setupErr').textContent = m; };
+      if (!list.length) return err('Add at least one sample.');
+      if (p.maxSamples && list.length > p.maxSamples) return err(`This kit takes up to ${p.maxSamples} samples.`);
+      const names = list.map((s) => s.name.trim().toLowerCase());
+      if (new Set(names).size !== names.length) return err('Two samples have the same name.');
+      if (p.barcodes && new Set(list.map((s) => s.barcode)).size !== list.length) return err('Two samples have the same barcode.');
+      const codes = list.map((s, i) => ((s.code || '').trim() || `S${i + 1}`).toLowerCase());
+      if (new Set(codes).size !== codes.length) return err('Two samples have the same tube code.');
+      state = {
+        v: 2, id: uid(), protocolId: p.id, choices: Object.assign(defaultChoices(p), draft.choices), runName: draft.runName.trim() || p.short, operator: draft.operator.trim(), started: new Date().toISOString(),
+        params: Object.fromEntries(p.params.map((x) => [x.key, x.value])),
+        runCode: (draft.runCode || '').trim(),
+        samples: list.map((s, i) => ({ id: s.id, name: s.name.trim(), code: (s.code || '').trim() || `S${i + 1}`, barcode: s.barcode })),
+        readings: {}, readAt: {}, done: {}, skipped: {}, notes: {}, timers: {}, dil: {}, redos: [], tubeLog: [], keepAwake: true, sound: true
+      };
+      const qk = flat().flatMap(readingsOf).find((r) => r.per === 'sample');
+      if (qk) list.forEach((s) => { if (num(s.q) != null) { (state.readings[qk.key] = state.readings[qk.key] || {})[s.id] = s.q; state.readAt[qk.key] = Date.now(); } });
+      draft = null; save(); render(); keepAwake(); window.scrollTo(0, 0);
+    }
+
+    /* ================= dialogs ================= */
+    function dialog(title, body, foot) {
+      const d = $('dlg');
+      d.innerHTML = `<div class="dlg-h">${esc(title)}<button class="btn small ghost" data-act="close">✕</button></div><div class="dlg-b">${body}</div><div class="dlg-f">${foot || '<button class="btn primary" data-act="close">done</button>'}</div>`;
+      if (!d.open) d.showModal();
+    }
+    function samplesDialog() {
+      const p = P();
+      dialog('Samples', `<p class="muted" style="margin-top:0">Rename, re-barcode, add or remove samples. Removing a sample removes its readings.</p><div id="sampleBox">${samplesTable(state.samples, p, false)}</div>`);
+    }
+    function settingsDialog() {
+      const p = P();
+      const params = p.params.map((x) => `<div class="field"><label>${esc(x.label)} (${esc(x.unit)})</label><input inputmode="decimal" data-param="${x.key}" value="${esc(state.params[x.key])}" />${x.hint ? `<span class="dim" style="font-size:11.5px">${esc(x.hint)}</span>` : ''}</div>`).join('');
+      dialog('Run settings', `<div class="row">
+          <div class="field"><label>Run name</label><input data-sf2="runName" value="${esc(state.runName)}" /></div>
+          <div class="field"><label>Operator</label><input data-sf2="operator" value="${esc(state.operator)}" /></div>
+          <div class="field"><label>Run code (pool tubes)</label><input data-sf2="runCode" value="${esc(state.runCode || '')}" maxlength="8" style="width:110px" /></div></div>
+        ${(p.choices || []).length ? `<h4 style="margin:16px 0 6px">Fragments</h4>${choicesHTML(state.choices || {}, '').replace(/<div class="card">/g, '<div>').replace(/<h3>.*?<\/h3>/g, '')}` : ''}
+        <h4 style="margin:16px 0 6px">Calculator numbers</h4><div class="row">${params}</div>
+        <h4 style="margin:16px 0 6px">Bench</h4>
+        <label style="display:block"><input type="checkbox" data-sf2="sound" ${state.sound !== false ? 'checked' : ''}/> Sound when a timer finishes</label>
+        <label style="display:block"><input type="checkbox" data-sf2="keepAwake" ${state.keepAwake !== false ? 'checked' : ''}/> Keep the screen on during a run</label>
+        <h4 style="margin:16px 0 6px">Run</h4>
+        <div class="row"><button class="btn" data-act="samples">edit samples</button><button class="btn" data-act="uncheck-all">uncheck all steps</button><button class="btn" data-act="close-run">close run (stays saved)</button><button class="btn danger" data-act="delete-run">delete run…</button></div>
+        <p class="dim" style="font-size:12px">${esc(p.name)} · ${esc(p.kit)} · started ${new Date(state.started).toLocaleString()}</p>`);
+    }
+    function exportDialog() {
+      dialog('Export', `<p style="margin-top:0"><b>For LabTrack (.csv)</b>: readings per sample, barcodes, the amount loaded and your notes. In LabTrack, tap <b>↑ open → continue a run</b> and choose this file.</p>
+        <button class="btn primary" data-act="export-csv">download .csv</button>
+        <p style="margin-top:18px"><b>Sample journey picture (.png)</b>: every sample's readings, the pool and library, and your notes, on one page.</p>
+        <button class="btn" data-act="journey-png">download picture</button>
+        <p style="margin-top:18px"><b>Run file (.json)</b>: the whole run as it is now (checked steps, readings, dilutions, timers, notes). Open it later or on another device to carry on where you left off.</p>
+        <button class="btn" data-act="export-json">download .json</button>
+        <p style="margin-top:18px"><b>Print / PDF</b>: every step with its numbers, for the paper notebook.</p>
+        <button class="btn" data-act="print">print…</button>`);
+    }
+
+    /* ================= export ================= */
+    function download(name, text, type) {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(text instanceof Blob ? text : new Blob([text], { type })); a.download = name;
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    }
+    const fileBase = (r = state) => (r.runName || 'bench_run').replace(/[^a-zA-Z0-9_-]+/g, '_');
+    function buildCsv() {
+      const cell = (v) => { const s = String(v == null ? '' : v); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+      const row = (a) => a.map(cell).join(',');
+      const lines = [row(['Run', state.runName]), row(['Operator', state.operator]), row(['Exported', `${isoDate(new Date())} ${hm(new Date())}`]), '',
+        row(['#', 'Date', 'Time', 'Section', 'Entry', 'Type', 'Tube', 'Record', 'Result', 'Unit', 'Volume / Quantity', 'Dilution / Source', 'Note', 'Follows From'])];
+      let k = 0;
+      const when = (stepId, key) => { const t = state.done[stepId] || (key && state.readAt[key]) || Date.now(); const d = new Date(t); return [isoDate(d), hm(d)]; };
+      const add = (stepId, key, section, entry, type, rec, result, unit, vol, note, from, tube) => lines.push(row([++k, ...when(stepId, key), section, entry, type, tube || '', rec, result, unit, vol || '', '', note || '', from || '']));
+      const tubeL = (stepId, per, sm) => { const t = tubeAt(stepId, per, sm); return t ? t.label : ''; };
+      let prevSampleSection = '', prevPoolSection = '';
+      const log = [];  // notes go in a 'Protocol log' section after the results
+      flat().forEach((s) => {
+        const note = state.notes[s.id] || '';
+        const fromS = prevSampleSection, fromP = prevPoolSection;   // readings in one step all follow the step before
+        readingsOf(s).forEach((r, ri) => {
+          const sec = r.section || r.label, type = r.type || 'General';
+          if (r.per === 'pool') {
+            const v = state.readings[r.key] && state.readings[r.key].pool;
+            if (v != null && v !== '') { add(s.id, r.key, sec, 'Result', type, 'Pool', v, r.unit, '', ri === 0 ? note : '', r.chain === false ? '' : fromP, r.noTube ? '' : tubeL(s.id, 'pool')); if (r.chain !== false) prevPoolSection = sec; }
+          } else {
+            const norm = flat().find((x) => x.calc && x.calc.type === 'normalise' && x.calc.readingKey === r.key);
+            samples().forEach((sm) => {
+              const v = state.readings[r.key] && state.readings[r.key][sm.id];
+              if (v == null || v === '') return;
+              let vol = '';
+              if (norm) { const nr = normaliseRow(norm.calc, sm); if (!nr.missing) vol = `${fv(nr.dna)} µL DNA${nr.dil > 1 ? ` (of 1:${nr.dil})` : ''} + ${fv(nr.water)} µL water (${fv(nr.ng)} ng)`; }
+              add(s.id, r.key, sec, 'Result', type, sm.name, v, r.unit, vol, '', r.chain === false ? '' : fromS, r.noTube ? '' : tubeL(s.id, 'sample', sm));
+            });
+            if (r.chain !== false) prevSampleSection = sec;
+          }
+        });
+        if (s.calc && s.calc.type === 'barcodes' && s.exportSection) {
+          samples().forEach((sm) => add(s.id, null, s.exportSection, 'Result', 'General', sm.name, sm.barcode, '', '', '', prevSampleSection, tubeL(s.id, 'sample', sm)));
+          prevSampleSection = s.exportSection;
+        }
+        if (s.calc && s.calc.type === 'loading' && s.exportSection) {
+          const d = calcData(s);
+          if (d) { add(s.id, null, s.exportSection, 'Result', 'General', 'Pool', fv(d.loaded), 'fmol', `${fv(d.lib)} µL library + ${fv(d.eb)} µL EB`, '', prevPoolSection, tubeL(s.id, 'pool')); prevPoolSection = s.exportSection; }
+        }
+        const pooledNote = readingsOf(s)[0] && readingsOf(s)[0].per === 'pool' && state.readings[readingsOf(s)[0].key] && state.readings[readingsOf(s)[0].key].pool;
+        if (state.skipped[s.id] || (note && !pooledNote)) log.push(row([0, ...when(s.id), 'Protocol log', 'Note', '', '', '', '', '', '', '', `Step ${stepNo(s.id)} (${s.stage.title})${state.skipped[s.id] ? ' skipped' : ''}: ${note || strip(s.text)}`, '']));
+      });
+      state.redos.forEach((r) => { const d = new Date(r.at); log.push(row([0, isoDate(d), hm(d), 'Protocol log', 'Note', '', '', '', '', '', '', '', `Step ${stepNo(r.from)}: ${redoText(r)}`, ''])); });
+      stages().forEach((stg) => {
+        const times = stg.steps.map((s) => state.done[s.id]).filter(Boolean);
+        if (times.length === stg.steps.length) {
+          const d = new Date(Math.max(...times));
+          log.push(row([0, isoDate(d), hm(d), 'Protocol log', 'Note', '', '', '', '', '', '', '', `${stg.title}: all ${stg.steps.length} steps done`, '']));
+        }
+      });
+      log.forEach((l) => lines.push(l.replace(/^0,/, `${++k},`)));
+      return '\ufeff' + lines.join('\r\n');
+    }
+
+    /* ================= sample journey =================
+       One condensed page per run: each sample's readings in protocol order, then the pool and library, then notes. */
+    function journeyData() {
+      const steps = flat(), cols = [], pool = [];
+      const normAny = steps.find((x) => x.calc && x.calc.type === 'normalise');
+      steps.forEach((s) => {
+        readingsOf(s).forEach((r) => {
+          if (r.per === 'pool') {
+            const v = rd(r.key, 'pool');
+            const rec = steps.find((x) => x.calc && x.calc.type === 'recovery' && x.calc.per === 'pool' && x.calc.readingKey === r.key);
+            pool.push({ label: r.short || r.label, v: v == null ? null : `${fv(v)} ${r.unit}`, sub: rec && v != null ? `${fv(v * rec.calc.eluate)} ng in ${rec.calc.eluate} µL` : '' });
+            return;
+          }
+          const norm = steps.find((x) => x.calc && x.calc.type === 'normalise' && x.calc.readingKey === r.key);
+          const rec = steps.find((x) => x.calc && x.calc.type === 'recovery' && x.calc.per !== 'pool' && x.calc.readingKey === r.key);
+          cols.push({ label: r.short || r.label, cell: (sm) => {
+            const q = rd(r.key, sm.id); if (q == null) return { v: null };
+            let sub = '', bad = false;
+            if (norm) { const nr = normaliseRow(norm.calc, sm); if (!nr.missing) { sub = `${fv(nr.ng)} ng used${nr.dil > 1 ? ` · 1:${nr.dil}` : ''}`; bad = nr.bad || !!nr.flag && nr.dna > norm.calc.finalVol - 0.001; } }
+            if (rec) {
+              const inR = normAny ? normaliseRow(normAny.calc, sm) : null, inNg = inR && !inR.missing ? inR.ng : prm('inputNg');
+              const pct = inNg ? q * rec.calc.eluate / inNg * 100 : null;
+              sub = `${fv(q * rec.calc.eluate)} ng${pct != null ? ` · ${fv(pct)}%` : ''}`; bad = pct != null && pct < 40;
+            }
+            return { v: `${fv(q)} ${r.unit}`, sub, bad };
+          } });
+        });
+        if (s.calc && s.calc.type === 'barcodes') cols.push({ label: 'Barcode', cell: (sm) => ({ v: sm.barcode, sub: '' }) });
+        if (s.calc && s.calc.type === 'loading') {
+          const d = rd(s.calc.readingKey, 'pool') != null ? calcData(s) : null;
+          pool.push({ label: 'Loaded', v: d ? `${fv(d.loaded)} fmol` : null, sub: d ? `${fv(d.lib)} µL library + ${fv(d.eb)} µL EB` : '' });
+        }
+      });
+      const all = flat(), done = all.filter((x) => state.done[x.id]).length, p = P();
+      const notes = all.filter((x) => state.notes[x.id] || state.skipped[x.id])
+        .map((x) => ({ no: stepNo(x.id), skipped: !!state.skipped[x.id], text: `${x.stage.title}${state.skipped[x.id] ? ' · skipped' : ''}: ${state.notes[x.id] || strip(x.text)}` }))
+        .concat(state.redos.map((r) => ({ no: stepNo(r.from), skipped: true, text: (r.kind === 'added' ? '' : '↺ ') + redoText(r) })))
+        .sort((a, b) => a.no - b.no);
+      const meta = [p.name + ' (' + p.kit + ')', state.operator ? 'operator ' + state.operator : '', 'started ' + when(Date.parse(state.started)),
+        ...(p.choices || []).map((c) => 'keeping ' + choiceOpt(c.key).label.toLowerCase()), `${done}/${all.length} steps done`].filter(Boolean).join(' · ');
+      const legend = flat().filter((x) => x.tube).map((x) => `${x.tube.suffix} = ${fillBc(x.tube.what, null)} (step ${stepNo(x.id)})`).join(' · ');
+      const chain = (sid) => state.tubeLog.filter((x) => x.sid === sid).sort((a, b) => a.at - b.at || a.stepNo - b.stepNo).map((x) => ({ label: x.label, what: x.what, step: x.stepNo, keep: x.keep, redone: x.status === 'redone', at: x.at }));
+      const tubes = { legend, rows: samples().map((sm) => ({ name: sm.name, chain: [{ label: codeOf(sm), what: 'original sample', step: 0 }, ...chain(sm.id)] })), pool: chain('pool') };
+      return { title: state.runName, meta, cols, pool, notes, tubes, rows: samples().map((sm) => ({ name: sm.name, cells: cols.map((c) => c.cell(sm)) })) };
+    }
+    function renderJourney() {
+      const d = journeyData();
+      const cell = (c) => c.v == null ? '<td class="dim">–</td>' : `<td class="${c.bad ? 'jbad' : ''}"><span class="jv">${esc(c.v)}</span>${c.sub ? `<span class="js">${esc(c.sub)}</span>` : ''}</td>`;
+      $('app').innerHTML = `<div class="journey">
+        <div class="row" style="justify-content:space-between;align-items:baseline"><h1 style="margin:0">Sample journey</h1>
+          <div class="row"><button class="btn primary" data-act="journey-png">download picture</button><button class="btn" data-act="export-csv">LabTrack .csv</button><button class="btn" data-act="view" data-view="steps">← steps</button></div></div>
+        <p class="muted" style="margin:6px 0 0"><b>${esc(d.title)}</b> · ${esc(d.meta)}</p>
+        <div class="card"><h3>Samples</h3><div class="tbl-wrap"><table class="jt"><tr><th>Sample</th>${d.cols.map((c) => `<th>${esc(c.label)}</th>`).join('')}</tr>
+          ${d.rows.map((r) => `<tr><td><b>${esc(r.name)}</b></td>${r.cells.map(cell).join('')}</tr>`).join('')}</table></div>
+          <p class="dim" style="font-size:12px;margin:8px 0 0">Under each reading: ng used for the input, or ng recovered and % of the input after a clean-up. Red = under 40% recovered or short of the input mass.</p></div>
+        <div class="card"><h3>Pool → library</h3><div class="strip">${d.pool.map((n, i) => `${i ? '<span class="arrow">→</span>' : ''}<div class="node"><div class="js">${esc(n.label)}</div><div class="jv">${n.v == null ? '–' : esc(n.v)}</div>${n.sub ? `<div class="js">${esc(n.sub)}</div>` : ''}</div>`).join('')}</div></div>
+        <div class="card"><h3>Tubes</h3>
+          <div class="tbl-wrap"><table class="jt tubes">${d.tubes.rows.map((r) => `<tr><td><b>${esc(r.name)}</b></td><td>${r.chain.map((t) => `<span class="tcode${t.keep ? ' keep' : ''}${t.redone ? ' redone' : ''}" title="${esc(t.what)}${t.step ? ' · step ' + t.step : ''}${t.at ? ' · ' + esc(when(t.at)) : ''}${t.redone ? ' · redone' : ''}">${esc(t.label)}</span>`).join('<span class="arrow">→</span>')}</td></tr>`).join('')}
+            <tr><td><b>Pool</b></td><td>${d.tubes.pool.length ? d.tubes.pool.map((t) => `<span class="tcode${t.keep ? ' keep' : ''}${t.redone ? ' redone' : ''}" title="${esc(t.what)}${t.step ? ' · step ' + t.step : ''}${t.at ? ' · ' + esc(when(t.at)) : ''}${t.redone ? ' · redone' : ''}">${esc(t.label)}</span>`).join('<span class="arrow">→</span>') : '<span class="dim">not pooled yet</span>'}</td></tr></table></div>
+          <p class="dim" style="font-size:12px;margin:8px 0 0">${esc(d.tubes.legend)}. Outlined = a tube you keep. Crossed out = redone (first try).</p></div>
+        <div class="card"><h3>Notes &amp; deviations</h3>${d.notes.length ? `<ul class="jnotes">${d.notes.map((n) => `<li><b>Step ${n.no}</b> · ${esc(n.text)}</li>`).join('')}</ul>` : '<p class="muted" style="margin:0">None recorded.</p>'}</div>
+      </div>`;
+      renderTop(); renderDock();
+    }
+    // The same page as a picture: an SVG drawn from journeyData(), turned into a PNG.
+    function journeySvg() {
+      const d = journeyData(), css = getComputedStyle(document.documentElement), C = (n) => css.getPropertyValue('--' + n).trim();
+      const F = "JetBrains Mono, Menlo, Consolas, monospace", xml = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      const pad = 28, nameW = 150, colW = 150, rowH = 42;
+      const W = Math.max(820, pad * 2 + nameW + d.cols.length * colW);
+      const fit = (t, w, size) => { t = String(t); const max = Math.floor(w / (size * 0.62)); return t.length > max ? t.slice(0, max - 1) + '…' : t; };
+      const T = (x, y, t, size, fill, weight = 400) => `<text x="${x}" y="${y}" font-family="${F}" font-size="${size}" font-weight="${weight}" fill="${fill}">${xml(t)}</text>`;
+      const o = []; let y = pad;
+      o.push(T(pad, y + 20, fit('Sample journey · ' + d.title, W - 2 * pad, 20), 20, C('text'), 800)); y += 34;
+      const perMeta = Math.floor((W - 2 * pad) / (12 * 0.62));
+      for (let m = d.meta; m.length; ) {
+        let cut = m.length <= perMeta ? m.length : m.lastIndexOf(' · ', perMeta); if (cut <= 0) cut = perMeta;
+        o.push(T(pad, y + 12, m.slice(0, cut), 12, C('muted'))); y += 17; m = m.slice(cut).replace(/^ · /, '');
+      }
+      y += 15;
+      o.push(T(pad, y + 12, 'Sample', 11, C('muted'), 700));
+      d.cols.forEach((c, i) => o.push(T(pad + nameW + i * colW, y + 12, fit(c.label, colW - 10, 11), 11, C('muted'), 700)));
+      y += 20; o.push(`<rect x="${pad}" y="${y}" width="${W - 2 * pad}" height="1" fill="${C('border-2')}"/>`);
+      d.rows.forEach((r, k) => {
+        if (k % 2) o.push(`<rect x="${pad}" y="${y + 1}" width="${W - 2 * pad}" height="${rowH}" fill="${C('panel-2')}"/>`);
+        o.push(T(pad + 6, y + 26, fit(r.name, nameW - 12, 13), 13, C('text'), 700));
+        r.cells.forEach((c, i) => {
+          const x = pad + nameW + i * colW;
+          o.push(T(x, y + 19, c.v == null ? '–' : fit(c.v, colW - 10, 13), 13, c.v == null ? C('dim') : C('text'), 700));
+          if (c.sub) o.push(T(x, y + 34, fit(c.sub, colW - 10, 10), 10, c.bad ? C('red') : C('muted')));
+        });
+        y += rowH;
+      });
+      y += 26; o.push(T(pad, y, 'Pool → library', 14, C('text'), 800)); y += 12;
+      const gap = 26, nodeH = 58, nodeW = Math.max(130, Math.min(190, (W - 2 * pad - gap * (d.pool.length - 1)) / d.pool.length)); let x = pad;
+      d.pool.forEach((n, i) => {
+        if (x + nodeW > W - pad) { x = pad; y += nodeH + 12; }
+        else if (i) o.push(T(x - gap + 6, y + 34, '→', 14, C('dim')));
+        o.push(`<rect x="${x}" y="${y}" width="${nodeW}" height="${nodeH}" rx="10" fill="${C('panel')}" stroke="${C('border-2')}"/>`);
+        o.push(T(x + 10, y + 17, fit(n.label, nodeW - 20, 10), 10, C('muted')));
+        o.push(T(x + 10, y + 35, n.v == null ? '–' : fit(n.v, nodeW - 20, 14), 14, C('text'), 800));
+        if (n.sub) o.push(T(x + 10, y + 50, fit(n.sub, nodeW - 20, 9.5), 9.5, C('muted')));
+        x += nodeW + gap;
+      });
+      y += nodeH + 30; o.push(T(pad, y, 'Tubes', 14, C('text'), 800)); y += 6;
+      const tl = (ch) => ch.map((t) => t.label + (t.redone ? ' (redone)' : '')).join(' → ') || '–';
+      [...d.tubes.rows.map((r) => [r.name, tl(r.chain)]), ['Pool', tl(d.tubes.pool)]].forEach(([n, t]) => {
+        y += 18; o.push(T(pad + 6, y, fit(n, nameW - 12, 11), 11, C('text'), 700)); o.push(T(pad + nameW, y, fit(t, W - 2 * pad - nameW, 11), 11, C('muted')));
+      });
+      y += 30; o.push(T(pad, y, 'Notes & deviations', 14, C('text'), 800)); y += 8;
+      const per = Math.floor((W - 2 * pad) / (11 * 0.62));
+      (d.notes.length ? d.notes : [{ no: 0, text: 'None recorded.' }]).forEach((n) => {
+        let t = (n.no ? `Step ${n.no} · ` : '') + n.text;
+        while (t.length) { y += 17; o.push(T(pad, y, t.slice(0, per), 11, n.skipped ? C('amber') : C('text'))); t = t.slice(per); }
+      });
+      y += 30; o.push(T(pad, y, `LabTrack Bench · exported ${isoDate(new Date())} ${hm(new Date())}`, 10, C('dim')));
+      const H = y + pad;
+      return { W, H, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="${C('bg')}"/>${o.join('')}</svg>` };
+    }
+    function downloadJourneyPng() {
+      const { W, H, svg } = journeySvg(), img = new Image(), name = `${fileBase()}_journey.png`;
+      img.onload = () => {
+        const cv = document.createElement('canvas'), k = 2; cv.width = W * k; cv.height = H * k;
+        const g = cv.getContext('2d'); g.scale(k, k); g.drawImage(img, 0, 0);
+        cv.toBlob((b) => { if (b) { download(name, b); toast('Picture downloaded', 'ok'); } else toast('Could not make the picture.'); }, 'image/png');
+      };
+      img.onerror = () => toast('Could not make the picture.');
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    /* ================= events ================= */
+    function render() { if (state) renderRun(); else renderSetup(); }
+    function list() { return state ? state.samples : draft.samples; }
+    function rerenderSamples() {
+      const box = $('sampleBox'); if (box) box.innerHTML = samplesTable(list(), P(), !state);
+      if (state) { save(); renderRun(); }
+    }
+
+    document.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-act],[data-tact],[data-jump]'); if (!el) return;
+      if (el.dataset.tact) { e.stopPropagation(); return timerAct(el.dataset.tact, el.dataset.t); }
+      if (el.dataset.jump && !el.dataset.act) return scrollToStep(el.dataset.jump);
+      const act = el.dataset.act, id = el.dataset.step;
+      switch (act) {
+        case 'check': {
+          const wasNext = nextStep() && nextStep().id === id;
+          if (state.done[id]) { if (!state.skipped[id]) unlogTubes(id, state.samples); delete state.done[id]; delete state.skipped[id]; openDone.delete(id); }
+          else {
+            state.done[id] = Date.now(); logTubes(id, state.samples.filter((sm) => !activeRedos().some((r) => r.sids.includes(sm.id) && !r.all && stepIdx(id) <= stepIdx(r.steps[r.steps.length - 1]))));
+            const st = flat().find((s) => s.id === id), m = missingReadings(st);
+            if (m) toast(`Step ${stepNo(id)} checked with ${m} reading${m > 1 ? 's' : ''} still empty.`);
+          }
+          save(); renderRun();
+          if (wasNext && state.done[id]) { const n = nextStep(); if (n) setTimeout(() => scrollToStep(n.id), 60); }
+          break;
+        }
+        case 'redo': redoDialog(id); break;
+        case 'redo-go': {
+          const why = ($('redoWhy').value || '').trim();
+          if (!why) { $('redoWhy').focus(); return toast('Say what went wrong: it goes into the notes.'); }
+          const boxes = [...document.querySelectorAll('[data-rsid]')], ticked = boxes.filter((b) => b.checked).map((b) => b.dataset.rsid);
+          if (boxes.length && !ticked.length) return toast('Tick at least one sample.');
+          const r = startRedo(id, !boxes.length || ticked.length === boxes.length ? 'all' : ticked, why);
+          $('dlg').close(); renderRun();
+          if (r.all) { scrollToStep(r.from); toast(`Back to step ${stepNo(r.from)}. New tubes get -R labels.`, 'ok', 4000); }
+          else if (r.steps.length) { const p = $('redo-' + r.id); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'start' }); toast(`Catch-up list made for ${esc(redoNames(r))}.`, 'ok', 4000); }
+          else { scrollToStep(r.from); toast(`New tubes for ${esc(redoNames(r))} get -R labels at this step.`, 'ok', 4000); }
+          break;
+        }
+        case 'redo-cancel': { const r = state.redos.find((x) => x.id === el.dataset.rid); if (r && confirm('Cancel this redo? The first try goes back to how it was.')) cancelRedo(r); break; }
+        case 'rcheck': {
+          const r = state.redos.find((x) => x.id === el.dataset.rid); if (!r) return;
+          const list = state.samples.filter((s) => r.sids.includes(s.id));
+          if (r.done[id]) { withScope(r.sids, () => unlogTubes(id, list)); delete r.done[id]; }
+          else {
+            r.done[id] = Date.now(); withScope(r.sids, () => logTubes(id, list));
+            const m = withScope(r.sids, () => missingReadings(flat().find((s) => s.id === id)));
+            if (m) toast(`Step ${stepNo(id)} checked with ${m} reading${m > 1 ? 's' : ''} still empty.`);
+          }
+          save(); renderRun();
+          if (!activeRedos().includes(r)) toast(`${esc(redoNames(r))} caught up with the run.`, 'ok');
+          else { const nx = r.steps.find((s) => !r.done[s]); const e2 = nx && document.getElementById(`r-${r.id}-${nx}`); if (e2) e2.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+          break;
+        }
+        case 'expand': openDone.has(id) ? openDone.delete(id) : openDone.add(id); renderRun(); break;
+        case 'note': openNotes.add(id); renderRun(); { const t = document.querySelector(`[data-note="${id}"]`); if (t) t.focus(); } break;
+        case 'jump': { const n = nextStep(); if (n) scrollToStep(n.id); break; }
+        case 'pick': draft.protocolId = el.dataset.pid; draft.choices = defaultChoices(P()); renderSetup(); break;
+        case 'choose': {
+          const tgt = state || draft; tgt.choices = Object.assign({}, tgt.choices, { [el.dataset.key]: el.dataset.val });
+          if (state) { save(); renderRun(); settingsDialog(); } else renderSetup();
+          break;
+        }
+        case 'start': startRun(); break;
+        case 'add-sample': {
+          const L = list(), p = P();
+          if (p.maxSamples && L.length >= p.maxSamples) return toast(`This kit takes up to ${p.maxSamples} samples.`);
+          const last = L[L.length - 1], m = last && last.name.match(/^(.*?)(\d+)$/);
+          L.push({ id: uid(), name: m ? m[1] + (+m[2] + 1) : `Sample ${L.length + 1}`, code: freeCode(L), barcode: freeBarcode(L, p), q: '' });
+          if (state) addLateSample(L[L.length - 1]);
+          rerenderSamples();
+          const ins = document.querySelectorAll('#sampleBox input[data-sf="name"]'); if (ins.length) ins[ins.length - 1].focus();
+          break;
+        }
+        case 'rm-sample': {
+          const L = list(), i = L.findIndex((s) => s.id === el.dataset.sid);
+          if (state && !confirm(`Remove ${L[i].name} and its readings?`)) return;
+          L.splice(i, 1);
+          if (state) { Object.values(state.readings).forEach((r) => { delete r[el.dataset.sid]; }); state.redos.forEach((r) => { r.sids = r.sids.filter((x) => x !== el.dataset.sid); }); state.redos = state.redos.filter((r) => r.all || r.sids.length); }
+          rerenderSamples(); break;
+        }
+        case 'paste-samples': {
+          const txt = prompt('Paste sample names, one per line (or separated by commas). They replace the current list.');
+          if (!txt) return;
+          const names = txt.split(/[\n,;\t]+/).map((x) => x.trim()).filter(Boolean);
+          const p = P(), L = list(), out = [];
+          names.slice(0, p.maxSamples || 999).forEach((n) => { const old = L.find((s) => s.name === n); out.push(old || { id: uid(), name: n, code: freeCode(out), barcode: freeBarcode(out, p), q: '' }); });
+          L.splice(0, L.length, ...out);
+          if (names.length > (p.maxSamples || 999)) toast(`Only the first ${p.maxSamples} were kept.`);
+          rerenderSamples(); break;
+        }
+        case 'samples': samplesDialog(); break;
+        case 'settings': settingsDialog(); break;
+        case 'export': exportDialog(); break;
+        case 'close': $('dlg').close(); if (state) renderRun(); break;
+        case 'export-csv': download(`${fileBase()}_labtrack.csv`, buildCsv(), 'text/csv'); toast('CSV downloaded', 'ok'); break;
+        case 'export-json': {
+          const r = el.dataset.rid ? db.runs[el.dataset.rid] : state; if (!r) return;
+          download(`${fileBase(r)}_bench.json`, JSON.stringify(r, null, 2), 'application/json'); toast('Run file downloaded', 'ok'); break;
+        }
+        case 'journey-png': if ($('dlg').open) $('dlg').close(); downloadJourneyPng(); break;
+        case 'view': view = el.dataset.view; renderRun(); window.scrollTo(0, 0); break;
+        case 'open-run': openRun(el.dataset.rid); break;
+        case 'close-run': {
+          const running = Object.values(state.timers).some((t) => t.status === 'running');
+          if (running && !confirm('A timer is still running. It keeps counting and rings when you open this run again. Close the run?')) return;
+          closeRun(); toast('Run saved. Continue it any time from this list.', 'ok'); break;
+        }
+        case 'delete-run': {
+          const r = el.dataset.rid ? db.runs[el.dataset.rid] : state; if (!r) return;
+          if (!confirm(`Delete "${r.runName}" from this device? This can't be undone. Download its run file first if you want a copy.`)) return;
+          delete db.runs[r.id];
+          if (state && state.id === r.id) closeRun(); else { persist(); render(); }
+          break;
+        }
+        case 'skip': {
+          const wasNext = nextStep() && nextStep().id === id;
+          state.done[id] = Date.now(); state.skipped[id] = true; openDone.add(id); openNotes.add(id);
+          save(); renderRun();
+          const t = document.querySelector(`[data-note="${id}"]`); if (t) t.focus({ preventScroll: true });
+          toast(`Step ${stepNo(id)} skipped. Add a note saying why.`);
+          if (wasNext) { const n = nextStep(); if (n) setTimeout(() => scrollToStep(n.id), 900); }
+          break;
+        }
+        case 'print': $('dlg').close(); setTimeout(() => window.print(), 100); break;
+        case 'import': {
+          const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json';
+          inp.onchange = () => { const f = inp.files[0]; if (!f) return; f.text().then((t) => {
+            let r; try { r = JSON.parse(t); } catch (err) { r = null; }
+            if (!isRun(r)) return toast('That is not a LabTrack Bench run file.');
+            fixRun(r);
+            const have = db.runs[r.id];
+            if (have && !confirm(`"${have.runName}" is already on this device (saved ${when(have.updated)}). Replace it with the file (saved ${when(r.updated)})?\n\nCancel keeps both.`)) { r.id = uid(); r.runName += ' (copy)'; }
+            db.runs[r.id] = r; persist(); openRun(r.id); toast('Run opened. Carry on from the highlighted step.', 'ok');
+          }); };
+          inp.click(); break;
+        }
+        case 'uncheck-all': if (confirm('Uncheck every step? Readings and notes are kept.')) { state.done = {}; save(); $('dlg').close(); renderRun(); } break;
+        case 'theme': {
+          const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+          document.documentElement.dataset.theme = next; try { localStorage.setItem('labtrack_theme', next); } catch (err) {}
+          break;
+        }
+      }
+    });
+
+    document.addEventListener('input', (e) => {
+      const t = e.target;
+      if (t.dataset.reading) {
+        const k = t.dataset.reading; state.readings[k] = state.readings[k] || {};
+        if (t.value.trim() === '') delete state.readings[k][t.dataset.sid]; else state.readings[k][t.dataset.sid] = t.value.trim();
+        state.readAt[k] = Date.now(); save(); refreshCalcs();
+      } else if (t.dataset.note) { state.notes[t.dataset.note] = t.value; if (!t.value) delete state.notes[t.dataset.note]; save(); }
+      else if (t.dataset.tubeq) $('tubeRes').innerHTML = findHTML(t.value);
+      else if (t.dataset.df) draft[t.dataset.df] = t.value;
+      else if (t.dataset.sf) {
+        const s = list().find((x) => x.id === t.dataset.sid); if (!s) return;
+        s[t.dataset.sf] = t.value;
+        if (t.dataset.sf === 'barcode') rerenderSamples();
+        else if (state) { save(); }
+      } else if (t.dataset.param) { state.params[t.dataset.param] = t.value; save(); refreshCalcs(); }
+      else if (t.dataset.sf2) {
+        state[t.dataset.sf2] = t.type === 'checkbox' ? t.checked : t.value; save();
+        if (t.dataset.sf2 === 'runName') $('runInfo').querySelector('b').textContent = t.value;
+        if (t.dataset.sf2 === 'keepAwake') { if (t.checked) keepAwake(); else if (wakeLock) wakeLock.release(); }
+      }
+    });
+    document.addEventListener('change', (e) => {
+      const t = e.target;
+      if (t.dataset.barcode) { const s = state.samples.find((x) => x.id === t.dataset.barcode); if (s) { s.barcode = t.value; save(); renderRun(); } }
+      if ((t.dataset.sf === 'name' || t.dataset.sf === 'code') && state) renderRun();
+      if (t.dataset.sf === 'code') { const box = $('sampleBox'); if (box) box.innerHTML = samplesTable(list(), P(), !state); }
+      if (t.dataset.sf2 === 'runCode') renderRun();
+      if (t.dataset.dil) { const v = num(t.value); if (v && v > 1) state.dil[t.dataset.dil] = v; else delete state.dil[t.dataset.dil]; save(); refreshCalcs(); }
+    });
+    $('dlg').addEventListener('close', () => { if (state) renderRun(); });
+    document.addEventListener('keydown', (e) => {
+      const t = e.target;
+      if (e.key === 'Enter' && t.dataset && t.dataset.sf === 'name') {
+        e.preventDefault();
+        const ins = [...document.querySelectorAll('#sampleBox input[data-sf="name"]')], i = ins.indexOf(t);
+        if (i < ins.length - 1) ins[i + 1].focus(); else document.querySelector('#sampleBox [data-act="add-sample"]').click();
+      }
+      if (e.key === 'Enter' && t.dataset && t.dataset.dil) { e.preventDefault(); t.blur(); }
+      if (e.key === 'Enter' && t.dataset && t.dataset.reading) {
+        e.preventDefault();
+        const ins = [...document.querySelectorAll(`input[data-reading="${t.dataset.reading}"]`)], i = ins.indexOf(t);
+        if (i < ins.length - 1) ins[i + 1].focus(); else t.blur();
+      }
+    });
+
+    if (state) openRun(state.id); else render();   // a page load continues the open run where it was left
+    setInterval(tick, 250);
+    tick();
+  })();
+  </script>
+</body>
+</html>
