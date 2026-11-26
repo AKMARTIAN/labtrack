@@ -142,6 +142,8 @@
     .jt.tubes td { vertical-align: middle; } .jt.tubes td:last-child { white-space: normal; line-height: 2.1; } .jt.tubes .arrow { color: var(--dim); margin: 0 4px; }
     .samples-tbl td.tc input { width: 70px; }
     .samples-tbl td.tc input.dup { border-color: var(--red); }
+    .samples-tbl td.tc input.manual { font-weight: 700; }
+    .samples-tbl td.tc input[readonly] { opacity: .7; }
 
     .card.redo { border: 1.5px solid var(--amber); }
     .card.redo h3 { color: var(--amber); }
@@ -1103,9 +1105,55 @@
       const p = PROTOCOLS[0], runName = defaultRunName(p);
       const codes = new Set(Object.values(db.runs).map((r) => r.runCode)), cbase = 'R' + isoDate(new Date()).slice(5).replace('-', '');
       let runCode = cbase; for (let k = 0; codes.has(runCode); k++) runCode = cbase + 'bcdefghijk'[k];
-      return { protocolId: p.id, choices: defaultChoices(p), runName, autoName: runName, runCode, operator: '', samples: [1, 2, 3, 4].map((k) => ({ id: uid(), name: `Sample ${k}`, code: `S${k}`, barcode: p.barcodes ? p.barcodes[k - 1] : '', q: '' })) };
+      return { protocolId: p.id, choices: defaultChoices(p), runName, autoName: runName, runCode, operator: '', samples: [1, 2, 3, 4].map((k) => ({ id: uid(), name: `Sample ${k}`, code: `S${k}`, codeAuto: true, barcode: p.barcodes ? p.barcodes[k - 1] : '', q: '' })) };
     }
-    function freeCode(list) { const used = new Set(list.map((s) => (s.code || '').toLowerCase())); for (let k = 1; ; k++) if (!used.has('s' + k)) return 'S' + k; }
+    /* ---- tube codes from sample names ----
+       Suspect → S, Victim → V, Suspect 1 / Suspect 2 → S1 / S2 (a number at the end is kept, leading zeros dropped).
+       Codes that clash get more letters, up to 3: Suspect A / Suspect B → SA / SB, Sarah / Sam → SAR / SAM.
+       If they still clash (or a name has no letters), every automatic code falls back to S1, S2, S3… and the
+       samples screen warns; the sample key (code → name) is in every export either way.
+       Kept as they are: codes typed by hand (codeAuto === false) and codes whose tubes are already labelled. */
+    function nameCode(name, level) {
+      const nm = String(name || '').trim(), m = nm.match(/(\d+)\s*$/), n = m ? String(parseInt(m[1], 10)) : '';
+      const stem = m ? nm.slice(0, m.index) : nm, alpha = stem.replace(/[^A-Za-z]/g, '').toUpperCase();
+      const words = stem.split(/[^A-Za-z]+/).filter(Boolean);
+      if (!alpha) return null;
+      const base = level === 1 ? alpha[0] : level === 2 ? (words.length > 1 ? words.slice(0, 3).map((w) => w[0]).join('').toUpperCase() : alpha.slice(0, 2)) : alpha.slice(0, 3);
+      return base + n;
+    }
+    const hasTubes = (sm) => !!(state && state.tubeLog && state.tubeLog.some((x) => x.sid === sm.id));
+    function autoCodes(L) {
+      const fixed = new Set(L.filter((sm) => sm.codeAuto === false || hasTubes(sm) || (state && sm.codeAuto == null)));
+      const auto = L.filter((sm) => !fixed.has(sm)), taken = new Set([...fixed].map((sm) => (sm.code || '').toUpperCase()));
+      const lvl = new Map(auto.map((sm) => [sm, 1]));
+      for (let round = 0; round < 4; round++) {
+        const code = new Map(auto.map((sm) => [sm, nameCode(sm.name, lvl.get(sm))]));
+        if ([...code.values()].some((c) => !c)) break;
+        const count = {}; code.forEach((c) => { count[c] = (count[c] || 0) + 1; });
+        const clash = auto.filter((sm) => count[code.get(sm)] > 1 || taken.has(code.get(sm)));
+        if (!clash.length) { auto.forEach((sm) => { sm.code = code.get(sm); }); return { fallback: false }; }
+        if (clash.some((sm) => lvl.get(sm) >= 3)) break;
+        clash.forEach((sm) => lvl.set(sm, lvl.get(sm) + 1));
+      }
+      let k = 1;
+      L.forEach((sm, i) => { if (fixed.has(sm)) return; k = Math.max(k, i + 1); while (taken.has('S' + k)) k++; sm.code = 'S' + k; taken.add('S' + k); });
+      return { fallback: auto.length > 0 };
+    }
+    function codeWarnHTML(res) {
+      return res && res.fallback ? `<div class="box warn" style="margin:0 0 8px">Too many similar names to make clear short codes, so the tube codes are numbered S1, S2, S3… Keep the <b>sample key</b> (code → sample) with the tubes: it is in every export, and you can download it on its own.</div>` : '';
+    }
+    // Code → sample name (and barcode, and every tube made), for the export and the key file.
+    function sampleKey(r = state) {
+      return r.samples.map((sm, i) => ({ code: (sm.code || '').trim() || `S${i + 1}`, name: sm.name, barcode: sm.barcode || '',
+        tubes: (r.tubeLog || []).filter((x) => x.sid === sm.id).sort((a, b) => a.at - b.at).map((x) => x.label + (x.status === 'redone' ? ' (redone)' : '')) }));
+    }
+    function sampleKeyCsv() {
+      const cell = (v) => { const s2 = String(v == null ? '' : v); return /[",\r\n]/.test(s2) ? `"${s2.replace(/"/g, '""')}"` : s2; };
+      const p = P(), bl = p.barcodeLabel || 'Barcode';
+      const lines = [['Sample key', state.runName], ['Run code', runCode()], ['Protocol', `${p.name} (${p.kit})`], ['Exported', `${isoDate(new Date())} ${hm(new Date())}`], [],
+        ['Tube code', 'Sample name', ...(p.barcodes ? [bl] : []), 'Tubes made']].concat(sampleKey().map((k) => [k.code, k.name, ...(p.barcodes ? [k.barcode] : []), k.tubes.join(' → ')]));
+      return '\ufeff' + lines.map((r) => r.map(cell).join(',')).join('\r\n');
+    }
     function freeBarcode(list, p) { const used = new Set(list.map((s) => s.barcode)); return (p.barcodes || []).find((b) => !used.has(b)) || ''; }
     function choicesHTML(cur, prefix) {
       return (P().choices || []).map((c, i) => `<div class="card"><h3>${typeof prefix === 'number' ? (prefix + i) + ' · ' : prefix}${esc(c.question)}</h3>
@@ -1113,16 +1161,17 @@
         <p class="dim" style="margin:10px 0 0;font-size:12px">The steps, wash buffer and bead ratios follow this choice. You can change it later in settings.</p></div>`).join('');
     }
     function samplesTable(list, p, withQ) {
+      const res = autoCodes(list);
       const opts = (cur) => (p.barcodes || []).map((b) => `<option ${b === cur ? 'selected' : ''}>${b}</option>`).join('');
       const used = {}; list.forEach((s) => { used[s.barcode] = (used[s.barcode] || 0) + 1; });
       const dupC = {}; list.forEach((s, k) => { const c = (s.code || 'S' + (k + 1)).toLowerCase(); dupC[c] = (dupC[c] || 0) + 1; });
-      return `<div class="tbl-wrap"><table class="samples-tbl"><tr><th></th><th>Sample name</th><th>Tube code</th>${p.barcodes ? `<th>${esc(p.barcodeLabel || 'Barcode')}</th>` : ''}${withQ ? '<th>Qubit ng/µL</th>' : ''}<th></th></tr>
-        ${list.map((s, k) => `<tr><td class="ix">${k + 1}</td><td><input data-sf="name" data-sid="${s.id}" value="${esc(s.name)}" /></td><td class="tc"><input data-sf="code" data-sid="${s.id}" value="${esc(s.code || '')}" placeholder="S${k + 1}" maxlength="6" class="${dupC[(s.code || 'S' + (k + 1)).toLowerCase()] > 1 ? 'dup' : ''}" /></td>
+      return `<div id="codeWarn">${codeWarnHTML(res)}</div><div class="tbl-wrap"><table class="samples-tbl"><tr><th></th><th>Sample name</th><th title="Made from the name; type your own to change it">Tube code</th>${p.barcodes ? `<th>${esc(p.barcodeLabel || 'Barcode')}</th>` : ''}${withQ ? '<th>Qubit ng/µL</th>' : ''}<th></th></tr>
+        ${list.map((s, k) => `<tr><td class="ix">${k + 1}</td><td><input data-sf="name" data-sid="${s.id}" value="${esc(s.name)}" /></td><td class="tc"><input data-sf="code" data-sid="${s.id}" value="${esc(s.code || '')}" placeholder="auto" maxlength="6" title="${hasTubes(s) ? 'Tubes are already labelled with this code' : s.codeAuto === false ? 'Typed by hand; clear it to go back to automatic' : 'Made from the name'}" ${hasTubes(s) ? 'readonly' : ''} class="${dupC[(s.code || 'S' + (k + 1)).toLowerCase()] > 1 ? 'dup' : ''} ${s.codeAuto === false ? 'manual' : ''}" /></td>
           ${p.barcodes ? `<td class="b"><select class="bc ${used[s.barcode] > 1 ? 'dup' : ''}" data-sf="barcode" data-sid="${s.id}">${opts(s.barcode)}</select></td>` : ''}
           ${withQ ? `<td class="q"><input inputmode="decimal" data-sf="q" data-sid="${s.id}" value="${esc(s.q)}" placeholder="optional" /></td>` : ''}
           <td class="x"><button class="btn small ghost" data-act="rm-sample" data-sid="${s.id}" title="Remove">✕</button></td></tr>`).join('')}
       </table></div>
-      <div class="row" style="margin-top:8px"><button class="btn small" data-act="add-sample">+ add sample</button><button class="btn small" data-act="paste-samples">paste a list…</button><span class="dim" style="align-self:center">${list.length}${p.maxSamples ? ' / ' + p.maxSamples : ''} samples · Enter in a name adds the next</span></div>`;
+      <div class="row" style="margin-top:8px"><button class="btn small" data-act="add-sample">+ add sample</button><button class="btn small" data-act="paste-samples">paste a list…</button><span class="dim" style="align-self:center">${list.length}${p.maxSamples ? ' / ' + p.maxSamples : ''} samples · Enter in a name adds the next · tube codes come from the names</span>${state ? '<button class="btn small" data-act="export-key">download sample key (.csv)</button>' : ''}</div>`;
     }
     // Step list of a saved run without opening it (its choices filled into the text).
     function runSummary(r) {
@@ -1217,7 +1266,7 @@
         v: 2, id: uid(), protocolId: p.id, choices: Object.assign(defaultChoices(p), draft.choices), runName: draft.runName.trim() || p.short, operator: draft.operator.trim(), started: new Date().toISOString(),
         params: Object.assign(Object.fromEntries(p.params.map((x) => [x.key, x.value])), draft.params || {}),
         runCode: (draft.runCode || '').trim(),
-        samples: list.map((s, i) => ({ id: s.id, name: s.name.trim(), code: (s.code || '').trim() || `S${i + 1}`, barcode: s.barcode })),
+        samples: (autoCodes(list), list.map((s, i) => ({ id: s.id, name: s.name.trim(), code: (s.code || '').trim() || `S${i + 1}`, codeAuto: s.codeAuto !== false, barcode: s.barcode }))),
         readings: {}, readAt: {}, done: {}, skipped: {}, notes: {}, timers: {}, dil: {}, redos: [], tubeLog: [], keepAwake: true, sound: true
       };
       const qk = flat().flatMap(readingsOf).find((r) => r.per === 'sample');
@@ -1254,6 +1303,8 @@
     function exportDialog() {
       dialog('Export', `<p style="margin-top:0"><b>For LabTrack (.csv)</b>: readings per sample, barcodes, the amount loaded and your notes. In LabTrack, tap <b>↑ open → continue a run</b> and choose this file.</p>
         <button class="btn primary" data-act="export-csv">download .csv</button>
+        <p style="margin-top:18px"><b>Sample key (.csv)</b>: which tube code is which sample, with the tubes made for each. It is also in the LabTrack .csv and the journey picture.</p>
+        <button class="btn" data-act="export-key">download sample key</button>
         <p style="margin-top:18px"><b>Sample journey picture (.png)</b>: every sample's readings, the pool and library, and your notes, on one page.</p>
         <button class="btn" data-act="journey-png">download picture</button>
         <p style="margin-top:18px"><b>Run file (.json)</b>: the whole run as it is now (checked steps, readings, dilutions, timers, notes). Open it later or on another device to carry on where you left off.</p>
@@ -1315,6 +1366,8 @@
         const pooledNote = readingsOf(s)[0] && readingsOf(s)[0].per === 'pool' && state.readings[readingsOf(s)[0].key] && state.readings[readingsOf(s)[0].key].pool;
         if (state.skipped[s.id] || (note && !pooledNote)) log.push(row([0, ...when(s.id), 'Protocol log', 'Note', '', '', '', '', '', '', '', `Step ${stepNo(s.id)} (${s.stage.title})${state.skipped[s.id] ? ' skipped' : ''}: ${note || strip(s.text)}`, '']));
       });
+      { const d = new Date(Date.parse(state.started) || Date.now());
+        log.push(row([0, isoDate(d), hm(d), 'Protocol log', 'Note', '', '', '', '', '', '', '', `Sample key (tube code = sample): ${sampleKey().map((k) => `${k.code} = ${k.name}`).join(' · ')}`, ''])); }
       state.redos.forEach((r) => { const d = new Date(r.at); log.push(row([0, isoDate(d), hm(d), 'Protocol log', 'Note', '', '', '', '', '', '', '', `Step ${stepNo(r.from)}: ${redoText(r)}`, ''])); });
       stages().forEach((stg) => {
         const times = stg.steps.map((s) => state.done[s.id]).filter(Boolean);
@@ -1377,7 +1430,7 @@
       const legend = flat().filter((x) => x.tube).map((x) => `${x.tube.suffix} = ${fillBc(x.tube.what, null)} (step ${stepNo(x.id)})`).join(' · ');
       const chain = (sid) => state.tubeLog.filter((x) => x.sid === sid).sort((a, b) => a.at - b.at || a.stepNo - b.stepNo).map((x) => ({ label: x.label, what: x.what, step: x.stepNo, keep: x.keep, side: x.side || !!((flat().find((st) => st.id === x.step) || {}).tube || {}).side, redone: x.status === 'redone', at: x.at }));
       const tubes = { legend, rows: samples().map((sm) => ({ name: sm.name, chain: [{ label: codeOf(sm), what: 'original sample', step: 0 }, ...chain(sm.id)] })), pool: chain('pool') };
-      return { title: state.runName, meta, cols, pool, notes, tubes, rows: samples().map((sm) => ({ name: sm.name, cells: cols.map((c) => c.cell(sm)) })) };
+      return { title: state.runName, meta, cols, pool, notes, tubes, rows: samples().map((sm) => ({ name: sm.name, code: codeOf(sm), cells: cols.map((c) => c.cell(sm)) })) };
     }
     function renderJourney() {
       const d = journeyData();
@@ -1386,8 +1439,8 @@
         <div class="row" style="justify-content:space-between;align-items:baseline"><h1 style="margin:0">Sample journey</h1>
           <div class="row"><button class="btn primary" data-act="journey-png">download picture</button><button class="btn" data-act="export-csv">LabTrack .csv</button><button class="btn" data-act="view" data-view="steps">← steps</button></div></div>
         <p class="muted" style="margin:6px 0 0"><b>${esc(d.title)}</b> · ${esc(d.meta)}</p>
-        <div class="card"><h3>Samples</h3><div class="tbl-wrap"><table class="jt"><tr><th>Sample</th>${d.cols.map((c) => `<th>${esc(c.label)}</th>`).join('')}</tr>
-          ${d.rows.map((r) => `<tr><td><b>${esc(r.name)}</b></td>${r.cells.map(cell).join('')}</tr>`).join('')}</table></div>
+        <div class="card"><h3>Samples</h3><div class="tbl-wrap"><table class="jt"><tr><th>Code · sample</th>${d.cols.map((c) => `<th>${esc(c.label)}</th>`).join('')}</tr>
+          ${d.rows.map((r) => `<tr><td><span class="tcode">${esc(r.code)}</span> <b>${esc(r.name)}</b></td>${r.cells.map(cell).join('')}</tr>`).join('')}</table></div>
           <p class="dim" style="font-size:12px;margin:8px 0 0">Under each reading: ng used for the input, or ng recovered and % of the input after a clean-up. Red = under 40% recovered or short of the input mass.</p></div>
         <div class="card"><h3>Pool → library</h3><div class="strip">${d.pool.map((n, i) => `${i ? '<span class="arrow">→</span>' : ''}<div class="node"><div class="js">${esc(n.label)}</div><div class="jv">${n.v == null ? '–' : esc(n.v)}</div>${n.sub ? `<div class="js">${esc(n.sub)}</div>` : ''}</div>`).join('')}</div></div>
         <div class="card"><h3>Tubes</h3>
@@ -1414,12 +1467,12 @@
         o.push(T(pad, y + 12, m.slice(0, cut), 12, C('muted'))); y += 17; m = m.slice(cut).replace(/^ · /, '');
       }
       y += 15;
-      o.push(T(pad, y + 12, 'Sample', 11, C('muted'), 700));
+      o.push(T(pad, y + 12, 'Code · sample', 11, C('muted'), 700));
       d.cols.forEach((c, i) => o.push(T(pad + nameW + i * colW, y + 12, fit(c.label, colW - 10, 11), 11, C('muted'), 700)));
       y += 20; o.push(`<rect x="${pad}" y="${y}" width="${W - 2 * pad}" height="1" fill="${C('border-2')}"/>`);
       d.rows.forEach((r, k) => {
         if (k % 2) o.push(`<rect x="${pad}" y="${y + 1}" width="${W - 2 * pad}" height="${rowH}" fill="${C('panel-2')}"/>`);
-        o.push(T(pad + 6, y + 26, fit(r.name, nameW - 12, 13), 13, C('text'), 700));
+        o.push(T(pad + 6, y + 26, fit(`${r.code} · ${r.name}`, nameW - 12, 13), 13, C('text'), 700));
         r.cells.forEach((c, i) => {
           const x = pad + nameW + i * colW;
           o.push(T(x, y + 19, c.v == null ? '–' : fit(c.v, colW - 10, 13), 13, c.v == null ? C('dim') : C('text'), 700));
@@ -1538,7 +1591,7 @@
           const L = list(), p = P();
           if (p.maxSamples && L.length >= p.maxSamples) return toast(`This kit takes up to ${p.maxSamples} samples.`);
           const last = L[L.length - 1], m = last && last.name.match(/^(.*?)(\d+)$/);
-          L.push({ id: uid(), name: m ? m[1] + (+m[2] + 1) : `Sample ${L.length + 1}`, code: freeCode(L), barcode: freeBarcode(L, p), q: '' });
+          L.push({ id: uid(), name: m ? m[1] + (+m[2] + 1) : `Sample ${L.length + 1}`, code: '', codeAuto: true, barcode: freeBarcode(L, p), q: '' });
           if (state) addLateSample(L[L.length - 1]);
           rerenderSamples();
           const ins = document.querySelectorAll('#sampleBox input[data-sf="name"]'); if (ins.length) ins[ins.length - 1].focus();
@@ -1556,7 +1609,7 @@
           if (!txt) return;
           const names = txt.split(/[\n,;\t]+/).map((x) => x.trim()).filter(Boolean);
           const p = P(), L = list(), out = [];
-          names.slice(0, p.maxSamples || 999).forEach((n) => { const old = L.find((s) => s.name === n); out.push(old || { id: uid(), name: n, code: freeCode(out), barcode: freeBarcode(out, p), q: '' }); });
+          names.slice(0, p.maxSamples || 999).forEach((n) => { const old = L.find((s) => s.name === n); out.push(old || { id: uid(), name: n, code: '', codeAuto: true, barcode: freeBarcode(out, p), q: '' }); });
           L.splice(0, L.length, ...out);
           if (names.length > (p.maxSamples || 999)) toast(`Only the first ${p.maxSamples} were kept.`);
           rerenderSamples(); break;
@@ -1565,6 +1618,7 @@
         case 'settings': settingsDialog(); break;
         case 'export': exportDialog(); break;
         case 'close': $('dlg').close(); if (state) renderRun(); break;
+        case 'export-key': download(`${fileBase()}_sample_key.csv`, sampleKeyCsv(), 'text/csv'); toast('Sample key downloaded', 'ok'); break;
         case 'export-csv': download(`${fileBase()}_labtrack.csv`, buildCsv(), 'text/csv'); toast('CSV downloaded', 'ok'); break;
         case 'export-json': {
           const r = el.dataset.rid ? db.runs[el.dataset.rid] : state; if (!r) return;
@@ -1629,8 +1683,16 @@
       else if (t.dataset.sf) {
         const s = list().find((x) => x.id === t.dataset.sid); if (!s) return;
         s[t.dataset.sf] = t.value;
+        if (t.dataset.sf === 'code') s.codeAuto = t.value.trim() === '';
         if (t.dataset.sf === 'barcode') rerenderSamples();
-        else if (state) { save(); }
+        else {
+          if (t.dataset.sf === 'name' || t.dataset.sf === 'code') {   // update the codes in place, without losing the cursor
+            const res = autoCodes(list());
+            document.querySelectorAll('#sampleBox input[data-sf="code"]').forEach((inp) => { const x = list().find((y) => y.id === inp.dataset.sid); if (x && inp !== t) inp.value = x.code || ''; });
+            const wbox = $('codeWarn'); if (wbox) wbox.innerHTML = codeWarnHTML(res);
+          }
+          if (state) save();
+        }
       } else if (t.dataset.param) { state.params[t.dataset.param] = t.value; save(); refreshCalcs(); }
       else if (t.dataset.sf2) {
         state[t.dataset.sf2] = t.type === 'checkbox' ? t.checked : t.value; save();
