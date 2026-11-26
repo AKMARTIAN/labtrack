@@ -579,7 +579,7 @@ window.BENCH_PROTOCOLS = [
     choices: [
       { key: 'input', label: 'Input', question: 'What is the input?', default: 'dna',
         options: [
-          { value: 'dna', label: 'Extracted gDNA', short: 'Qubit sets the cycles', detail: 'Enter each Qubit: the input mass sets the PCR cycles (under 10 ng: 14–15 · 10–49 ng: 12 · 50–1000 ng: 9).' },
+          { value: 'dna', label: 'Extracted gDNA', short: 'Qubit sets the cycles', detail: 'Enter each Qubit: the input mass sets the PCR cycles (SOP table: under 10 ng 14–15 · 10–49 ng 12 · 20–1000 ng 9).' },
           { value: 'direct', label: 'Buccal or liquid blood', short: '9 cycles', detail: 'Buccal and liquid blood samples always get 9 PCR cycles.' }
         ] }
     ],
@@ -654,8 +654,9 @@ window.BENCH_PROTOCOLS = [
           { id: 'ex-idx-add', text: 'Add <b>5 µL of index</b> to each sample, a new tip for every sample. Pipette mix 10× (or shaker 1600 rpm, 1 min) and spin at 280 × g for 30 s.',
             calc: { type: 'mix', title: 'Index', noMaster: true, perTube: [{ name: 'Index adapter (its own well)', vol: 5 }], totals: [] } },
           { id: 'ex-pcr-run', when: { input: 'dna' }, critical: true, text: 'Post-PCR room: run the <b>eBLT program</b>, lid 100 °C: 72 °C 3 min → 98 °C 3 min → <b>[98 °C 20 s, 60 °C 30 s, 72 °C 1 min] × cycles</b> → 72 °C 3 min → 10 °C hold.',
-            calc: { type: 'lookup', title: 'PCR cycles', column: 'Cycles', bands: [{ atLeast: 50, text: '9' }, { atLeast: 10, text: '12' }, { atLeast: 0, text: '14–15' }],
-              note: 'SOP table: under 10 ng 14–15 · 10–49 ng 12 · 50–1000 ng 9. Samples needing different cycles need separate runs or blocks.' },
+            calc: { type: 'lookup', title: 'PCR cycles', column: 'Cycles',
+              bands: [{ atLeast: 50, text: '9' }, { atLeast: 20, text: '12 or 9 (rows overlap)' }, { atLeast: 10, text: '12' }, { atLeast: 0, text: '14–15' }],
+              note: 'SOP table, as written: less than 10 ng 14–15 · 10–49 ng 12 · 20–1000 ng 9 · buccal / liquid blood 9. From 20 to 49 ng both rows apply, so both are shown. Samples needing different cycles need separate runs or blocks.' },
             readings: [{ key: 'pcrCycles', label: 'Cycles run', short: 'Cycles', unit: 'cycles', per: 'sample', type: 'General', section: 'Index PCR', chain: false }] },
           { id: 'ex-pcr-run-direct', when: { input: 'direct' }, critical: true, text: 'Post-PCR room: run the <b>eBLT program</b> with <b>9 cycles</b>, lid 100 °C: 72 °C 3 min → 98 °C 3 min → [98 °C 20 s, 60 °C 30 s, 72 °C 1 min] × 9 → 72 °C 3 min → 10 °C hold.',
             reading: { key: 'pcrCycles', label: 'Cycles run', short: 'Cycles', unit: 'cycles', per: 'sample', type: 'General', section: 'Index PCR', chain: false } },
@@ -1239,4 +1240,530 @@ window.BENCH_PROTOCOLS = [
       }
     ]
   }
+  ,
+  {
+    id: 'sm04-ultra2fs',
+    name: 'NEBNext Ultra II FS DNA Library Prep',
+    short: 'SM04 Ultra II FS',
+    kit: 'NEBNext Ultra II FS DNA (half volume)',
+    vendor: 'NEB · SOP FSD 75-GN-SM04',
+    source: 'From the lab SOP FSD 75 - GN - SM04 (30-12-2025), with bead clean-ups from SOP SM11. Can also run on the epMotion 5075 (all but the PCR set-up).',
+    barcodes: NEB_UDI_WELLS,
+    barcodeLabel: 'Index well',
+    maxSamples: 96,
+    choices: [
+      { key: 'sampleType', label: 'Samples', question: 'What kind of samples?', default: 'standard',
+        options: [
+          { value: 'standard', label: 'Standard samples', short: '0.9× beads', detail: '0.9× bead clean-up after adaptor ligation.', ratio: '0.9' },
+          { value: 'forensic', label: 'Forensic samples', short: '1.2× beads', detail: 'The SOP notes 1.2× is best for forensic samples: 1.2× bead clean-up after adaptor ligation.', ratio: '1.2' }
+        ] }
+    ],
+    params: [
+      { key: 'fragMin', label: 'Fragmentation time at 37 °C', unit: 'min', value: 5, ask: true, hint: '5–8 min: shorter gives larger fragments; set it for the size of your extract' },
+      { key: 'overage', label: 'Extra in master mixes', unit: '%', value: 10 }
+    ],
+    stages: [
+      {
+        id: 'fs-prep', title: 'Before you start', time: '~30 min',
+        summary: 'Pre-PCR room. Gloves, lab coat and face mask.',
+        steps: [
+          { id: 'fs-beads-rt', text: 'Take the <b>sample purification beads</b> out of the fridge so they reach room temperature.', timers: [{ min: 30, label: 'beads to room temp' }] },
+          { id: 'fs-te', text: 'Make <b>0.1X TE</b> for the elutions: 1 part 1X TE + 9 parts nuclease-free water.',
+            calc: { type: 'dilute', title: '0.1X TE', stock: 1, target: 0.1, unit: 'X', perSample: 0.051, diluent: 'nuclease-free water', what: 'TE', minMake: 1 } },
+          { id: 'fs-qc', text: 'Enter each DNA sample\'s <b>Qubit</b>. Leave "DNA µL" blank to use the full 13 µL, or type less for a concentrated sample.',
+            readings: [
+              { key: 'qIn', label: 'DNA Qubit', short: 'Input Qubit', unit: 'ng/µL', per: 'sample', type: 'Qubit', section: 'Library prep' },
+              { key: 'dnaVol', label: 'DNA µL used (blank = 13)', short: 'DNA µL', unit: 'µL', per: 'sample', optional: true, chain: false, noExport: true }
+            ],
+            calc: { type: 'input', title: 'FS input', readingKey: 'qIn', volKey: 'dnaVol', maxVol: 13, maxNg: 500,
+              note: 'DNA + water to 13 µL. The input sets the adaptor dilution.' } }
+        ]
+      },
+      {
+        id: 'fs-frag', title: 'Fragmentation / end prep', time: '~45 min',
+        summary: '13 µL DNA + 3.5 µL FS Reaction Buffer + 1 µL FS Enzyme Mix = 17.5 µL. 37 °C {p.fragMin} min, 65 °C 30 min, lid 75 °C.',
+        steps: [
+          { id: 'fs-thaw', text: 'Thaw the <b>FS Enzyme Mix</b> and vortex 5–8 s. Thaw the <b>FS Reaction Buffer</b> and vortex 3–5 s. Put both on ice.' },
+          { id: 'fs-mix', critical: true, tube: { per: 'sample', suffix: 'FS1', what: 'fragmentation/end prep, then adaptor ligation (same tube)', vessel: '0.2 mL PCR tube' },
+            text: 'In a 0.2 mL PCR tube: <b>13 µL DNA</b>, <b>3.5 µL FS Reaction Buffer</b> and <b>1 µL FS Enzyme Mix</b> (yellow caps). <b>Vortex the reaction for 5 s</b> and spin briefly.',
+            calc: { type: 'mix', title: 'Fragmentation / end prep', perTube: [{ name: 'DNA + water', vol: 13 }],
+              reagents: [{ name: 'FS Reaction Buffer', vol: 3.5 }, { name: 'FS Enzyme Mix', vol: 1 }] } },
+          { id: 'fs-inc', critical: true, text: 'Thermal cycler, heated lid <b>75 °C</b>: <b>37 °C for {p.fragMin} min</b> → <b>65 °C 30 min</b> → 4 °C hold.',
+            timers: [{ min: { param: 'fragMin', plus: 30 }, label: 'FS program (37 °C → 65 °C)' }],
+            tip: 'The 37 °C time sets the fragment size: shorter time, larger fragments (5–8 min). Change it in settings for this run.' }
+        ]
+      },
+      {
+        id: 'fs-lig', title: 'Adaptor ligation', time: '~45 min',
+        summary: 'Adaptor first, then ligation master mix + enhancer (34.25 µL). 20 °C 15 min lid off, then USER 37 °C 15 min (lid 50 °C).',
+        steps: [
+          { id: 'fs-lig-thaw', text: 'Thaw the <b>Ligation Master Mix</b> and the <b>Ligation Enhancer</b>, pipette up and down, and put on ice.',
+            tip: 'The Ligation Master Mix is viscous: pipette it carefully.' },
+          { id: 'fs-adaptor', critical: true, text: 'Check whether each library needs a <b>diluted adaptor</b> (to avoid adaptor dimers). Dilute in <b>10 mM Tris-HCl / 10 mM NaCl</b>; vortex 3–5 s and quick-spin before each dilution.',
+            calc: { type: 'adaptor', perSample: 1.25, diluent: 'adapter dilution buffer',
+              bands: [{ above: 99.999, fold: 1, conc: 'no dilution' }, { above: 4.999, fold: 10, conc: '5–99 ng', how: '1 µL adaptor + 10 µL adapter dilution buffer' },
+                { above: 0.999, fold: 25, conc: '1–5 ng', how: '4 µL of the 1:10 + 6 µL adapter dilution buffer' }, { above: -1, fold: 50, conc: 'under 1 ng', how: '5 µL of the 1:25 + 5 µL adapter dilution buffer' }],
+              note: 'SOP table: 100–500 ng no dilution · 5–99 ng 1:10 · 1–5 ng 1:25 · under 1 ng 1:50.' } },
+          { id: 'fs-lig-adaptor', critical: true, text: 'Add <b>1.25 µL adaptor</b> (red cap, diluted if needed) to each 17.5 µL reaction and mix.',
+            warn: 'Adaptor first, then the ligation master mix and enhancer.' },
+          { id: 'fs-lig-mix', text: 'Add <b>15 µL Ligation Master Mix</b> and <b>0.5 µL Ligation Enhancer</b> (34.25 µL). Pipette up and down 10–20 times and spin down.',
+            calc: { type: 'mix', title: 'Ligation', perTube: [{ name: 'FS reaction + adaptor', vol: 18.75 }],
+              reagents: [{ name: 'Ligation Master Mix', vol: 15 }, { name: 'Ligation Enhancer', vol: 0.5 }] } },
+          { id: 'fs-lig-inc', critical: true, text: 'Incubate at <b>20 °C for 15 min with the heated lid OFF</b>.', timers: [{ min: 15, label: 'ligation 20 °C' }] },
+          { id: 'fs-user', text: 'Add <b>1.5 µL USER Enzyme</b>, mix well and spin down. Incubate at <b>37 °C for 15 min</b>, heated lid <b>50 °C</b>.',
+            timers: [{ min: 15, label: 'USER 37 °C' }],
+            calc: { type: 'mix', title: 'USER', noMaster: true, perTube: [{ name: 'USER Enzyme', vol: 1.5 }], totals: [{ name: 'USER Enzyme', vol: 1.5 }] } },
+          { id: 'fs-lig-stop', text: 'Continue, or store the ligated DNA.', stop: 'Store overnight at −20 °C.' }
+        ]
+      },
+      {
+        id: 'fs-c1', title: 'Clean-up {sampleType.ratio}× (pre-PCR)', time: '~30 min',
+        summary: 'SOP SM11: {sampleType.ratio}× beads on the 35.75 µL ligation, elute in 16 µL 0.1X TE.',
+        steps: [].concat(
+          beadCleanup({ id: 'fs-c1s', ratio: 0.9, vol: 35.75, what: 'ligation reaction', tube: '0.2', elute: 16, buffer: '0.1X TE',
+            out: { suffix: 'ALC', what: 'adaptor-ligated DNA, cleaned', keep: true, store: '7.5 µL goes into the PCR; store the rest at −20 °C' } }).map((s) => Object.assign(s, { when: { sampleType: 'standard' } })),
+          beadCleanup({ id: 'fs-c1f', ratio: 1.2, vol: 35.75, what: 'ligation reaction', tube: '0.2', elute: 16, buffer: '0.1X TE',
+            out: { suffix: 'ALC', what: 'adaptor-ligated DNA, cleaned', keep: true, store: '7.5 µL goes into the PCR; store the rest at −20 °C' } }).map((s) => Object.assign(s, { when: { sampleType: 'forensic' } })),
+          [{ id: 'fs-c1-stop', text: 'Continue, or store the cleaned ligated DNA.', stop: 'Store at −20 °C.' }])
+      },
+      {
+        id: 'fs-pcr', title: 'PCR enrichment', time: '~45 min',
+        summary: '7.5 µL DNA + 12.5 µL Q5 Master Mix + 5 µL index primers = 25 µL. Lid 105 °C.',
+        steps: [
+          { id: 'fs-pcr-thaw', text: 'Thaw the <b>Q5 Master Mix</b> (blue cap), pipette up and down slowly, and spin. Thaw and spin down the <b>index plate</b> (NEBNext Multiplex Oligos, 96 Unique Dual Index Primer Pairs, 10 µM combined) before taking from it.' },
+          { id: 'fs-idx-pick', critical: true, exportSection: 'Index PCR', text: 'Give each sample its own <b>index well</b> and note it down.',
+            calc: { type: 'barcodes', title: 'Index map', note: 'The index for every sample is needed for the sample sheet.' } },
+          { id: 'fs-pcr-mix', critical: true, tube: { per: 'sample', suffix: 'PC1', what: 'index PCR ({barcode})', vessel: '0.2 mL PCR tube' },
+            text: 'In a new 0.2 mL PCR tube: <b>7.5 µL adaptor-ligated DNA</b>, <b>12.5 µL Q5 Master Mix</b>, <b>5 µL index primers</b> (25 µL). Pipette the whole volume up and down at least 10 times, then quick vortex and spin.',
+            calc: { type: 'mix', title: 'Index PCR', perTube: [{ name: 'Adaptor-ligated DNA', vol: 7.5 }, { name: 'Index primers (its own well)', vol: 5 }],
+              reagents: [{ name: 'NEBNext Ultra II Q5 Master Mix', vol: 12.5 }] },
+            tip: 'Only 7.5 µL is used: put the rest of the ALC tube back at −20 °C.' },
+          { id: 'fs-pcr-run', critical: true, text: 'Thermal cycler, heated lid <b>105 °C</b>: <b>98 °C 30 s</b> → <b>[98 °C 10 s, 65 °C 1 min 15 s] × 5–18 cycles</b> → <b>65 °C 5 min</b> → 4 °C hold.',
+            reading: { key: 'pcrCycles', label: 'Cycles run', short: 'Cycles', unit: 'cycles', per: 'sample', type: 'General', section: 'Index PCR', chain: false } }
+        ]
+      },
+      {
+        id: 'fs-c2', title: 'PCR clean-up 0.9×', time: '~30 min',
+        summary: 'SOP SM11: 0.9× beads on the 25 µL PCR, elute in 35 µL 0.1X TE.',
+        steps: beadCleanup({ id: 'fs-c2', ratio: 0.9, vol: 25, what: 'PCR reaction', tube: '0.2', elute: 35, buffer: '0.1X TE',
+          out: { suffix: 'LIB', what: 'final library ({barcode})', keep: true } })
+          .concat([{ id: 'fs-c2-stop', text: 'Continue, or store the libraries.', stop: 'Store at −20 °C.' }])
+      },
+      {
+        id: 'fs-qc2', title: 'Library QC', time: '~30 min',
+        summary: 'Qubit (SOP SM09) and TapeStation (SOP SM10).',
+        steps: [
+          { id: 'fs-lib-qc', text: 'Measure each library with <b>Qubit</b> and run a <b>TapeStation</b>.',
+            readings: [
+              { key: 'qLib', label: 'Library Qubit', short: 'Library Qubit', unit: 'ng/µL', per: 'sample', type: 'Qubit', section: 'QC' },
+              { key: 'tsLib', label: 'Library TapeStation peak size', short: 'Library size', unit: 'bp', per: 'sample', type: 'TapeStation', section: 'QC', chain: false }
+            ],
+            calc: { type: 'yield', readingKey: 'qLib', eluate: 35, note: 'Total library = Qubit × 35 µL.' } }
+        ]
+      }
+    ]
+  }
+  ,
+  {
+    id: 'sm13-nextseq',
+    name: 'Loading Illumina Flowcell',
+    short: 'SM13 NextSeq load',
+    kit: 'NextSeq 1000 · P1 / P2 cartridge',
+    vendor: 'Illumina · SOP FSD 75-GN-SM13',
+    source: 'From the lab SOP FSD 75 - GN - SM13 (30-12-2025) and the Illumina NextSeq 1000/2000 reference material. Enter the libraries in the pool as samples; readings are for the pool.',
+    choices: [
+      { key: 'app', label: 'Application', question: 'WGS or WES?', default: 'wgs',
+        options: [
+          { value: 'wgs', label: 'WGS', short: '600–700 pM', detail: 'Whole genome sequencing: load at 600–700 pM (set the exact value below).', pm: 'WGS loading concentration' },
+          { value: 'wes', label: 'WES', short: '1000 pM', detail: 'Whole exome sequencing: load at 1000 pM.', pm: '1000 pM (WES)' }
+        ] },
+      { key: 'fc', label: 'Flow cell', question: 'Which flow cell?', default: 'p2-300',
+        options: [
+          { value: 'p1-100', label: 'P1 · 100 cycles', short: '', detail: '' },
+          { value: 'p1-300', label: 'P1 · 300 cycles', short: '', detail: '' },
+          { value: 'p2-100', label: 'P2 · 100 cycles', short: '', detail: '' },
+          { value: 'p2-300', label: 'P2 · 300 cycles', short: '', detail: '' }
+        ] }
+    ],
+    params: [
+      { key: 'wgsPM', label: 'WGS loading concentration', unit: 'pM', value: 650, ask: true, hint: 'SOP: 600–700 pM (WES is always 1000 pM)' },
+      { key: 'phixPct', label: 'PhiX', unit: '%', value: 2, ask: true, hint: 'low-diversity libraries 5–10%, high-diversity 1–2%' },
+      { key: 'phixStock', label: 'PhiX stock', unit: 'nM', value: 10, hint: 'check the PhiX tube' }
+    ],
+    stages: [
+      {
+        id: 'nx-thaw', title: 'Day before: thaw the cartridge', time: '6 h',
+        summary: 'Thaw at room temperature for 6 h, then into the post-PCR fridge. Load the next day.',
+        steps: [
+          { id: 'nx-lot', critical: true, text: 'Take the <b>{fc.label}</b> flow cell and its cartridge. Check that the cartridge and flow cell have the <b>same LOT number</b>.' },
+          { id: 'nx-thaw-ct', critical: true, text: 'Take the cartridge out of the freezer and thaw it at <b>room temperature for 6 hours</b>.', timers: [{ min: 360, label: 'cartridge thaw' }],
+            warn: 'Once a cartridge has been thawed and refrigerated it must be used: it cannot go back in the freezer.' },
+          { id: 'nx-fridge', text: 'After 6 hours, put the cartridge in the <b>post-PCR fridge</b>. It is best used the next day.', stop: 'Continue tomorrow. Flow cells are kept in the post-PCR room fridge.' }
+        ]
+      },
+      {
+        id: 'nx-mol', title: 'Pool molarity', time: '~20 min',
+        summary: 'Qubit of the pooled (or single) library, then nM from the average library size.',
+        steps: [
+          { id: 'nx-qubit', text: 'Measure the pooled (or single-plex) library with <b>Qubit</b>, and enter its <b>average library size</b> (TapeStation).',
+            readings: [
+              { key: 'qPool', label: 'Pool Qubit', short: 'Pool Qubit', unit: 'ng/µL', per: 'pool', type: 'Qubit', section: 'Quantification' },
+              { key: 'tsPool', label: 'Average library size', short: 'Library size', unit: 'bp', per: 'pool', type: 'TapeStation', section: 'Quantification', chain: false }
+            ],
+            calc: { type: 'molarity', readingKey: 'qPool', lengthKey: 'tsPool' } }
+        ]
+      },
+      {
+        id: 'nx-2nm', title: 'Dilute to 2 nM', time: '~30 min',
+        summary: 'Serial dilutions in RSB with Tween 20, 20 µL each, Qubit after every dilution, until 2 nM ± 0.1.',
+        steps: [
+          { id: 'nx-serial', critical: true, tube: { per: 'pool', suffix: '2NM', what: 'pool at 2 nM (RSB + Tween 20)', vessel: '1.5 mL tube' },
+            text: 'Dilute with <b>RSB with Tween 20</b> (C₁V₁ = C₂V₂, <b>20 µL</b> final each time). After each dilution, <b>Qubit it and enter the reading</b> here; repeat until <b>2 nM ± 0.1</b>.',
+            reading: { key: 'qDil', label: 'Qubit of your latest dilution', short: 'Diluted Qubit', unit: 'ng/µL', per: 'pool', type: 'Qubit', section: 'Quantification', chain: false, optional: true },
+            calc: { type: 'serial', readingKey: 'qPool', dilKey: 'qDil', lengthKey: 'tsPool', target: 2, tol: 0.1, finalVol: 20, maxFold: 2.5, diluent: 'RSB with Tween 20' },
+            tip: 'The steps depend on where you start (e.g. 68 → 34 → 14 → 7 → 2 nM). Smaller steps give more control. Label each tube with its nM.' }
+        ]
+      },
+      {
+        id: 'nx-load-mix', title: 'Loading dilution & PhiX', time: '~15 min',
+        summary: '2 nM → {app.short}; PhiX the same way. 20 µL loaded in total, {p.phixPct}% of it PhiX.',
+        steps: [
+          { id: 'nx-lib-pm', critical: true, tube: { per: 'pool', suffix: 'LDP', what: 'pool at the loading concentration', vessel: '1.5 mL tube' },
+            text: 'Dilute the 2 nM pool to the loading concentration (<b>{app.pm}</b>) with RSB with Tween 20.',
+            calc: { type: 'loadmix', from: 2, targetPM: { by: 'app', wgs: { param: 'wgsPM' }, wes: 1000 }, finalVol: 20, phixParam: 'phixPct', phixStockParam: 'phixStock', diluent: 'RSB with Tween 20' } },
+          { id: 'nx-phix', text: 'Dilute the <b>PhiX</b> stock to 2 nM, then to the same loading concentration, with the same steps.',
+            tip: 'Low-diversity libraries: 5–10% PhiX. High-diversity: 1–2%. Change it in settings.' },
+          { id: 'nx-mix', critical: true, tube: { per: 'pool', suffix: 'LOAD', what: 'library + PhiX, ready to load (20 µL)', vessel: '1.5 mL tube' },
+            text: 'In a new tube, mix the library and PhiX (both at loading concentration) for <b>20 µL</b> in total, as shown above.' }
+        ]
+      },
+      {
+        id: 'nx-cart', title: 'Load the cartridge', time: '~10 min',
+        summary: 'Mix the cartridge, insert the flow cell, then 20 µL into the foil-sealed well.',
+        steps: [
+          { id: 'nx-unpack', text: 'Take the cartridge out of its packaging. <b>Gently invert and swirl clockwise</b> to mix the reagents, then put it on a flat surface.' },
+          { id: 'nx-fc', text: 'Insert the <b>flow cell</b> into the cartridge, and take off the flow cell cover before loading.' },
+          { id: 'nx-pierce', text: 'Find the <b>foil-sealed opening at the bottom left</b>. Pierce the foil with a clean pipette tip, making the hole big enough for your pipette.' },
+          { id: 'nx-load', critical: true, text: 'P20 or P100 set to <b>20 µL</b>: draw up the sample, put the tip into the hole, touch the bottom, lift slightly and dispense to the <b>first stop</b>. Lift a little higher and press to the <b>second stop</b>, then take the pipette out carefully.' }
+        ]
+      },
+      {
+        id: 'nx-run', title: 'Start the run', time: '~5 min',
+        summary: 'NextSeq 1000.',
+        steps: [
+          { id: 'nx-old', text: 'If a used flow cell and cartridge are still in the instrument, take them out and put them in the <b>recycling box</b> in the cabinet.' },
+          { id: 'nx-insert', text: 'Insert the new flow cell and cartridge following the instructions on the screen.' },
+          { id: 'nx-start', critical: true, text: 'Press <b>"Start Run"</b> and check that sequencing has started.' }
+        ]
+      }
+    ]
+  }
+  ,
+  {
+    id: 'sm16-minelute',
+    name: 'MinElute Purification',
+    short: 'SM16 MinElute',
+    kit: 'QIAGEN MinElute columns · Buffers PB / PE',
+    vendor: 'QIAGEN · SOP FSD 75-GN-SM16',
+    source: 'From the lab SOP FSD 75 - GN - SM16 (30-12-2025) and the QIAGEN MinElute handbook. Use it for the bone lysate from SM02 too.',
+    params: [
+      { key: 'vol', label: 'Sample (lysate) volume', unit: 'µL', value: 50, ask: true, hint: 'Buffer PB is 5× this; e.g. 1000 µL for a bone lysate' },
+      { key: 'elute', label: 'Elution volume (0.1X TE)', unit: 'µL', value: 20, ask: true, hint: 'SOP: 10–50 µL' },
+      { key: 'overage', label: 'Extra buffer', unit: '%', value: 10 }
+    ],
+    stages: [
+      {
+        id: 'me-prep', title: 'Before you start', time: '~20 min',
+        summary: 'Work in a biological safety cabinet. UV the reagents and tubes first.',
+        steps: [
+          { id: 'me-bsc', text: 'Work in a <b>biological safety cabinet</b>. <b>UV the reagents and tubes</b> beforehand.' },
+          { id: 'me-pe', critical: true, text: 'Check that <b>ethanol has been added to Buffer PE</b> (done the first time the bottle is used; see the bottle label).' },
+          { id: 'me-reag', text: 'Get the buffers ready: <b>750 µL Buffer PE</b> per column, <b>Buffer PB at 5× the sample volume</b> ({p.vol*5} µL per sample), and <b>0.1X TE</b> for the elution.',
+            calc: { type: 'mix', title: 'Buffers per sample', noMaster: true, noTotal: true,
+              perTube: [{ name: 'Sample', vol: { param: 'vol' } }, { name: 'Buffer PB (5×)', vol: { param: 'vol', factor: 5 } }, { name: 'Buffer PE (wash)', vol: 750 }, { name: '0.1X TE (elution)', vol: { param: 'elute' } }],
+              totals: [{ name: 'Buffer PB', vol: { param: 'vol', factor: 5 } }, { name: 'Buffer PE', vol: 750 }, { name: '0.1X TE', vol: { param: 'elute' } }] } }
+        ]
+      },
+      {
+        id: 'me-bind', title: 'Bind', time: '~10 min',
+        summary: 'Sample + Buffer PB (1:5), up to 750 µL at a time through the column.',
+        steps: [
+          { id: 'me-pulse', text: 'Pulse-centrifuge the samples.' },
+          { id: 'me-pb', critical: true, tube: { per: 'sample', suffix: 'PB1', what: 'sample in Buffer PB (binding mix)', vessel: '1.5 mL tube (15 mL tube for large volumes)' },
+            text: 'Add the sample to <b>Buffer PB at 1:5</b>: <b>{p.vol} µL sample + {p.vol*5} µL PB</b>. Mix by inverting the tube <b>10 times</b>.',
+            calc: { type: 'loads', vol: { param: 'vol' }, factor: 6, per: 750, reagent: 'Buffer PB' } },
+          { id: 'me-load', critical: true, text: 'Add <b>up to 750 µL</b> of the mix to the MinElute column. Centrifuge <b>1 min at maximum speed</b> and discard the flow-through. Repeat until all of the mix has gone through.' }
+        ]
+      },
+      {
+        id: 'me-wash', title: 'Wash & dry', time: '~5 min',
+        summary: '750 µL Buffer PE, then a dry spin.',
+        steps: [
+          { id: 'me-pe-wash', text: 'Add <b>750 µL Buffer PE</b> to the column. Centrifuge <b>1 min at maximum speed</b> and discard the flow-through.' },
+          { id: 'me-dry', critical: true, text: '<b>Dry spin</b>: centrifuge the empty column <b>1 min at maximum speed</b>, and discard the flow-through.',
+            tip: 'The dry spin removes the last of the ethanol in Buffer PE, which would otherwise carry into the eluate.' }
+        ]
+      },
+      {
+        id: 'me-elute', title: 'Elute', time: '~5 min',
+        summary: '{p.elute} µL of 0.1X TE on the centre of the column, 1 min, then spin.',
+        steps: [
+          { id: 'me-tube', tube: { per: 'sample', suffix: 'ME', what: 'MinElute eluate (0.1X TE)', vessel: 'sterile 1.5 mL Eppendorf tube', keep: true },
+            text: 'Put the MinElute column in a <b>new sterile 1.5 mL Eppendorf tube</b>.' },
+          { id: 'me-te', critical: true, text: 'Add <b>{p.elute} µL of 0.1X TE</b> to the <b>centre of the column</b>. Incubate at room temperature.', timers: [{ min: 1, label: 'elution' }] },
+          { id: 'me-spin', text: 'Centrifuge <b>1 min at maximum speed</b>.', tip: 'If there is clearly less eluate than expected, centrifuge again.' },
+          { id: 'me-qc', text: 'Discard the column and measure the extract with <b>Qubit</b>.',
+            reading: { key: 'qME', label: 'Extract Qubit', short: 'Qubit', unit: 'ng/µL', per: 'sample', type: 'Qubit', section: 'Extraction' },
+            calc: { type: 'yield', readingKey: 'qME', eluate: { param: 'elute' }, note: 'Total DNA = Qubit × the elution volume.' } }
+        ]
+      }
+    ]
+  }
+  ,
+  {
+    id: 'sm18-exome-enrich',
+    name: 'Illumina Exome Enrichment',
+    short: 'SM18 Exome enrich',
+    kit: 'Illumina DNA Prep with Exome 2.5 Enrichment',
+    vendor: 'Illumina / Twist · SOP FSD 75-GN-SM18',
+    source: 'From the lab SOP FSD 75 - GN - SM18 (30-12-2025). Continues from SM05 (pre-enriched libraries). One pool per run: enter the pre-enriched libraries as samples (up to 12). Post-PCR room throughout.',
+    maxSamples: 12,
+    choices: [
+      { key: 'pooling', label: 'Pooling', question: 'Pool by mass or by volume?', default: 'mass',
+        options: [
+          { value: 'mass', label: 'By mass', short: 'equal ng each', detail: 'Needed for 10–49 ng gDNA inputs; can be used for 50–1000 ng. Volume each = target mass ÷ concentration.' },
+          { value: 'volume', label: 'By volume', short: 'equal µL each', detail: 'For saliva and blood, or 50–1000 ng gDNA with libraries in a similar range: 2.5 µL each (14 µL for a single library).' }
+        ] },
+      { key: 'mito', label: 'Mito panel', question: 'Add the Twist Mitochondrial Panel?', default: 'yes',
+        options: [
+          { value: 'yes', label: 'Yes', short: '2 µL Mito panel', detail: 'Exome 2.5 Plus panel 4 µL + Mitochondrial panel 2 µL + NFW 4 µL.', nfw: '4', thaw: ' and the Twist Mitochondrial Panel', add: '<b>2 µL Twist Mitochondrial Panel</b>', sum: 'Mito panel 2' },
+          { value: 'no', label: 'No', short: 'exome only', detail: 'Exome 2.5 Plus panel 4 µL; the 2 µL of Mito panel is replaced with NFW (6 µL NFW) to keep 100 µL.', nfw: '6', thaw: '', add: 'no Mitochondrial Panel', sum: 'no Mito panel' }
+        ] },
+      { key: 'conc', label: 'Concentrate', question: 'Will the pooled volume be over 30 µL?', default: 'no',
+        options: [
+          { value: 'no', label: 'No: 30 µL or less', short: 'no concentrating', detail: 'The pool is made up to 30 µL with RSB.' },
+          { value: 'yes', label: 'Yes: over 30 µL', short: 'concentrate with IPB', detail: 'Concentrate the pool with IPB (2.5× its volume) and elute in 32 µL RSB. The pooling calculator tells you if you need this.' }
+        ] }
+    ],
+    params: [
+      { key: 'poolNg', label: 'Target mass per library (pool by mass)', unit: 'ng', value: 300, ask: true, hint: 'recommended 250–500 ng; pick one that suits your libraries (250, 300, 350 …)' },
+      { key: 'overage', label: 'Extra in master mixes', unit: '%', value: 0, hint: 'the SOP elution mix (28.5 + 1.5 µL per pool, 23 µL used) already has extra' }
+    ],
+    stages: [
+      {
+        id: 'en-prep', title: 'Before you start', time: '~2 h',
+        summary: 'Post-PCR room. Some reagents need 2 h, so start them first.',
+        steps: [
+          { id: 'en-2h', critical: true, text: '<b>2 hours before capture</b>: bring <b>SMB3</b> to room temperature (vortex before use), and thaw <b>EEW</b> (vortex 30 s, 3×).', timers: [{ min: 120, label: 'SMB3 + EEW (2 h)' }] },
+          { id: 'en-thaw', text: 'Thaw and vortex the <b>Twist Exome 2.5 Plus Panel</b>{mito.thaw}; bring <b>EHB2</b> to room temperature and vortex; thaw <b>EE1</b>, <b>HP3</b> (vortex, spin), <b>ET2</b> to room temperature (vortex, spin), <b>PPC</b> and <b>EPM</b> (invert, spin, on ice). Bring <b>IPB</b> and <b>RSB</b> to room temperature for 30 min and vortex.' },
+          { id: 'en-nhb2', text: 'Thaw <b>NHB2</b>, heat it to <b>50 °C for 5 min</b>, then vortex on high for 10 s three times and spin.', timers: [{ min: 5, label: 'NHB2 at 50 °C' }] }
+        ]
+      },
+      {
+        id: 'en-pool', title: 'Pool pre-enriched libraries', time: '~20 min',
+        summary: 'Up to 12 libraries, made up to 30 µL. Pool libraries with similar masses together.',
+        steps: [
+          { id: 'en-pool-mass', when: { pooling: 'mass' }, critical: true, tube: { per: 'pool', suffix: 'PL1', what: 'pool of pre-enriched libraries (30 µL), then the hybridisation', vessel: 'PCR tube' },
+            text: 'Enter each library\'s <b>Qubit</b>. Add <b>target mass ÷ concentration</b> µL of each to the pool, and make up to <b>30 µL with RSB</b>.',
+            reading: { key: 'qLib', label: 'Pre-enriched library Qubit', short: 'Library Qubit', unit: 'ng/µL', per: 'sample', type: 'Qubit', section: 'Pooling' },
+            calc: { type: 'poolmix', mode: 'mass', readingKey: 'qLib', massParam: 'poolNg', finalVol: 30, maxVol: 15, concFactor: 2.5, diluent: 'RSB',
+              note: 'Recommended 250–500 ng per library. Over 30 µL in total: concentrate the pool first.' } },
+          { id: 'en-pool-vol', when: { pooling: 'volume' }, critical: true, tube: { per: 'pool', suffix: 'PL1', what: 'pool of pre-enriched libraries (30 µL), then the hybridisation', vessel: 'PCR tube' },
+            text: 'Add the same volume of each library and make up to <b>30 µL with RSB</b>: 2.5 µL each (a single library: 14 µL + 16 µL RSB).',
+            reading: { key: 'qLib', label: 'Pre-enriched library Qubit (if measured)', short: 'Library Qubit', unit: 'ng/µL', per: 'sample', type: 'Qubit', section: 'Pooling', optional: true },
+            calc: { type: 'poolmix', mode: 'volume', each: 2.5, single: 14, finalVol: 30, concFactor: 2.5, diluent: 'RSB' } }
+        ]
+      },
+      {
+        id: 'en-conc', title: 'Concentrate the pool (over 30 µL only)', time: '~25 min',
+        summary: 'IPB at 2.5× the pool volume, two ethanol washes, elute in 32 µL RSB.',
+        steps: [
+          { id: 'en-c-ipb', when: { conc: 'yes' }, critical: true, tube: { per: 'pool', suffix: 'PLC', what: 'pool, concentrated (32 µL RSB)', vessel: 'Eppendorf tube' },
+            text: 'Centrifuge the pool at 280 × g for 1 min and move it to a new Eppendorf tube. Vortex the IPB and add <b>2.5 × the pool volume</b> (see the pooling step). Vortex on high 10 s, 3×.' },
+          { id: 'en-c-etoh', when: { conc: 'yes' }, text: 'Make fresh <b>80% ethanol</b>.', calc: { type: 'wash', per: 'pool', perWash: 200, washes: 2, ethanol: 0.8 } },
+          { id: 'en-c-bind', when: { conc: 'yes' }, text: 'Incubate 5 min at room temperature, spin at 280 × g for 10 s, then on the magnet until clear (~5 min). <b>Remove and discard the supernatant.</b>', timers: [{ min: 5, label: 'IPB binding' }] },
+          { id: 'en-c-wash', when: { conc: 'yes' }, text: 'On the magnet: <b>200 µL fresh 80% ethanol</b> away from the beads, 30 s, remove. <b>Twice.</b>', timers: [{ min: 0.5, label: 'wash 1' }, { min: 0.5, label: 'wash 2' }] },
+          { id: 'en-c-dry', when: { conc: 'yes' }, text: 'Remove the last ethanol and air-dry for <b>5 min</b>.', timers: [{ min: 5, label: 'drying' }] },
+          { id: 'en-c-elute', when: { conc: 'yes' }, text: 'Off the magnet: <b>32 µL RSB</b>, vortex on high 10 s, 3×, 5 min at room temperature, spin 280 × g 10 s, magnet until clear (~5 min). Transfer <b>32 µL</b> to a new tube.', timers: [{ min: 5, label: 'elution' }],
+            stop: 'You can store the pool at −25 °C to −15 °C (up to 30 days).' },
+          { id: 'en-c-skip', when: { conc: 'no' }, text: 'No concentrating needed: the pool is 30 µL. (If the pooling step says it is over 30 µL, change this in settings.)' }
+        ]
+      },
+      {
+        id: 'en-hyb', title: 'Hybridise probes', time: '1.5–16 h',
+        summary: '100 µL: pool 30 + Exome panel 4 + {mito.sum} + NFW {mito.nfw} + NHB2 50 + EHB2 10. IEE-HYB program, lid 100 °C.',
+        steps: [
+          { id: 'en-hyb-mix', critical: true, text: 'Add to the 30 µL pool <b>in this order</b>: <b>4 µL Twist Exome 2.5 Plus Panel</b>, {mito.add}, <b>{mito.nfw} µL NFW</b>, <b>50 µL NHB2</b>, <b>10 µL EHB2</b>. Pipette mix 10× and spin at 280 × g for 30 s.',
+            calc: { type: 'mix', title: 'Hybridisation mix', per: 'pool', noMaster: true,
+              perTube: [{ name: 'Library pool', vol: 30 }, { name: 'Twist Exome 2.5 Plus Panel', vol: 4 }, { name: 'Twist Mitochondrial Panel', vol: { by: 'mito', yes: 2, no: 0 } }, { name: 'NFW', vol: { by: 'mito', yes: 4, no: 6 } }, { name: 'NHB2', vol: 50 }, { name: 'EHB2', vol: 10 }] },
+            tip: 'The Mitochondrial panel is used diluted (optional).' },
+          { id: 'en-hyb-run', critical: true, text: 'Run <b>IEE-HYB</b>, lid 100 °C: <b>98 °C 5 min</b> → <b>18 × 1 min</b> from 97 °C down 2 °C each cycle to 63 °C → <b>hold 62 °C for 1.5–16 h</b>.',
+            timers: [{ min: 113, label: 'HYB to the end of the minimum hold' }],
+            tip: 'Up to 16 h at 62 °C is fine (overnight). Get everything for capture ready before taking the sample out: capture starts straight away.' }
+        ]
+      },
+      {
+        id: 'en-cap', title: 'Capture hybridised probes', time: '~1.5 h',
+        summary: 'Thermomixer at 62 °C, 700 rpm, lid always closed. SMB3 binding, three hot EEW washes, a transfer wash, then elute.',
+        steps: [
+          { id: 'en-cap-tm', critical: true, text: 'Before taking the sample out: preheat the <b>thermomixer to 62 °C, 700 rpm</b> (keep the lid closed). Preheat the <b>EEW</b> at 62 °C for 10 min, then put <b>1000 µL</b> per pool in an aliquot tube and keep it in the thermomixer.',
+            timers: [{ min: 10, label: 'EEW preheat' }] },
+          { id: 'en-cap-move', tube: { per: 'pool', suffix: 'CP1', what: 'capture: hybridised pool + SMB3', vessel: 'Eppendorf tube' },
+            text: 'Take the sample out, spin at 280 × g for 30 s, and transfer <b>all 100 µL</b> to a new labelled tube.' },
+          { id: 'en-cap-smb3', critical: true, text: 'Add <b>250 µL SMB3</b>. Vortex on high 10 s, 3×. Incubate in the thermomixer <b>15 min at 62 °C, 700 rpm</b>.', timers: [{ min: 15, label: 'SMB3 at 62 °C' }] },
+          { id: 'en-cap-pellet', text: '<b>Immediately</b> spin at 280 × g for 30 s and put on the magnet until clear (~5 min). Remove and discard the supernatant (350 µL).' },
+          { id: 'en-eew1', critical: true, text: 'Wash 1: off the magnet, add <b>200 µL hot EEW</b>, vortex on high 10 s, 3× (put the EEW back in the thermomixer). Incubate <b>5 min at 62 °C, 700 rpm</b>, spin 3 s, magnet until clear (~15 min), discard 200 µL.',
+            timers: [{ min: 5, label: 'EEW wash 1 at 62 °C' }] },
+          { id: 'en-eew2', text: 'Wash 2: the same, <b>200 µL hot EEW</b>, 5 min at 62 °C, magnet, discard.', timers: [{ min: 5, label: 'EEW wash 2 at 62 °C' }] },
+          { id: 'en-eew3', text: 'Wash 3: the same, <b>200 µL hot EEW</b>, 5 min at 62 °C, magnet, discard.', timers: [{ min: 5, label: 'EEW wash 3 at 62 °C' }] },
+          { id: 'en-eew-xfer', critical: true, tube: { per: 'pool', suffix: 'CP2', what: 'capture beads after the transfer wash', vessel: 'Eppendorf tube' },
+            text: 'Transfer wash: off the magnet, <b>200 µL hot EEW</b>, vortex 10 s 3×, and transfer the <b>200 µL bead solution (your sample)</b> to a new labelled tube. 5 min at 62 °C, spin 3 s, magnet (5 min), discard 200 µL. Spin 280 × g 30 s, magnet 10 s, remove the last liquid.',
+            timers: [{ min: 5, label: 'transfer wash at 62 °C' }] },
+          { id: 'en-el-mm', text: 'Make the <b>elution mix</b>: EE1 + HP3. Vortex and spin at 280 × g for 10 s.',
+            calc: { type: 'mix', title: 'Elution mix', per: 'pool', addVol: 23, perTube: [], reagents: [{ name: 'EE1', vol: 28.5 }, { name: 'HP3', vol: 1.5 }] } },
+          { id: 'en-el', text: 'Off the magnet, add <b>23 µL elution mix</b>. Vortex on high 10 s, 3×. 2 min at room temperature, spin 280 × g 30 s, magnet until clear (~2 min).', timers: [{ min: 2, label: 'elution' }] },
+          { id: 'en-el-xfer', critical: true, tube: { per: 'pool', suffix: 'EL1', what: 'captured library + ET2, then the AMP PCR', vessel: 'PCR tube' },
+            text: 'Transfer <b>21 µL</b> of supernatant to a new labelled tube, add <b>4 µL ET2</b>, pipette mix 10× and spin at 280 × g for 30 s.' }
+        ]
+      },
+      {
+        id: 'en-amp', title: 'Amplify the enriched pool', time: '~30 min',
+        summary: '25 µL + 5 µL PPC + 20 µL EPM = 50 µL. AMP program, 12 cycles, lid 100 °C.',
+        steps: [
+          { id: 'en-amp-mix', critical: true, text: 'Add <b>5 µL PPC</b> and <b>20 µL EPM</b>. Pipette mix 10× and spin at 280 × g for 30 s.',
+            calc: { type: 'mix', title: 'AMP PCR mix', per: 'pool', noMaster: true, perTube: [{ name: 'Captured library + ET2', vol: 25 }, { name: 'PPC', vol: 5 }, { name: 'EPM', vol: 20 }] } },
+          { id: 'en-amp-run', critical: true, text: 'Run <b>AMP</b>, lid 100 °C: <b>98 °C 45 s</b> → <b>12 × [98 °C 30 s, 60 °C 30 s, 72 °C 30 s]</b> → <b>72 °C 5 min</b> → 10 °C hold.',
+            stop: 'You can store it at 2–8 °C for up to 24 h.' }
+        ]
+      },
+      {
+        id: 'en-clean', title: 'Clean up the enriched pool', time: '~30 min',
+        summary: '45 µL + 40.5 µL IPB, two ethanol washes, elute in 34 µL RSB.',
+        steps: [
+          { id: 'en-cl-etoh', text: 'Make fresh <b>80% ethanol</b>.', calc: { type: 'wash', per: 'pool', perWash: 200, washes: 2, ethanol: 0.8 } },
+          { id: 'en-cl-move', tube: { per: 'pool', suffix: 'AM1', what: 'amplified pool for the clean-up', vessel: 'Eppendorf tube' },
+            text: 'Spin at 280 × g for 30 s, then transfer <b>45 µL</b> to a new tube.' },
+          { id: 'en-cl-ipb', critical: true, text: 'Vortex the IPB and add <b>40.5 µL</b>. Vortex on high 10 s, 2×. 5 min at room temperature, spin 280 × g 1 min, magnet until clear (~5 min). Remove and discard the supernatant.',
+            timers: [{ min: 5, label: 'IPB binding' }] },
+          { id: 'en-cl-wash', text: 'On the magnet: <b>200 µL 80% ethanol</b> away from the beads, 30 s, remove. <b>Twice.</b>', timers: [{ min: 0.5, label: 'wash 1' }, { min: 0.5, label: 'wash 2' }] },
+          { id: 'en-cl-dry', text: 'Remove the last ethanol and air-dry on the magnet for <b>5 min</b>.', timers: [{ min: 5, label: 'drying' }] },
+          { id: 'en-cl-elute', text: 'Off the magnet: <b>34 µL RSB</b> onto the beads, vortex on high 10 s 2×, 5 min at room temperature, spin 280 × g 30 s, magnet until clear (~2 min).', timers: [{ min: 5, label: 'elution' }] },
+          { id: 'en-cl-xfer', tube: { per: 'pool', suffix: 'ENR', what: 'exome-enriched library pool', vessel: 'Eppendorf tube', keep: true },
+            text: 'Transfer <b>34 µL</b> to a new tube.', stop: 'Store at −25 °C to −15 °C (up to 30 days).' }
+        ]
+      },
+      {
+        id: 'en-qc', title: 'Check the enriched pool', time: '~30 min',
+        summary: 'Qubit (SOP SM09) and TapeStation (SOP SM10) for size and adaptor dimers. Then load with SOP SM13.',
+        steps: [
+          { id: 'en-qc-read', text: 'Measure the enriched pool with <b>Qubit</b>, and run a <b>TapeStation</b> for the fragment size and adaptor dimers.',
+            readings: [
+              { key: 'qEnr', label: 'Enriched pool Qubit', short: 'Enriched Qubit', unit: 'ng/µL', per: 'pool', type: 'Qubit', section: 'QC' },
+              { key: 'tsEnr', label: 'Enriched pool size (TapeStation)', short: 'Enriched size', unit: 'bp', per: 'pool', type: 'TapeStation', section: 'QC', chain: false }
+            ] },
+          { id: 'en-next', text: 'Go on to loading with the <b>Loading Illumina Flowcell</b> SOP (SM13).' }
+        ]
+      }
+    ]
+  }
+  ,
+  {
+    id: 'sm19-vacuum',
+    name: 'Vacuum Concentration',
+    short: 'SM19 Vacuum conc',
+    kit: 'Eppendorf Concentrator plus',
+    vendor: 'Eppendorf · SOP FSD 75-GN-SM19',
+    source: 'From the lab SOP FSD 75 - GN - SM19 (06-04-2026) and the Eppendorf Concentrator plus operating manual. The sample dries in its own tube (200 µL PCR tube or 1.5/2 mL tube).',
+    params: [],
+    stages: [
+      {
+        id: 'vc-load', title: 'Load', time: '~5 min',
+        summary: 'Tubes in the rotor with the lids open, rotor balanced.',
+        steps: [
+          { id: 'vc-place', text: 'Put each sample tube in the <b>vacuum concentrator rotor with the lid open</b>.' },
+          { id: 'vc-balance', critical: true, text: 'Make sure the <b>rotor is balanced</b> before you start.',
+            tip: 'Place tubes opposite each other. With an odd number of tubes, add a balance tube with a similar volume of water.' }
+        ]
+      },
+      {
+        id: 'vc-run', title: 'Run', time: 'depends on the volume',
+        summary: 'V-AQ mode, brake off, 30 °C, until all the liquid has evaporated.',
+        steps: [
+          { id: 'vc-settings', critical: true, text: 'Set the concentrator: <b>Mode V-AQ</b> (volume aqueous), <b>Brake OFF</b>, <b>30 °C</b>.' },
+          { id: 'vc-start', text: 'Start the run and let it go until <b>all the liquid has evaporated</b>. The time depends on the starting volume.' },
+          { id: 'vc-check', critical: true, text: 'When it stops, take the tubes out carefully and <b>check for any liquid left</b>. If there is, run another <b>15 min</b> (or longer, until fully dry).',
+            timers: [{ min: 15, label: 'extra drying' }] },
+          { id: 'vc-done', text: 'Go straight on with the next protocol step, or store the dried samples.', stop: 'Store the dried samples at −20 °C for up to 24 hours.' }
+        ]
+      }
+    ]
+  }
+  ,
+  {
+    id: 'sm25-preidx-qpcr',
+    name: 'Pre-Indexing Illumina Library Quantification',
+    short: 'SM25 Pre-index qPCR',
+    kit: 'Maxima SYBR Green/ROX qPCR Master Mix (2X) · IS7 / IS8',
+    vendor: 'Thermo Scientific · QuantStudio · SOP FSD 75-GN-SM25',
+    source: 'From the lab SOP FSD 75 - GN - SM25 (06-04-2026) and the Maxima SYBR Green/ROX qPCR Master Mix protocol.',
+    maxSamples: 31,
+    params: [
+      { key: 'overage', label: 'Extra master mix', unit: '%', value: 0, hint: 'the SOP already makes 4 reactions per sample for a triplicate (1 spare)' }
+    ],
+    stages: [
+      {
+        id: 'pq-prep', title: 'Before you start', time: '~15 min',
+        summary: 'Make the master mix in a clean pre-PCR area. Gloves, lab coat and face mask.',
+        steps: [
+          { id: 'pq-area', text: 'Work in a <b>clean pre-PCR area</b> for the master mix, with an ice block.' },
+          { id: 'pq-thaw', text: 'Thaw on ice: <b>Maxima SYBR Green/ROX Master Mix (2X)</b>, <b>IS7 primer (10 µM)</b>, <b>IS8 primer (10 µM)</b>, nuclease-free water and the samples.',
+            warn: 'Keep the SYBR Green/ROX Master Mix out of the light as much as you can: light lowers the SYBR signal.' }
+        ]
+      },
+      {
+        id: 'pq-mm', title: 'Master mix', time: '~10 min',
+        summary: '24 µL per reaction. Each sample in triplicate: 4 reactions of master mix per sample (1 spare), plus 1 for the NTC.',
+        steps: [
+          { id: 'pq-mix-reag', text: 'Vortex the <b>IS7</b> and <b>IS8</b> primers, then quick-spin. Gently pipette-mix the Master Mix (2X), then quick-spin.',
+            warn: 'Do not vortex the Master Mix.' },
+          { id: 'pq-mm-make', critical: true, text: 'Label a 1.5 mL Eppendorf tube <b>Master Mix</b>. Add in this order: <b>Maxima SYBR Green/ROX Master Mix</b>, <b>nuclease-free water</b>, <b>IS7 primer</b>, <b>IS8 primer</b>.',
+            calc: { type: 'mix', title: 'qPCR master mix', perSampleRxn: 4, extraRxn: 1, extraLabel: 'NTC', perTube: [{ name: 'Sample', vol: 1 }],
+              reagents: [{ name: 'Maxima SYBR Green/ROX Master Mix (2X)', vol: 12.5 }, { name: 'Nuclease-free water', vol: 9 }, { name: 'IS7 primer (10 µM)', vol: 1.25 }, { name: 'IS8 primer (10 µM)', vol: 1.25 }] } },
+          { id: 'pq-mm-mix', text: 'Mix gently by pipetting at least 10 times, then spin.' }
+        ]
+      },
+      {
+        id: 'pq-plate', title: 'Load the qPCR plate', time: '~15 min',
+        summary: '24 µL master mix + 1 µL sample per well, each sample in triplicate. NTC: 24 µL + 1 µL water.',
+        steps: [
+          { id: 'pq-layout', text: 'Plan the plate: <b>each sample in triplicate</b> and an <b>NTC</b>.',
+            calc: { type: 'plate', reps: 3, standards: [], ntc: 1, dilutions: [''], title: 'Plate layout',
+              note: 'Use the same layout in the QuantStudio software: mark the NTC well and the sample (unknown) wells.' } },
+          { id: 'pq-load', critical: true, text: 'Dispense <b>24 µL of master mix</b> into each sample well, add <b>1 µL of sample</b>, and mix gently by pipetting at least 10 times.' },
+          { id: 'pq-ntc', critical: true, text: '<b>NTC</b>: 24 µL of master mix + <b>1 µL nuclease-free water</b> in a separate well. Mix by pipetting; avoid bubbles.' },
+          { id: 'pq-seal', text: 'Seal the qPCR plate.' }
+        ]
+      },
+      {
+        id: 'pq-run', title: 'qPCR run (QuantStudio)', time: '~1.5 h',
+        summary: '95 °C 10 min → 40 × [95 °C 30 s, 60 °C 30 s, 72 °C 30 s], then a melt curve.',
+        steps: [
+          { id: 'pq-wells', critical: true, text: 'In the software, mark which well is the <b>NTC</b> and which wells are the <b>unknowns (samples)</b>.' },
+          { id: 'pq-settings', critical: true, text: 'Use the <b>SYBR</b> setting, <b>measure fluorescence at the end of every cycle</b>, and if ROX is the normalisation dye, check <b>ROX is selected</b>.' },
+          { id: 'pq-program', critical: true, text: 'Cycling: <b>95 °C 10 min</b> → <b>40 × [95 °C 30 s, 60 °C 30 s, 72 °C 30 s]</b>.' },
+          { id: 'pq-melt', text: 'Add a <b>melt curve</b>: 95 °C 15 s → 60 °C 1 min → ramp 60 → 95 °C with continuous acquisition. Then start the run.',
+            tip: 'The melt curve checks specificity: primer dimers melt at a lower temperature than the real product.' },
+          { id: 'pq-result', text: 'After the run, enter each sample\'s <b>mean Cq</b> (of the triplicate) and the NTC. Note anything odd in the melt curve.',
+            readings: [
+              { key: 'cq', label: 'Mean Cq (triplicate)', short: 'Cq', unit: 'Cq', per: 'sample', type: 'General', section: 'Quantification' },
+              { key: 'ntcCq', label: 'NTC Cq (blank = no amplification)', short: 'NTC Cq', unit: 'Cq', per: 'pool', type: 'General', section: 'Quantification', optional: true, chain: false, noTube: true }
+            ] }
+        ]
+      }
+    ]
+  }
 ];
+
+// Show the protocols in SOP order (SM01, SM02, …).
+const sopNo = (p) => { const m = /SM(\d+)/.exec(p.vendor || ''); return m ? +m[1] : 999; };
+window.BENCH_PROTOCOLS.sort((a, b) => sopNo(a) - sopNo(b));

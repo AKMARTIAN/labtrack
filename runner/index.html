@@ -151,6 +151,7 @@
     .tres b.l { font-size: 14px; } .tres.redone b.l { text-decoration: line-through; color: var(--muted); }
     .tcode.redone { text-decoration: line-through; opacity: .7; }
 
+    .calc p.ok { color: var(--green); }
     table.plate { font-size: 10px; } table.plate td.pw { min-width: 46px; padding: 3px 4px; text-align: center; border: 1px solid var(--border); }
     table.plate td.std { background: color-mix(in srgb, var(--blue) 10%, transparent); } table.plate td.ntc { background: color-mix(in srgb, var(--amber) 14%, transparent); }
     table.plate td.lib { background: color-mix(in srgb, var(--green) 9%, transparent); }
@@ -454,15 +455,15 @@
       const c = (P().choices || []).find((x) => x.key === key); if (!c) return null;
       return c.options.find((o) => o.value === curChoices()[key]) || c.options.find((o) => o.value === c.default) || c.options[0];
     };
-    const fillP = (str, get) => str.replace(/\{p\.(\w+)(?:\*(\w+))?\}/g, (m, a, b) => { const x = get(a), y = b ? get(b) : 1; return x == null || y == null ? m : fv(x * y); });
+    const fillP = (str, get) => str.replace(/\{p\.(\w+)(?:\*([\w.]+))?\}/g, (m, a, b) => { const x = get(a), y = b ? (/^[\d.]+$/.test(b) ? +b : get(b)) : 1; return x == null || y == null ? m : fv(x * y); });
     const fill = (str) => (typeof str !== 'string' ? str : fillP(str, prm).replace(/\{(\w+)\.(\w+)\}/g, (m, k, f) => { const o = choiceOpt(k); return o && o[f] != null ? o[f] : m; }));
     let stagesKey = '', stagesCache = null;
     function stages() {
       const key = P().id + JSON.stringify(curChoices()) + JSON.stringify(state ? state.params : {});
       if (key !== stagesKey) {
         const deep = (v) => Array.isArray(v) ? v.map(deep)
-          : v && typeof v === 'object' && v.param ? prm(v.param) * (v.times ? prm(v.times) : 1)     // { param: 'ratio', times: 'vol' }
-          : v && typeof v === 'object' ? (v.by && choiceOpt(v.by) ? v[choiceOpt(v.by).value] : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deep(x)])))
+          : v && typeof v === 'object' && v.param ? prm(v.param) * (v.times ? prm(v.times) : 1) * (v.factor || 1) + (v.plus || 0)    // { param: 'ratio', times: 'vol', factor: n, plus: n }
+          : v && typeof v === 'object' ? (v.by && choiceOpt(v.by) ? deep(v[choiceOpt(v.by).value]) : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deep(x)])))
           : fill(v);
         // steps with when: { choiceKey: value | [values] } only show for that answer
         const fits = (st) => !st.when || Object.entries(st.when).every(([k, v]) => { const o = choiceOpt(k); return o && [].concat(v).includes(o.value); });
@@ -507,22 +508,22 @@
             ${c.fewParam ? `<p class="why">${state.samples.length <= c.fewUpTo ? `${state.samples.length} sample${state.samples.length > 1 ? 's' : ''} (${c.fewUpTo} or fewer): ${fv(prm(c.fewParam))} ng each.` : `More than ${c.fewUpTo} samples: ${fv(prm(c.massParam))} ng each.`}</p>` : ''}<p class="why">Too concentrated to pipette accurately? Dilute the sample first (e.g. 1 µL + 9 µL water = 1:10), type the factor in "pre-dil" and the volumes update. Change the input mass in settings.</p>` };
       },
       mix(c) {
-        const n = nS(), ov = prm('overage') / 100;
+        const n = c.per === 'pool' ? 1 : nS(), ov = prm('overage') / 100;   // per: 'pool' = one reaction for the whole pool
         const perTube = c.perTube || [], reag = c.reagents || [];
         const sum = (a) => a.reduce((t, x) => t + x.vol, 0);
         const total = sum(perTube) + sum(reag);
         if (c.noMaster) {
           const rows = perTube.map((x) => `<tr><td>${esc(x.name)}</td><td class="v">${fv(x.vol)}</td></tr>`).join('');
-          const need = (c.totals || []).map((x) => `<p class="why">${esc(x.name)} for ${n} sample${n === 1 ? '' : 's'}${ov ? ` (+${fv(ov * 100)}%)` : ''}: <b>${fvol(x.vol * n * (1 + ov))}</b></p>`).join('');
-          return { title: c.title, sub: 'per tube', html: `<div class="tbl-wrap"><table><tr><th>Reagent</th><th>µL</th></tr>${rows}<tr class="tot"><td>Total</td><td>${fv(total)}</td></tr></table></div>${need}` };
+          const need = (c.totals || []).map((x) => `<p class="why">${esc(x.name)} for ${c.per === 'pool' ? 'the pool' : `${n} sample${n === 1 ? '' : 's'}`}${ov ? ` (+${fv(ov * 100)}%)` : ''}: <b>${fvol(x.vol * n * (1 + ov))}</b></p>`).join('');
+          return { title: c.title, sub: 'per tube', html: `<div class="tbl-wrap"><table><tr><th>Reagent</th><th>µL</th></tr>${rows}${c.noTotal ? '' : `<tr class="tot"><td>Total</td><td>${fv(total)}</td></tr>`}</table></div>${need}` };
         }
-        const xr = c.extraRxn || 0, k = (n + xr) * (1 + ov);   // extraRxn: e.g. 1 for the NTC
+        const pr = c.perSampleRxn || 1, xr = c.extraRxn || 0, k = (n * pr + xr) * (1 + ov);   // perSampleRxn: e.g. 4 for triplicate + 1 spare; extraRxn: e.g. 1 for the NTC
         const rows = perTube.map((x) => `<tr><td>${esc(x.name)}</td><td class="v">${fv(x.vol)}</td><td class="dim">per tube</td></tr>`).join('')
           + reag.map((x) => `<tr><td>${esc(x.name)}</td><td class="v">${fv(x.vol)}</td><td class="v">${fv(x.vol * k)}</td></tr>`).join('');
         const add = c.addVol || sum(reag);   // addVol: the SOP's per-sample amounts already include extra; this much goes in each tube
-        return { title: c.title, sub: `master mix for ${n}${xr ? ` + ${xr} ${esc(c.extraLabel || 'control')}` : ''}${ov ? ' + ' + fv(ov * 100) + '%' : ''}`,
-          html: `<div class="tbl-wrap"><table><tr><th>Reagent</th><th>${c.addVol ? 'per sample µL' : '1 tube µL'}</th><th>Master mix µL</th></tr>${rows}<tr class="tot"><td>Total</td><td>${fv(c.addVol ? sum(perTube) + add : total)}</td><td>${fv(sum(reag) * k)}</td></tr></table></div>
-            <p class="why">Add <b>${fv(add)} µL</b> of master mix to each tube${perTube.length ? ` of ${fv(sum(perTube))} µL` : ''}.${c.addVol ? ` The mix has ${fv(sum(reag))} µL per sample, so there is spare.` : ''}</p>` };
+        return { title: c.title, sub: `master mix for ${pr > 1 ? `${n} × ${pr} reactions` : n}${xr ? ` + ${xr} ${esc(c.extraLabel || 'control')}` : ''}${ov ? ' + ' + fv(ov * 100) + '%' : ''}`,
+          html: `<div class="tbl-wrap"><table><tr><th>Reagent</th><th>${c.addVol ? `per ${c.per === 'pool' ? 'pool' : 'sample'} µL` : '1 tube µL'}</th><th>Master mix µL</th></tr>${rows}<tr class="tot"><td>Total</td><td>${fv(c.addVol ? sum(perTube) + add : total)}</td><td>${fv(sum(reag) * k)}</td></tr></table></div>
+            <p class="why">Add <b>${fv(add)} µL</b> of master mix to each tube${perTube.length ? ` of ${fv(sum(perTube))} µL` : ''}.${c.addVol ? ` The mix has ${fv(sum(reag))} µL per ${c.per === 'pool' ? 'pool' : 'sample'}, so there is spare.` : ''}</p>` };
       },
       beads(c) {
         const n = nS();
@@ -638,6 +639,7 @@
         const how = Object.values(groups).sort((a, b) => a.b.fold - b.b.fold).map(({ b, n }) => {
           const need = n * c.perSample * ov;
           if (b.fold === 1) return `<p><b>Neat</b> (${n} sample${n > 1 ? 's' : ''}): use the adaptor as supplied, ${fv(c.perSample)} µL each.</p>`;
+          if (b.how) return `<p><b>1:${b.fold}</b> (${n} sample${n > 1 ? 's' : ''}, ${fv(need)} µL needed): ${esc(b.how)}.</p>`;   // the SOP's own recipe
           const make = Math.max(10, Math.ceil(need / 5) * 5);
           if (make / b.fold >= 1) return `<p><b>1:${b.fold}</b> (${n} sample${n > 1 ? 's' : ''}): ${fv(make / b.fold)} µL adaptor + ${fv(make - make / b.fold)} µL ${esc(c.diluent)}.</p>`;
           const second = b.fold / 10, take = make / second;   // 1:10 first, then dilute again
@@ -656,13 +658,83 @@
       plate(c) {
         const reps = c.reps || 3, items = [];
         (c.standards || []).forEach((x) => { for (let r = 0; r < reps; r++) items.push({ t: x, k: 'std' }); });
-        samples().forEach((sm) => (c.dilutions || []).forEach((d) => { for (let r = 0; r < reps; r++) items.push({ t: `${codeOf(sm)} ${d}`, k: 'lib' }); }));
+        samples().forEach((sm) => (c.dilutions || []).forEach((d) => { for (let r = 0; r < reps; r++) items.push({ t: d ? `${codeOf(sm)} ${d}` : codeOf(sm), k: 'lib' }); }));
         for (let r = 0; r < (c.ntc || 1); r++) items.push({ t: 'NTC', k: 'ntc' });   // last, so the triplicates stay in line
         const rows = 'ABCDEFGH', cols = 12;
         const cell = (i) => { const x = items[i]; return x ? `<td class="pw ${x.k}">${esc(x.t)}</td>` : '<td class="pw"></td>'; };
         const grid = [...rows].map((r, ri) => `<tr><th>${r}</th>${Array.from({ length: cols }, (_, ci) => cell(ri * cols + ci)).join('')}</tr>`).join('');
         return { title: c.title || 'Plate layout', sub: `${items.length} of 96 wells`,
           html: `<div class="tbl-wrap"><table class="plate"><tr><th></th>${Array.from({ length: cols }, (_, i) => `<th>${i + 1}</th>`).join('')}</tr>${grid}</table></div>${items.length > 96 ? '<p class="flag bad">Too many wells for one plate.</p>' : ''}<p class="why">A suggestion, filled row by row: triplicates side by side, NTC last. ${esc(c.note || '')}</p>` };
+      },
+      // Pool molarity from Qubit + average library size (nM = ng/µL ÷ (660 × bp) × 10⁶).
+      molarity(c) {
+        const q = rd(c.readingKey, 'pool'), len = rd(c.lengthKey, 'pool');
+        if (q == null || len == null) return { title: 'Molarity', sub: '', html: '<p class="why">Enter the Qubit and the average library size above.</p>' };
+        const nM = q * 1e6 / (660 * len);
+        return { title: 'Molarity', sub: `${fv(len)} bp`, data: { nM },
+          html: `<div class="big">${fv(nM)} nM</div><p class="why">${fv(q)} ng/µL ÷ (660 × ${fv(len)} bp) × 10⁶ = ${fv(nM)} nM</p>` };
+      },
+      // Serial dilution towards a target nM, re-measured after each step (C1V1 = C2V2, final volume fixed).
+      serial(c) {
+        const len = rd(c.lengthKey, 'pool'), qd = rd(c.dilKey, 'pool'), q0 = rd(c.readingKey, 'pool');
+        const q = qd != null ? qd : q0, V = c.finalVol, tgt = c.target, tol = c.tol;
+        if (q == null || len == null) return { title: 'Next dilution', sub: '', html: '<p class="why">Enter the pool Qubit and library size first.</p>' };
+        const nM = q * 1e6 / (660 * len), from = qd != null ? 'your last dilution' : 'the undiluted pool';
+        const head = `<p>Now: <b>${fv(nM)} nM</b> (${fv(q)} ng/µL, ${from}).</p>`;
+        if (Math.abs(nM - tgt) <= tol) return { title: 'Next dilution', sub: `target ${fv(tgt)} nM ± ${fv(tol)}`, html: `${head}<p class="ok"><b>✓ At ${fv(tgt)} nM ± ${fv(tol)}.</b> Check this step and go on.</p>` };
+        if (nM < tgt - tol) return { title: 'Next dilution', sub: `target ${fv(tgt)} nM ± ${fv(tol)}`, html: `${head}<p class="flag bad">Below ${fv(tgt - tol)} nM: this dilution went too far. Make it again from the tube before, with more of it.</p>` };
+        const plan = (to) => { const v1 = to * V / nM; return { v1, buf: V - v1 }; };
+        const direct = plan(tgt);
+        const stepTo = nM / c.maxFold > tgt ? Math.max(tgt, Math.round(nM / c.maxFold)) : null;
+        const label = (to) => `${runCode()}-${fv(to).replace('.', 'p')}NM`;
+        let html = head;
+        if (stepTo) { const st = plan(stepTo); html += `<div class="big">${fv(st.v1)} µL + ${fv(st.buf)} µL ${esc(c.diluent)}</div><p>Next step to <b>${fv(stepTo)} nM</b> in ${fv(V)} µL. Label the tube <b>${esc(label(stepTo))}</b>, then Qubit it and enter the reading below.</p>`; }
+        html += `<p class="${stepTo ? 'why' : ''}">${stepTo ? 'Or straight' : '<b>Straight</b>'} to ${fv(tgt)} nM: <b>${fv(direct.v1)} µL</b> + ${fv(direct.buf)} µL ${esc(c.diluent)}${stepTo ? '' : ` (label <b>${esc(label(tgt))}</b>)`}.${direct.v1 < 1 ? ' Under 1 µL: take a step first.' : ''}</p>`;
+        return { title: 'Next dilution', sub: `target ${fv(tgt)} nM ± ${fv(tol)}`, html: html + `<p class="why">Smaller steps give more control. After each dilution, Qubit it and enter the new reading: this updates.</p>` };
+      },
+      // 2 nM → loading concentration in the final volume, then the PhiX share of the loaded volume.
+      loadmix(c) {
+        const tgt = c.targetPM, V = c.finalVol, pct = prm(c.phixParam), stock = prm(c.phixStockParam);
+        const v2 = (from) => tgt * V / (from * 1000);           // µL of a from-nM solution for tgt pM in V µL
+        const lib = v2(c.from), phixTo2 = c.from * V / stock;
+        const px = pct / 100 * V, lb = V - px;
+        return { title: 'Loading mix', sub: `${fv(tgt)} pM · ${fv(pct)}% PhiX`, data: { lib, px },
+          html: `<p><b>Library:</b> ${fv(lib)} µL of the ${fv(c.from)} nM pool + ${fv(V - lib)} µL ${esc(c.diluent)} = ${fv(V)} µL at ${fv(tgt)} pM.</p>
+            <p><b>PhiX:</b> ${fv(phixTo2)} µL of the ${fv(stock)} nM stock + ${fv(V - phixTo2)} µL ${esc(c.diluent)} = 2 nM; then ${fv(lib)} µL of that + ${fv(V - lib)} µL ${esc(c.diluent)} = ${fv(tgt)} pM.</p>
+            <div class="big">${fv(lb)} µL library + ${fv(px)} µL PhiX</div>
+            <p class="why">${fv(pct)}% × ${fv(V)} µL = ${fv(px)} µL PhiX, at the loading concentration, in a new tube. Easier to pipette: make 5× (${fv(lb * 5)} + ${fv(px * 5)} µL) and load ${fv(V)} µL of it.</p>` };
+      },
+      // Column loads: how many times the mixed sample goes through a spin column, and what tube it needs.
+      loads(c) {
+        const total = c.vol * c.factor, n = Math.ceil(total / c.per);
+        const tube = total > 1500 ? '15 mL tube' : '1.5 mL tube';
+        return { title: 'Column loads', sub: `${fv(total)} µL per sample`, html: `<div class="big">${n} load${n > 1 ? 's' : ''} <small>of up to ${fv(c.per)} µL</small></div>
+          <p class="why">${fv(c.vol)} µL sample + ${fv(c.vol * (c.factor - 1))} µL ${esc(c.reagent)} = ${fv(total)} µL: mix it in a <b>${tube}</b>, then load and spin ${n > 1 ? n + ' times, discarding the flow-through each time' : 'once'}.</p>` };
+      },
+      // Pool libraries into a fixed volume, by mass (target ng ÷ ng/µL each) or by volume (the SOP's table).
+      poolmix(c) {
+        const n = nS(), V = c.finalVol, mode = c.mode;
+        let rows = '', total = 0, missing = 0, short = [];
+        if (mode === 'mass') {
+          const tgt = prm(c.massParam);
+          rows = samples().map((s) => {
+            const q = rd(c.readingKey, s.id);
+            if (q == null || q <= 0) { missing++; return `<tr><td>${esc(s.name)}</td><td colspan="2" class="flag">enter the library Qubit</td></tr>`; }
+            const v = tgt / q; total += v; if (c.maxVol && v > c.maxVol) short.push(s.name);
+            return `<tr><td>${esc(s.name)}</td><td>${fv(q)}</td><td class="v ${c.maxVol && v > c.maxVol ? 'flag bad' : ''}">${fv(v)}</td></tr>`;
+          }).join('');
+          rows = `<tr><th>Library</th><th>ng/µL</th><th>µL for ${fv(tgt)} ng</th></tr>` + rows;
+        } else {
+          const each = n === 1 ? c.single : c.each; total = each * n;
+          rows = `<tr><th>Library</th><th></th><th>µL</th></tr>` + samples().map((s) => `<tr><td>${esc(s.name)}</td><td></td><td class="v">${fv(each)}</td></tr>`).join('');
+        }
+        const rsb = Math.max(0, V - total), over = total > V;
+        let msg = missing ? `<p class="why">${missing} librar${missing > 1 ? 'ies' : 'y'} still need a Qubit.</p>`
+          : over ? `<p class="flag bad">Pool is ${fv(total)} µL, over ${fv(V)} µL: turn on <b>“Concentrate the pool”</b> in settings and add <b>${fv(total * c.concFactor)} µL IPB</b> (${c.concFactor} × ${fv(total)} µL).</p>`
+          : `<div class="big">${fv(total)} µL libraries + ${fv(rsb)} µL ${esc(c.diluent)}</div><p class="why">= ${fv(V)} µL pool.</p>`;
+        if (short.length) msg += `<p class="flag bad">Not enough library for ${esc(short.join(', '))} (over ${fv(c.maxVol)} µL needed): lower the target mass in settings.</p>`;
+        return { title: 'Pool', sub: mode === 'mass' ? `by mass · ${fv(prm(c.massParam))} ng each` : 'by volume', data: { total },
+          html: `<div class="tbl-wrap"><table>${rows}</table></div>${msg}${c.note ? `<p class="why">${esc(c.note)}</p>` : ''}` };
       },
       dilute(c) {
         const n = nS(), stock = c.stock || prm(c.stockParam), tgt = c.target, need = (c.perSample || 0) * n;
