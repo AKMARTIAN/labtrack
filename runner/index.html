@@ -151,6 +151,10 @@
     .tres b.l { font-size: 14px; } .tres.redone b.l { text-decoration: line-through; color: var(--muted); }
     .tcode.redone { text-decoration: line-through; opacity: .7; }
 
+    table.plate { font-size: 10px; } table.plate td.pw { min-width: 46px; padding: 3px 4px; text-align: center; border: 1px solid var(--border); }
+    table.plate td.std { background: color-mix(in srgb, var(--blue) 10%, transparent); } table.plate td.ntc { background: color-mix(in srgb, var(--amber) 14%, transparent); }
+    table.plate td.lib { background: color-mix(in srgb, var(--green) 9%, transparent); }
+
     /* timers */
     .timers { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
     .timer { display: inline-flex; align-items: center; gap: 8px; padding: 5px 6px 5px 11px; border: 1px solid var(--border-2); border-radius: 999px; background: var(--input); }
@@ -301,7 +305,7 @@
     const uid = () => Math.random().toString(36).slice(2, 9);
     const num = (v) => { if (v === '' || v == null) return null; const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : null; };
     const pad = (n) => String(n).padStart(2, '0');
-    const fv = (v) => { if (v == null || !isFinite(v)) return '–'; const a = Math.abs(v); const d = a >= 1000 ? 0 : a >= 10 ? 1 : a >= 1 ? 2 : 3; return String(+v.toFixed(d)); };
+    const fv = (v) => { if (v == null || !isFinite(v)) return '–'; const a = Math.abs(v); const d = a >= 1000 ? 0 : a >= 100 ? 1 : a >= 1 ? 2 : 3; return String(+v.toFixed(d)); };
     const fvol = (ul) => (ul >= 1000 ? `${fv(ul / 1000)} mL` : `${fv(ul)} µL`);
     const ul = (v) => (v >= 1000 ? `${Math.round(v).toLocaleString('en-US')} µL` : `${fv(v)} µL`);  // ethanol recipes stay in µL
     const isoDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -385,7 +389,7 @@
     // The tube a sample (or the pool) is in once this step is done.
     function tubeAt(stepId, per, sm) {
       let t = null, at = null;
-      for (const s of flat()) { if (s.tube && s.tube.per === per) { t = s.tube; at = s.id; } if (s.id === stepId) break; }
+      for (const s of flat()) { if (s.tube && s.tube.per === per && !s.tube.side) { t = s.tube; at = s.id; } if (s.id === stepId) break; }
       if (!t) return per === 'pool' ? null : { label: codeOf(sm), what: 'original sample tube' };
       return { label: tubeLabel(t, sm, at), what: fillBc(t.what, sm), keep: t.keep, step: at };
     }
@@ -395,13 +399,15 @@
       if (i > 0) return tubeAt(all[i - 1].id, per, sm);
       return per === 'pool' ? null : { label: codeOf(sm), what: 'original sample tube' };
     }
+    // Where a new tube's contents come from: the main tube before this step, or the original sample (from: 'start').
+    const parentOf = (step, sm) => (step.tube && step.tube.from === 'start' && sm ? { label: codeOf(sm), what: 'original sample' } : tubeBefore(step.id, step.tube ? step.tube.per : 'sample', sm));
     const dateStr = (t) => { const d = new Date(t); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getFullYear()).slice(2)}`; };
     function tubeBoxHTML(step, doneAt) {
       const t = step.tube, list = t.per === 'pool' ? [null] : samples();
-      const chips = list.map((sm) => { const l = tubeLabel(t, sm, step.id), pv = tubeBefore(step.id, t.per, sm);
+      const chips = list.map((sm) => { const l = tubeLabel(t, sm, step.id), pv = parentOf(step, sm);
         return `<div class="tchip"><b>${esc(l)}</b><span>${esc(sm ? sm.name : 'pool of ' + state.samples.length + ' samples')}</span>${pv && pv.label !== l ? `<span class="dim">from ${esc(pv.label)}</span>` : ''}</div>`; }).join('');
-      return `<div class="box tube"><div class="th">Label the new ${esc(t.vessel || 'tube')}${list.length > 1 ? 's' : ''}</div><div class="tchips">${chips}</div>
-        <div class="dim" style="margin-top:6px">Lid: the code in bold. Side: <b>${esc(runCode())}</b> · the code · ${esc(fillBc(t.what, list.length === 1 ? list[0] : null))} · step ${stepNo(step.id)} · ${dateStr(doneAt || Date.now())}${state.operator ? ' · ' + esc(state.operator) : ''}.${t.keep ? ' <b>Keep this tube</b>: store it until the run is analysed.' : ''}</div></div>`;
+      return `<div class="box tube"><div class="th">Label the new ${esc(list.length > 1 ? (t.vessel || 'tube').replace(/\b(tube|well)\b/g, '$1s') : (t.vessel || 'tube'))}</div><div class="tchips">${chips}</div>
+        <div class="dim" style="margin-top:6px">${t.capOnly ? `Write the code in bold <b>on the cap only</b>: nothing on the side of the tube. (${esc(fillBc(t.what, null))}, step ${stepNo(step.id)})</div></div>` : ''}${t.noCap && !t.capOnly ? `Write the code in bold <b>on the side</b> of the tube: the caps come off before loading. ` : ''}${t.capOnly ? '' : `${t.noCap ? 'With it:' : 'Lid: the code in bold. Side:'} <b>${esc(runCode())}</b> · the code · ${esc(fillBc(t.what, list.length === 1 ? list[0] : null))} · step ${stepNo(step.id)} · ${dateStr(doneAt || Date.now())}${state.operator ? ' · ' + esc(state.operator) : ''}.${t.side && list[0] ? ` Side tube: the sample itself carries on in its main tube (${esc(tubeBefore(step.id, t.per, list[0]).label)}${list.length > 1 ? ', …' : ''}).` : ''}${t.keep ? ` <b>Keep this tube</b>${t.store ? ': ' + esc(t.store) : ': store it until the run is analysed'}.` : ''}</div></div>`}`;
     }
     // At a stopping point: what goes in the fridge.
     function storeHTML(step) {
@@ -412,6 +418,9 @@
         const kept = flat().slice(0, i + 1).filter((s) => s.tube && s.tube.per === 'pool' && s.tube.keep && s.id !== pl.step).pop();
         if (!pl.keep && kept) out.push(`<b>${esc(tubeLabel(kept.tube, null, kept.id))}</b> (${esc(kept.tube.what)}, the rest of it)`);
       } else if (samples().length) out.push(`<b>${samples().map((sm) => esc(tubeAt(step.id, 'sample', sm).label)).join(', ')}</b> (${esc(tubeAt(step.id, 'sample', samples()[0]).what.replace(/ \(.*\)$/, ''))})`);
+      flat().slice(0, i + 1).filter((s) => s.tube && s.tube.side && s.tube.keep && s.tube.per === 'sample').forEach((s) => {
+        out.push(`<b>${samples().map((sm) => esc(tubeLabel(s.tube, sm, s.id))).join(', ')}</b> (${esc(s.tube.what)}${s.tube.store ? ': ' + esc(s.tube.store) : ''})`);
+      });
       return out.length ? `<div class="dim" style="margin-top:4px">Tubes to store: ${out.join('; ')}.</div>` : '';
     }
     // Tube log: written when a step that makes a tube is checked, so the record keeps the label that was written on it.
@@ -419,9 +428,9 @@
       const st = flat().find((s) => s.id === stepId); if (!st || !st.tube) return;
       const t = st.tube;
       (t.per === 'pool' ? [null] : list).forEach((sm) => {
-        const sid = sm ? sm.id : 'pool', label = tubeLabel(t, sm, stepId), pv = tubeBefore(stepId, t.per, sm);
+        const sid = sm ? sm.id : 'pool', label = tubeLabel(t, sm, stepId), pv = parentOf(st, sm);
         state.tubeLog = state.tubeLog.filter((x) => !(x.label === label && x.sid === sid));
-        state.tubeLog.push({ label, run: runCode(), sid, sample: sm ? sm.name : 'Pool', step: stepId, stepNo: stepNo(stepId), what: fillBc(t.what, sm), vessel: t.vessel || '', keep: !!t.keep, at, from: pv ? pv.label : '', op: state.operator || '', status: 'ok' });
+        state.tubeLog.push({ label, run: runCode(), sid, sample: sm ? sm.name : 'Pool', step: stepId, stepNo: stepNo(stepId), what: fillBc(t.what, sm), vessel: t.vessel || '', keep: !!t.keep, side: !!t.side, at, from: pv ? pv.label : '', op: state.operator || '', status: 'ok' });
       });
     }
     function unlogTubes(stepId, list) {
@@ -445,15 +454,19 @@
       const c = (P().choices || []).find((x) => x.key === key); if (!c) return null;
       return c.options.find((o) => o.value === curChoices()[key]) || c.options.find((o) => o.value === c.default) || c.options[0];
     };
-    const fill = (str) => (typeof str !== 'string' ? str : str.replace(/\{(\w+)\.(\w+)\}/g, (m, k, f) => { const o = choiceOpt(k); return o && o[f] != null ? o[f] : m; }));
+    const fillP = (str, get) => str.replace(/\{p\.(\w+)(?:\*(\w+))?\}/g, (m, a, b) => { const x = get(a), y = b ? get(b) : 1; return x == null || y == null ? m : fv(x * y); });
+    const fill = (str) => (typeof str !== 'string' ? str : fillP(str, prm).replace(/\{(\w+)\.(\w+)\}/g, (m, k, f) => { const o = choiceOpt(k); return o && o[f] != null ? o[f] : m; }));
     let stagesKey = '', stagesCache = null;
     function stages() {
-      const key = P().id + JSON.stringify(curChoices());
+      const key = P().id + JSON.stringify(curChoices()) + JSON.stringify(state ? state.params : {});
       if (key !== stagesKey) {
         const deep = (v) => Array.isArray(v) ? v.map(deep)
+          : v && typeof v === 'object' && v.param ? prm(v.param) * (v.times ? prm(v.times) : 1)     // { param: 'ratio', times: 'vol' }
           : v && typeof v === 'object' ? (v.by && choiceOpt(v.by) ? v[choiceOpt(v.by).value] : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deep(x)])))
           : fill(v);
-        stagesCache = deep(P().stages); stagesKey = key;
+        // steps with when: { choiceKey: value | [values] } only show for that answer
+        const fits = (st) => !st.when || Object.entries(st.when).every(([k, v]) => { const o = choiceOpt(k); return o && [].concat(v).includes(o.value); });
+        stagesCache = deep(P().stages.map((stg) => Object.assign({}, stg, { steps: stg.steps.filter(fits) }))).filter((stg) => stg.steps.length); stagesKey = key;
       }
       return stagesCache;
     }
@@ -469,8 +482,9 @@
 
     /* ================= calculators =================
        Each returns { html, data } so the same numbers feed the screen and the export. */
+    const massOf = (c) => (c.fewParam && state.samples.length <= c.fewUpTo ? prm(c.fewParam) : prm(c.massParam));
     function normaliseRow(c, s) {
-      const q = rd(c.readingKey, s.id), mass = prm(c.massParam), V = c.finalVol;
+      const q = rd(c.readingKey, s.id), mass = massOf(c), V = c.finalVol;
       const dil = Math.max(1, num(state.dil[s.id]) || 1);   // pre-dilution factor typed in for this sample (1 = neat)
       if (q == null || q <= 0) return { q, dil, missing: true };
       const qd = q / dil;
@@ -481,7 +495,7 @@
     }
     const CALC = {
       normalise(c) {
-        const mass = prm(c.massParam);
+        const mass = massOf(c);
         const rows = samples().map((s) => {
           const r = normaliseRow(c, s);
           const dilIn = `<input class="dil" inputmode="decimal" data-dil="${s.id}" value="${r.dil > 1 ? r.dil : ''}" placeholder="1" aria-label="Pre-dilution for ${esc(s.name)}" />`;
@@ -490,7 +504,7 @@
         }).join('');
         return { title: 'Normalise input', sub: `${fv(mass)} ng in ${c.finalVol} µL`,
           html: `<div class="tbl-wrap"><table><tr><th>Sample</th><th>ng/µL</th><th></th><th>pre-dil 1:</th><th>DNA µL</th><th>Water µL</th><th>ng</th></tr>${rows}</table></div>
-            <p class="why">Too concentrated to pipette accurately? Dilute the sample first (e.g. 1 µL + 9 µL water = 1:10), type the factor in "pre-dil" and the volumes update. Change the input mass in settings.</p>` };
+            ${c.fewParam ? `<p class="why">${state.samples.length <= c.fewUpTo ? `${state.samples.length} sample${state.samples.length > 1 ? 's' : ''} (${c.fewUpTo} or fewer): ${fv(prm(c.fewParam))} ng each.` : `More than ${c.fewUpTo} samples: ${fv(prm(c.massParam))} ng each.`}</p>` : ''}<p class="why">Too concentrated to pipette accurately? Dilute the sample first (e.g. 1 µL + 9 µL water = 1:10), type the factor in "pre-dil" and the volumes update. Change the input mass in settings.</p>` };
       },
       mix(c) {
         const n = nS(), ov = prm('overage') / 100;
@@ -499,15 +513,16 @@
         const total = sum(perTube) + sum(reag);
         if (c.noMaster) {
           const rows = perTube.map((x) => `<tr><td>${esc(x.name)}</td><td class="v">${fv(x.vol)}</td></tr>`).join('');
-          const need = (c.totals || []).map((x) => `<p class="why">${esc(x.name)} for ${n} sample${n === 1 ? '' : 's'} (+${fv(ov * 100)}%): <b>${fvol(x.vol * n * (1 + ov))}</b></p>`).join('');
+          const need = (c.totals || []).map((x) => `<p class="why">${esc(x.name)} for ${n} sample${n === 1 ? '' : 's'}${ov ? ` (+${fv(ov * 100)}%)` : ''}: <b>${fvol(x.vol * n * (1 + ov))}</b></p>`).join('');
           return { title: c.title, sub: 'per tube', html: `<div class="tbl-wrap"><table><tr><th>Reagent</th><th>µL</th></tr>${rows}<tr class="tot"><td>Total</td><td>${fv(total)}</td></tr></table></div>${need}` };
         }
-        const k = n * (1 + ov);
+        const xr = c.extraRxn || 0, k = (n + xr) * (1 + ov);   // extraRxn: e.g. 1 for the NTC
         const rows = perTube.map((x) => `<tr><td>${esc(x.name)}</td><td class="v">${fv(x.vol)}</td><td class="dim">per tube</td></tr>`).join('')
           + reag.map((x) => `<tr><td>${esc(x.name)}</td><td class="v">${fv(x.vol)}</td><td class="v">${fv(x.vol * k)}</td></tr>`).join('');
-        return { title: c.title, sub: `master mix for ${n} + ${fv(ov * 100)}%`,
-          html: `<div class="tbl-wrap"><table><tr><th>Reagent</th><th>1 tube µL</th><th>Master mix µL</th></tr>${rows}<tr class="tot"><td>Total</td><td>${fv(total)}</td><td>${fv(sum(reag) * k)}</td></tr></table></div>
-            <p class="why">Add <b>${fv(sum(reag))} µL</b> of master mix to each tube of ${fv(sum(perTube))} µL.</p>` };
+        const add = c.addVol || sum(reag);   // addVol: the SOP's per-sample amounts already include extra; this much goes in each tube
+        return { title: c.title, sub: `master mix for ${n}${xr ? ` + ${xr} ${esc(c.extraLabel || 'control')}` : ''}${ov ? ' + ' + fv(ov * 100) + '%' : ''}`,
+          html: `<div class="tbl-wrap"><table><tr><th>Reagent</th><th>${c.addVol ? 'per sample µL' : '1 tube µL'}</th><th>Master mix µL</th></tr>${rows}<tr class="tot"><td>Total</td><td>${fv(c.addVol ? sum(perTube) + add : total)}</td><td>${fv(sum(reag) * k)}</td></tr></table></div>
+            <p class="why">Add <b>${fv(add)} µL</b> of master mix to each tube${perTube.length ? ` of ${fv(sum(perTube))} µL` : ''}.${c.addVol ? ` The mix has ${fv(sum(reag))} µL per sample, so there is spare.` : ''}</p>` };
       },
       beads(c) {
         const n = nS();
@@ -517,7 +532,7 @@
         const per = c.per === 'sample'
           ? `<p class="why">Each of ${n} tubes. Total beads needed: <b>${fvol(beads * n)}</b>.</p>` : '';
         return { title: 'Bead volume', sub: `${c.ratio}× ratio`, data: { beads, vol },
-          html: `<div class="big">${fv(beads)} µL <small>AMPure XP ${c.per === 'sample' ? 'per tube' : 'into the pool'}</small></div>
+          html: `<div class="big">${fv(beads)} µL <small>${esc(c.beadName || 'AMPure XP')} ${c.per === 'sample' ? 'per tube' : 'into the pool'}</small></div>
             <p class="why">${c.ratio} × ${fv(vol)} µL ${esc(c.what)}${how} = ${fv(beads)} µL</p>${per}${c.why ? `<p class="why">${esc(c.why)}</p>` : ''}` };
       },
       wash(c) {
@@ -538,7 +553,7 @@
             <p>In a <b>${tube}</b>: add <b>${ul(etoh)}</b> of 100% ethanol, then <b>${ul(water)}</b> of nuclease-free water, and mix by inverting. That makes ${ul(make)} of 80% ethanol.</p>
             <p class="why">You need ${why}, plus ~20% spare. Recipe: ${fv(c.ethanol * 1000)} µL ethanol + ${fv((1 - c.ethanol) * 1000)} µL water for every 1 mL. Make it fresh today: old 80% ethanol loses strength and can wash DNA off the beads.</p>` };
       },
-      barcodes() {
+      barcodes(c = {}) {
         const p = P(), used = {};
         samples().forEach((s) => { used[s.barcode] = (used[s.barcode] || 0) + 1; });
         const rows = samples().map((s) => {
@@ -546,8 +561,9 @@
           return `<tr><td>${esc(s.name)}</td><td><select class="bc ${used[s.barcode] > 1 ? 'dup' : ''}" data-barcode="${s.id}">${opts}</select></td></tr>`;
         }).join('');
         const dups = Object.keys(used).filter((b) => used[b] > 1);
-        return { title: 'Barcode map', sub: `${nS()} samples`,
-          html: `<div class="tbl-wrap"><table><tr><th>Sample</th><th>Barcode</th></tr>${rows}</table></div>${dups.length ? `<p class="flag bad">${dups.join(', ')} used more than once. Every sample needs its own barcode.</p>` : ''}` };
+        const bl = p.barcodeLabel || 'Barcode';
+        return { title: c.title || 'Barcode map', sub: `${nS()} samples`,
+          html: `<div class="tbl-wrap"><table><tr><th>Sample</th><th>${esc(bl)}</th></tr>${rows}</table></div>${dups.length ? `<p class="flag bad">${dups.join(', ')} used more than once. Every sample needs its own ${esc(bl.toLowerCase())}.</p>` : ''}${c.note ? `<p class="why">${esc(c.note)}</p>` : ''}` };
       },
       pool(c) {
         const n = nS(), vol = c.perSample * n;
@@ -560,7 +576,7 @@
           if (mn > 0 && mx / mn > 3) extra += `<p class="flag">Uneven input: ${fv(mn)}–${fv(mx)} ng per sample. Expect uneven reads per barcode.</p>`;
         }
         return { title: 'Pool', sub: `${n} × ${c.perSample} µL`, data: { vol },
-          html: `<div class="big">${fv(vol)} µL <small>pooled volume</small></div><p class="why">${n} samples × ${c.perSample} µL (20 µL reaction + 2 µL EDTA)</p>${extra}` };
+          html: `<div class="big">${fv(vol)} µL <small>pooled volume</small></div><p class="why">${n} samples × ${c.perSample} µL ${c.perText ? '(' + esc(c.perText) + ')' : ''}</p>${extra}` };
       },
       recovery(c, step) {
         if (c.per === 'pool') {
@@ -579,21 +595,114 @@
         }).join('');
         return { title: 'Recovery', sub: `${c.eluate} µL eluate`, html: `<div class="tbl-wrap"><table><tr><th>Sample</th><th>ng recovered</th><th>of input</th><th>ng ${esc(c.carryLabel)}</th></tr>${rows}</table></div>` };
       },
+      // DNA into a fixed volume: Qubit × µL used (blank = the whole volume), water to make it up.
+      input(c) {
+        const rows = samples().map((s) => {
+          const r = inputOf(c, s);
+          if (r.missing) return `<tr><td>${esc(s.name)}</td><td colspan="4" class="flag">enter the Qubit reading</td></tr>`;
+          const flag = r.over ? `more than ${fv(c.maxVol)} µL: type a smaller volume` : r.under ? `less than ${fv(c.minVol)} µL: the SOP uses ${fv(c.minVol)}–${fv(c.maxVol)} µL` : r.ng > (c.maxNg || 1e9) ? `over ${fv(c.maxNg)} ng: use less DNA (type the µL)` : '';
+          return `<tr><td>${esc(s.name)}</td><td>${fv(r.q)}</td><td class="v">${fv(r.vol)}</td><td class="v">${fv(r.water)}</td><td>${fv(r.ng)}</td></tr>${flag ? `<tr><td></td><td colspan="4" class="flag bad">${esc(flag)}</td></tr>` : ''}`;
+        }).join('');
+        return { title: c.title || 'Input', sub: `in ${fv(c.maxVol)} µL`, html: `<div class="tbl-wrap"><table><tr><th>Sample</th><th>ng/µL</th><th>DNA µL</th><th>Water µL</th><th>ng in</th></tr>${rows}</table></div><p class="why">${esc(c.note || '')}</p>` };
+      },
+      fmolNorm(c) {
+        const rows = samples().map((s) => {
+          const r = fmolRow(c, s);
+          if (r.missing) return `<tr><td>${esc(s.name)}</td><td colspan="6" class="flag">enter the Qubit reading</td></tr>`;
+          return `<tr><td>${esc(s.name)}</td><td>${fv(r.q)}</td><td>${fv(r.len)}${r.fromTs ? '' : '<span class="dim">*</span>'}</td><td class="v">${fv(r.dna)}</td><td class="v">${fv(r.water)}</td><td>${fv(r.fmol)}</td><td>${fv(r.ng)}</td></tr>${r.flag ? `<tr><td></td><td colspan="6" class="flag ${r.bad ? 'bad' : ''}">${esc(r.flag)}</td></tr>` : ''}`;
+        }).join('');
+        return { title: c.title || 'Input in fmol', sub: `${fv(prm(c.fmolParam))} fmol in ${fv(c.finalVol)} µL`,
+          html: `<div class="tbl-wrap"><table><tr><th>Sample</th><th>ng/µL</th><th>bp</th><th>DNA µL</th><th>${esc(c.diluent || 'Water')} µL</th><th>fmol</th><th>ng</th></tr>${rows}</table></div>
+            <p class="why">fmol = ng ÷ (bp × 660) × 10⁶. * = default length from settings (${fv(prm(c.lenParam))} bp): type the TapeStation size above to use the real one.${c.note ? ' ' + esc(c.note) : ''}</p>` };
+      },
+      // A value per sample picked from a table by its input (e.g. PCR cycles).
+      lookup(c) {
+        const src = flat().find((x) => x.calc && x.calc.type === 'input').calc;
+        const rows = samples().map((s) => {
+          const r = inputOf(src, s); if (r.missing) return `<tr><td>${esc(s.name)}</td><td colspan="2" class="dim">needs the input Qubit</td></tr>`;
+          const b = c.bands.find((x) => r.ng >= x.atLeast) || c.bands[c.bands.length - 1];
+          return `<tr><td>${esc(s.name)}</td><td>${fv(r.ng)} ng</td><td class="v">${esc(b.text)}</td></tr>`;
+        }).join('');
+        return { title: c.title, sub: 'from the input', html: `<div class="tbl-wrap"><table><tr><th>Sample</th><th>Input</th><th>${esc(c.column)}</th></tr>${rows}</table></div>${c.note ? `<p class="why">${esc(c.note)}</p>` : ''}` };
+      },
+      // Adaptor dilution per sample from its input, and how to make each dilution for the samples that need it.
+      adaptor(c) {
+        const src = flat().find((x) => x.calc && x.calc.type === 'input').calc, ov = 1 + prm('overage') / 100;
+        const pick = (ng) => c.bands.find((b) => ng > b.above);
+        const groups = {};
+        const rows = samples().map((s) => {
+          const r = inputOf(src, s); if (r.missing) return `<tr><td>${esc(s.name)}</td><td colspan="2" class="dim">needs the input Qubit</td></tr>`;
+          const b = pick(r.ng); (groups[b.fold] = groups[b.fold] || { b, n: 0 }).n++;
+          return `<tr><td>${esc(s.name)}</td><td>${fv(r.ng)} ng</td><td class="v">${b.fold === 1 ? 'neat' : '1:' + b.fold} <span class="dim">(${esc(b.conc)})</span></td></tr>`;
+        }).join('');
+        const how = Object.values(groups).sort((a, b) => a.b.fold - b.b.fold).map(({ b, n }) => {
+          const need = n * c.perSample * ov;
+          if (b.fold === 1) return `<p><b>Neat</b> (${n} sample${n > 1 ? 's' : ''}): use the adaptor as supplied, ${fv(c.perSample)} µL each.</p>`;
+          const make = Math.max(10, Math.ceil(need / 5) * 5);
+          if (make / b.fold >= 1) return `<p><b>1:${b.fold}</b> (${n} sample${n > 1 ? 's' : ''}): ${fv(make / b.fold)} µL adaptor + ${fv(make - make / b.fold)} µL ${esc(c.diluent)}.</p>`;
+          const second = b.fold / 10, take = make / second;   // 1:10 first, then dilute again
+          return `<p><b>1:${b.fold}</b> (${n} sample${n > 1 ? 's' : ''}): double dilution. First 1:10 (1 µL adaptor + 9 µL ${esc(c.diluent)}), then ${fv(take)} µL of that + ${fv(make - take)} µL ${esc(c.diluent)}.</p>`;
+        }).join('');
+        return { title: 'Adaptor dilution', sub: `${fv(c.perSample)} µL per sample`, html: `<div class="tbl-wrap"><table><tr><th>Sample</th><th>Input</th><th>Adaptor</th></tr>${rows}</table></div>${how}${c.note ? `<p class="why">${esc(c.note)}</p>` : ''}` };
+      },
+      // How many of something the run needs, e.g. ScreenTape lanes = samples + ladder.
+      count(c) {
+        const n = nS(), extra = c.extra || 0, total = n * (c.perSample || 1) + extra, per = c.per;
+        const ov = 1 + (prm('overage') || 0) / 100, over = c.max && total > c.max;
+        const mm = c.mmVol ? `<p>${esc(c.mmName || 'Master mix')}: <b>${fvol(total * c.mmVol * ov)}</b> (${total} × ${fv(c.mmVol)} µL${ov > 1 ? ` + ${fv((ov - 1) * 100)}%` : ''}).</p>` : '';
+        return { title: c.title, sub: '', html: `<div class="big">${total} ${esc(c.unit)}</div><p class="why">${n} sample${n === 1 ? '' : 's'}${c.perSample > 1 ? ` × ${c.perSample}` : ''}${extra ? ` + ${extra} ${esc(c.extraLabel || '')}` : ''}${per ? ` · ${Math.ceil(total / per)} × ${per}-${esc(c.perLabel || '')}` : ''}.${c.note ? ' ' + esc(c.note) : ''}</p>${mm}${over ? `<p class="flag bad">More than ${c.max} ${esc(c.unit)}: split the samples over two plates.</p>` : ''}` };
+      },
+      // A suggested plate layout: triplicates of standards, NTC, then each sample's dilutions, filled row by row.
+      plate(c) {
+        const reps = c.reps || 3, items = [];
+        (c.standards || []).forEach((x) => { for (let r = 0; r < reps; r++) items.push({ t: x, k: 'std' }); });
+        samples().forEach((sm) => (c.dilutions || []).forEach((d) => { for (let r = 0; r < reps; r++) items.push({ t: `${codeOf(sm)} ${d}`, k: 'lib' }); }));
+        for (let r = 0; r < (c.ntc || 1); r++) items.push({ t: 'NTC', k: 'ntc' });   // last, so the triplicates stay in line
+        const rows = 'ABCDEFGH', cols = 12;
+        const cell = (i) => { const x = items[i]; return x ? `<td class="pw ${x.k}">${esc(x.t)}</td>` : '<td class="pw"></td>'; };
+        const grid = [...rows].map((r, ri) => `<tr><th>${r}</th>${Array.from({ length: cols }, (_, ci) => cell(ri * cols + ci)).join('')}</tr>`).join('');
+        return { title: c.title || 'Plate layout', sub: `${items.length} of 96 wells`,
+          html: `<div class="tbl-wrap"><table class="plate"><tr><th></th>${Array.from({ length: cols }, (_, i) => `<th>${i + 1}</th>`).join('')}</tr>${grid}</table></div>${items.length > 96 ? '<p class="flag bad">Too many wells for one plate.</p>' : ''}<p class="why">A suggestion, filled row by row: triplicates side by side, NTC last. ${esc(c.note || '')}</p>` };
+      },
+      dilute(c) {
+        const n = nS(), stock = c.stock || prm(c.stockParam), tgt = c.target, need = (c.perSample || 0) * n;
+        if (!stock || stock <= tgt) return { title: c.title, sub: '', html: `<p class="flag bad">Set the stock concentration in settings (it must be above ${fv(tgt)}${esc(c.unit)}).</p>` };
+        const make = Math.max(c.minMake || 0, Math.ceil(need * 1.2));        // mL, ~20% spare
+        const sv = make * tgt / stock, wv = make - sv;
+        return { title: c.title, sub: `${fv(tgt)}${esc(c.unit)} from ${fv(stock)}${esc(c.unit)} stock`,
+          html: `<div class="big">${fv(sv)} mL stock + ${fv(wv)} mL ${esc(c.diluent)}</div>
+            <p>Makes <b>${fv(make)} mL</b> of ${fv(tgt)}${esc(c.unit)} ${esc(c.what)}.${need ? ` ${n} sample${n === 1 ? '' : 's'} × ${fv(c.perSample)} mL = ${fv(need)} mL${c.minMake ? `, and at least ${fv(c.minMake)} mL in all` : ''} (+ spare).` : ''}</p>
+            <p class="why">Recipe: ${fv(10 * tgt / stock)} mL stock + ${fv(10 - 10 * tgt / stock)} mL ${esc(c.diluent)} for every 10 mL. ${c.stockParam ? `Stock is ${fv(stock)}${esc(c.unit)}: check the bottle and change it in settings if it differs.` : ''}${c.note ? ' ' + esc(c.note) : ''}</p>` };
+      },
+      yield(c) {
+        const rows = samples().map((s) => {
+          const q = rd(c.readingKey, s.id);
+          if (q == null) return `<tr><td>${esc(s.name)}</td><td colspan="2" class="dim">–</td></tr>`;
+          const ng = q * c.eluate, low = c.minNg != null && ng < c.minNg;
+          return `<tr><td>${esc(s.name)}</td><td>${fv(q)}</td><td class="v ${low ? 'flag bad' : ''}">${fv(ng)}</td></tr>`;
+        }).join('');
+        return { title: 'Yield', sub: `${c.eluate} µL eluate`, html: `<div class="tbl-wrap"><table><tr><th>Sample</th><th>ng/µL</th><th>total ng</th></tr>${rows}</table></div>${c.minNg != null ? `<p class="why">Red = under ${fv(c.minNg)} ng.</p>` : ''}${c.note ? `<p class="why">${esc(c.note)}</p>` : ''}` };
+      },
       loading(c) {
-        const q = rd(c.readingKey, 'pool'), fmol = prm('targetFmol');
+        const q = rd(c.readingKey, 'pool');
         const tsLen = c.lengthKey ? rd(c.lengthKey, 'pool') : null, len = tsLen || prm('fragLen');
+        // bands: the amount to load by fragment length, e.g. [{ below: 1000, fmol: 100 }, { below: 10000, fmol: 50 }, { ng: 300 }]
+        const band = c.bands ? c.bands.find((b) => b.below == null || len < b.below) : null;
+        const fmol = band ? (band.ng ? band.ng * 1e6 / (len * 660) : band.fmol) : prm('targetFmol');
         const lenFrom = tsLen ? 'from your TapeStation reading' : 'from settings (type the TapeStation size above to use it)';
         if (q == null || q <= 0) return { title: 'Library dilution', sub: '', html: '<p class="why">Enter the final library Qubit reading in the step above.</p>' };
         const nM = (q * 1e6) / (660 * len);                 // ng/µL → nM (= fmol/µL)
         const ngNeed = (fmol * len * 660) / 1e6;
         let lib = ngNeed / q, eb = c.finalVol - lib, loaded = fmol, flag = '';
-        if (lib > c.finalVol) { lib = c.finalVol; eb = 0; loaded = nM * c.finalVol; flag = `Not enough library for ${fmol} fmol: load all ${c.finalVol} µL (${fv(loaded)} fmol).`; }
+        if (lib > c.finalVol) { lib = c.finalVol; eb = 0; loaded = nM * c.finalVol; flag = band && band.ng ? `Not enough library for ${fv(band.ng)} ng: load the whole library (all ${c.finalVol} µL, ${fv(q * c.finalVol)} ng).` : `Not enough library for ${fv(fmol)} fmol: load the whole library (all ${c.finalVol} µL, ${fv(loaded)} fmol).`; }
         else if (lib < 1) flag = `< 1 µL of library: dilute 1:10 in EB first, then take ${fv(lib * 10)} µL.`;
         const data = { lib, eb, loaded, len, nM, ng: Math.min(ngNeed, q * c.finalVol) };
-        return { title: 'Library dilution', sub: `${fv(fmol)} fmol at ${fv(len)} bp`, data,
+        const left = c.libVol ? Math.max(0, c.libVol - 1 - lib) : null;   // 1 µL went to the Qubit
+        const rule = band ? `${band.label}: load ${band.text}` : `${fv(fmol)} fmol (change it in settings)`;
+        return { title: 'Library dilution', sub: band ? `${band.text} for ${band.label.toLowerCase()}` : `${fv(fmol)} fmol at ${fv(len)} bp`, data,
           html: `<div class="big">${fv(lib)} µL library + ${fv(eb)} µL ${esc(c.diluent)}</div>
-            <p class="why">${fv(q)} ng/µL at ${fv(len)} bp = ${fv(nM)} fmol/µL · ${fv(fmol)} fmol = ${fv(ngNeed)} ng · ${fv(nM * 14)} fmol left in the tube</p>
-            ${flag ? `<p class="flag bad">${esc(flag)}</p>` : ''}<p class="why">Fragment length ${fv(len)} bp ${lenFrom}. Change the fmol to load in <b>settings</b>.</p>` };
+            <p class="why">${fv(q)} ng/µL at ${fv(len)} bp = ${fv(nM)} fmol/µL · ${fv(fmol)} fmol = ${fv(ngNeed)} ng${left != null ? ` · about ${fv(left)} µL of library left in the tube` : ''}</p>
+            ${flag ? `<p class="flag bad">${esc(flag)}</p>` : ''}<p class="why">Fragment length ${fv(len)} bp ${lenFrom}. ${esc(rule)}.${c.bands ? ' ' + esc(c.bands.map((x) => `${x.label} ${x.text}`).join(' · ')) : ''}</p>` };
       }
     };
     function calcHTML(step) {
@@ -603,6 +712,22 @@
     }
     function calcData(step) { const f = CALC[step.calc.type]; return f ? f(step.calc, step).data : null; }
 
+    // fmol in a fixed volume: Qubit + fragment length (TapeStation, else the default length). Uses the whole volume
+    // when the sample has no more than the target; otherwise dilutes down to the target.
+    function fmolRow(c, s) {
+      const q = rd(c.readingKey, s.id); if (q == null || q <= 0) return { missing: true };
+      const ts = c.lengthKey ? rd(c.lengthKey, s.id) : null, len = ts || prm(c.lenParam), V = c.finalVol, tgt = prm(c.fmolParam);
+      const nM = q * 1e6 / (660 * len), avail = nM * V;
+      let dna = V, water = 0, fmol = avail, flag = '', bad = false;
+      if (avail > tgt) { dna = tgt / nM; water = V - dna; fmol = tgt; if (dna < 1) flag = `< 1 µL: dilute 1:10 first, then use ${fv(dna * 10)} µL of the dilution`; }
+      else if (c.minFmol && avail < c.minFmol) { flag = `only ${fv(avail)} fmol: under ${fv(c.minFmol)} fmol even using all ${fv(V)} µL`; bad = true; }
+      return { q, len, fromTs: !!ts, nM, dna, water, fmol, ng: fmol * len * 660 / 1e6, flag, bad };
+    }
+    function inputOf(c, s) {
+      const q = rd(c.readingKey, s.id); if (q == null && !c.qOptional) return { missing: true };
+      const typed = c.volKey ? rd(c.volKey, s.id) : null, vol = typed != null ? typed : (c.defVol || c.maxVol);
+      return { q, vol, water: Math.max(0, c.maxVol - vol), ng: q == null ? null : q * Math.min(vol, c.maxVol), over: vol > c.maxVol, under: c.minVol != null && vol < c.minVol };
+    }
     /* ================= readings ================= */
     // A step has one reading (`reading`) or several (`readings`, e.g. Qubit + TapeStation). Optional ones are never "missing".
     const readingsOf = (step) => step.readings || (step.reading ? [step.reading] : []);
@@ -780,7 +905,7 @@
       }).join('');
       const finished = !next;
       $('app').innerHTML = `<div class="layout">
-        <nav class="nav">${nav}<div class="nav-foot">${esc(p.kit)} · ${nS()} samples${(p.choices || []).map((c) => `<br>Keeping: <b>${esc(choiceOpt(c.key).label.toLowerCase())}</b>`).join('')}<br><br>${esc(p.source)}</div></nav>
+        <nav class="nav">${nav}<div class="nav-foot">${esc(p.kit)} · ${nS()} samples${(p.choices || []).map((c) => `<br>${esc(c.label || 'Choice')}: <b>${esc(choiceOpt(c.key).label.toLowerCase())}</b>`).join('')}<br><br>${esc(p.source)}</div></nav>
         <div>${activeRedos().map(redoPanelHTML).join('')}${body}
           ${finished ? `<div class="card"><h3>✓ Protocol complete</h3><p class="muted">See every sample's results on one page in the <b>sample journey</b>, and save it as a picture. To add the results to LabTrack, export the CSV, then in LabTrack tap <b>↑ open → continue a run</b> and choose it.</p><div class="row"><button class="btn primary" data-act="view" data-view="journey">sample journey →</button><button class="btn" data-act="export-csv">export for LabTrack (.csv)</button><button class="btn" data-act="close-run">close run</button></div></div>` : ''}
         </div></div>
@@ -895,18 +1020,21 @@
     }
 
     /* ================= setup view ================= */
-    function newDraft() {
-      const p = PROTOCOLS[0];
+    function defaultRunName(p) {
       const base = `${p.short} ${isoDate(new Date())}`, names = new Set(Object.values(db.runs).map((r) => r.runName));
       let runName = base; for (let k = 2; names.has(runName); k++) runName = `${base} (${k})`;
+      return runName;
+    }
+    function newDraft() {
+      const p = PROTOCOLS[0], runName = defaultRunName(p);
       const codes = new Set(Object.values(db.runs).map((r) => r.runCode)), cbase = 'R' + isoDate(new Date()).slice(5).replace('-', '');
       let runCode = cbase; for (let k = 0; codes.has(runCode); k++) runCode = cbase + 'bcdefghijk'[k];
-      return { protocolId: p.id, choices: defaultChoices(p), runName, runCode, operator: '', samples: [1, 2, 3, 4].map((k) => ({ id: uid(), name: `Sample ${k}`, code: `S${k}`, barcode: p.barcodes ? p.barcodes[k - 1] : '', q: '' })) };
+      return { protocolId: p.id, choices: defaultChoices(p), runName, autoName: runName, runCode, operator: '', samples: [1, 2, 3, 4].map((k) => ({ id: uid(), name: `Sample ${k}`, code: `S${k}`, barcode: p.barcodes ? p.barcodes[k - 1] : '', q: '' })) };
     }
     function freeCode(list) { const used = new Set(list.map((s) => (s.code || '').toLowerCase())); for (let k = 1; ; k++) if (!used.has('s' + k)) return 'S' + k; }
     function freeBarcode(list, p) { const used = new Set(list.map((s) => s.barcode)); return (p.barcodes || []).find((b) => !used.has(b)) || ''; }
     function choicesHTML(cur, prefix) {
-      return (P().choices || []).map((c) => `<div class="card"><h3>${prefix}${esc(c.question)}</h3>
+      return (P().choices || []).map((c, i) => `<div class="card"><h3>${typeof prefix === 'number' ? (prefix + i) + ' · ' : prefix}${esc(c.question)}</h3>
         ${c.options.map((o) => `<div class="proto ${(cur[c.key] || c.default) === o.value ? 'sel' : ''}" data-act="choose" data-key="${c.key}" data-val="${o.value}"><b>${esc(o.label)}</b><span class="k">${esc(o.short || '')}</span><span class="k" style="grid-column:1/-1">${esc(o.detail || '')}</span></div>`).join('')}
         <p class="dim" style="margin:10px 0 0;font-size:12px">The steps, wash buffer and bead ratios follow this choice. You can change it later in settings.</p></div>`).join('');
     }
@@ -914,7 +1042,7 @@
       const opts = (cur) => (p.barcodes || []).map((b) => `<option ${b === cur ? 'selected' : ''}>${b}</option>`).join('');
       const used = {}; list.forEach((s) => { used[s.barcode] = (used[s.barcode] || 0) + 1; });
       const dupC = {}; list.forEach((s, k) => { const c = (s.code || 'S' + (k + 1)).toLowerCase(); dupC[c] = (dupC[c] || 0) + 1; });
-      return `<div class="tbl-wrap"><table class="samples-tbl"><tr><th></th><th>Sample name</th><th>Tube code</th>${p.barcodes ? '<th>Barcode</th>' : ''}${withQ ? '<th>Qubit ng/µL</th>' : ''}<th></th></tr>
+      return `<div class="tbl-wrap"><table class="samples-tbl"><tr><th></th><th>Sample name</th><th>Tube code</th>${p.barcodes ? `<th>${esc(p.barcodeLabel || 'Barcode')}</th>` : ''}${withQ ? '<th>Qubit ng/µL</th>' : ''}<th></th></tr>
         ${list.map((s, k) => `<tr><td class="ix">${k + 1}</td><td><input data-sf="name" data-sid="${s.id}" value="${esc(s.name)}" /></td><td class="tc"><input data-sf="code" data-sid="${s.id}" value="${esc(s.code || '')}" placeholder="S${k + 1}" maxlength="6" class="${dupC[(s.code || 'S' + (k + 1)).toLowerCase()] > 1 ? 'dup' : ''}" /></td>
           ${p.barcodes ? `<td class="b"><select class="bc ${used[s.barcode] > 1 ? 'dup' : ''}" data-sf="barcode" data-sid="${s.id}">${opts(s.barcode)}</select></td>` : ''}
           ${withQ ? `<td class="q"><input inputmode="decimal" data-sf="q" data-sid="${s.id}" value="${esc(s.q)}" placeholder="optional" /></td>` : ''}
@@ -925,9 +1053,12 @@
     // Step list of a saved run without opening it (its choices filled into the text).
     function runSummary(r) {
       const p = PROTOCOLS.find((x) => x.id === r.protocolId);
-      const all = p.stages.flatMap((st) => st.steps), done = all.filter((st) => r.done && r.done[st.id]).length;
+      const pick = (k) => { const c = (p.choices || []).find((x) => x.key === k); return c && ((r.choices || {})[k] || c.default || c.options[0].value); };
+      const all = p.stages.flatMap((st) => st.steps).filter((st) => !st.when || Object.entries(st.when).every(([k, v]) => [].concat(v).includes(pick(k))));
+      const done = all.filter((st) => r.done && r.done[st.id]).length;
       const nx = all.find((st) => !(r.done || {})[st.id]);
-      const fillR = (t) => strip(t).replace(/\{(\w+)\.(\w+)\}/g, (m, k, f) => {
+      const rp = (k) => { const v = num((r.params || {})[k]); if (v != null) return v; const d = p.params.find((x) => x.key === k); return d ? d.value : null; };
+      const fillR = (t) => fillP(strip(t), rp).replace(/\{(\w+)\.(\w+)\}/g, (m, k, f) => {
         const c = (p.choices || []).find((x) => x.key === k); if (!c) return m;
         const o = c.options.find((x) => x.value === (r.choices || {})[k]) || c.options.find((x) => x.value === c.default);
         return o && o[f] != null ? o[f] : m;
@@ -985,8 +1116,9 @@
           <div class="field"><label for="fOp">Operator</label><input id="fOp" data-df="operator" value="${esc(draft.operator)}" placeholder="initials" /></div>
           <div class="field"><label for="fRc">Run code (on pool tubes)</label><input id="fRc" data-df="runCode" value="${esc(draft.runCode)}" maxlength="8" style="width:110px" /></div>
         </div><p class="dim" style="font-size:12px;margin:8px 0 0">Each time a sample moves to a new tube it gets a new short label, e.g. S1 → S1-EP (end-prepped) → S1-NB01 (barcoded). The pool and library are labelled with the run code, e.g. ${esc(draft.runCode || 'R1126')}-LIB.</p></div>
-        ${choicesHTML(draft.choices, '3 · ')}
-        <div class="card"><h3>${(p.choices || []).length ? 4 : 3} · Samples</h3><div id="sampleBox">${samplesTable(draft.samples, p, true)}</div>
+        ${choicesHTML(draft.choices, 3)}
+        ${p.params.some((x) => x.ask) ? `<div class="card"><h3>${3 + (p.choices || []).length} · Numbers for this run</h3><div class="row">${p.params.filter((x) => x.ask).map((x) => `<div class="field"><label>${esc(x.label)} (${esc(x.unit)})</label><input inputmode="decimal" data-dp="${x.key}" value="${esc((draft.params || {})[x.key] != null ? draft.params[x.key] : x.value)}" style="width:120px" />${x.hint ? `<span class="dim" style="font-size:11.5px">${esc(x.hint)}</span>` : ''}</div>`).join('')}</div><p class="dim" style="font-size:12px;margin:8px 0 0">You can change these later in settings.</p></div>` : ''}
+        <div class="card"><h3>${3 + (p.choices || []).length + (p.params.some((x) => x.ask) ? 1 : 0)} · Samples</h3><div id="sampleBox">${samplesTable(draft.samples, p, true)}</div>
           <p class="dim" style="font-size:12px;margin:8px 0 0">Qubit readings are optional here: you can type them at the QC step too.</p></div>
         <div id="setupErr" class="err"></div>
         <div class="row" style="margin-top:16px"><button class="btn primary" data-act="start">start run →</button>
@@ -1009,7 +1141,7 @@
       if (new Set(codes).size !== codes.length) return err('Two samples have the same tube code.');
       state = {
         v: 2, id: uid(), protocolId: p.id, choices: Object.assign(defaultChoices(p), draft.choices), runName: draft.runName.trim() || p.short, operator: draft.operator.trim(), started: new Date().toISOString(),
-        params: Object.fromEntries(p.params.map((x) => [x.key, x.value])),
+        params: Object.assign(Object.fromEntries(p.params.map((x) => [x.key, x.value])), draft.params || {}),
         runCode: (draft.runCode || '').trim(),
         samples: list.map((s, i) => ({ id: s.id, name: s.name.trim(), code: (s.code || '').trim() || `S${i + 1}`, barcode: s.barcode })),
         readings: {}, readAt: {}, done: {}, skipped: {}, notes: {}, timers: {}, dil: {}, redos: [], tubeLog: [], keepAwake: true, sound: true
@@ -1036,7 +1168,7 @@
           <div class="field"><label>Run name</label><input data-sf2="runName" value="${esc(state.runName)}" /></div>
           <div class="field"><label>Operator</label><input data-sf2="operator" value="${esc(state.operator)}" /></div>
           <div class="field"><label>Run code (pool tubes)</label><input data-sf2="runCode" value="${esc(state.runCode || '')}" maxlength="8" style="width:110px" /></div></div>
-        ${(p.choices || []).length ? `<h4 style="margin:16px 0 6px">Fragments</h4>${choicesHTML(state.choices || {}, '').replace(/<div class="card">/g, '<div>').replace(/<h3>.*?<\/h3>/g, '')}` : ''}
+        ${(p.choices || []).length ? `<h4 style="margin:16px 0 6px">${esc((p.choices || []).map((c) => c.label || 'Choice').join(' · '))}</h4>${choicesHTML(state.choices || {}, '').replace(/<div class="card">/g, '<div>').replace(/<h3>.*?<\/h3>/g, '')}` : ''}
         <h4 style="margin:16px 0 6px">Calculator numbers</h4><div class="row">${params}</div>
         <h4 style="margin:16px 0 6px">Bench</h4>
         <label style="display:block"><input type="checkbox" data-sf2="sound" ${state.sound !== false ? 'checked' : ''}/> Sound when a timer finishes</label>
@@ -1077,6 +1209,7 @@
         const note = state.notes[s.id] || '';
         const fromS = prevSampleSection, fromP = prevPoolSection;   // readings in one step all follow the step before
         readingsOf(s).forEach((r, ri) => {
+          if (r.noExport) return;
           const sec = r.section || r.label, type = r.type || 'General';
           if (r.per === 'pool') {
             const v = state.readings[r.key] && state.readings[r.key].pool;
@@ -1088,6 +1221,10 @@
               if (v == null || v === '') return;
               let vol = '';
               if (norm) { const nr = normaliseRow(norm.calc, sm); if (!nr.missing) vol = `${fv(nr.dna)} µL DNA${nr.dil > 1 ? ` (of 1:${nr.dil})` : ''} + ${fv(nr.water)} µL water (${fv(nr.ng)} ng)`; }
+              const fm = flat().find((x) => x.calc && x.calc.type === 'fmolNorm' && x.calc.readingKey === r.key);
+              if (fm) { const fr = fmolRow(fm.calc, sm); if (!fr.missing) vol = `${fv(fr.dna)} µL DNA + ${fv(fr.water)} µL water (${fv(fr.fmol)} fmol, ${fv(fr.ng)} ng)`; }
+              const inp = flat().find((x) => x.calc && x.calc.type === 'input' && x.calc.readingKey === r.key);
+              if (inp) { const ir = inputOf(inp.calc, sm); if (!ir.missing) vol = `${fv(ir.vol)} µL DNA + ${fv(ir.water)} µL water${ir.ng != null ? ` (${fv(ir.ng)} ng)` : ''}`; }
               add(s.id, r.key, sec, 'Result', type, sm.name, v, r.unit, vol, '', r.chain === false ? '' : fromS, r.noTube ? '' : tubeL(s.id, 'sample', sm));
             });
             if (r.chain !== false) prevSampleSection = sec;
@@ -1123,6 +1260,7 @@
       const normAny = steps.find((x) => x.calc && x.calc.type === 'normalise');
       steps.forEach((s) => {
         readingsOf(s).forEach((r) => {
+          if (r.noExport) return;
           if (r.per === 'pool') {
             const v = rd(r.key, 'pool');
             const rec = steps.find((x) => x.calc && x.calc.type === 'recovery' && x.calc.per === 'pool' && x.calc.readingKey === r.key);
@@ -1131,10 +1269,16 @@
           }
           const norm = steps.find((x) => x.calc && x.calc.type === 'normalise' && x.calc.readingKey === r.key);
           const rec = steps.find((x) => x.calc && x.calc.type === 'recovery' && x.calc.per !== 'pool' && x.calc.readingKey === r.key);
+          const yl = steps.find((x) => x.calc && x.calc.type === 'yield' && x.calc.readingKey === r.key);
+          const fm = steps.find((x) => x.calc && x.calc.type === 'fmolNorm' && x.calc.readingKey === r.key);
+          const inp = steps.find((x) => x.calc && x.calc.type === 'input' && x.calc.readingKey === r.key);
           cols.push({ label: r.short || r.label, cell: (sm) => {
             const q = rd(r.key, sm.id); if (q == null) return { v: null };
             let sub = '', bad = false;
             if (norm) { const nr = normaliseRow(norm.calc, sm); if (!nr.missing) { sub = `${fv(nr.ng)} ng used${nr.dil > 1 ? ` · 1:${nr.dil}` : ''}`; bad = nr.bad || !!nr.flag && nr.dna > norm.calc.finalVol - 0.001; } }
+            if (fm) { const fr = fmolRow(fm.calc, sm); if (!fr.missing) { sub = `${fv(fr.fmol)} fmol · ${fv(fr.ng)} ng in`; bad = fr.bad; } }
+            if (inp) { const ir = inputOf(inp.calc, sm); if (!ir.missing) sub = ir.ng != null ? `${fv(ir.ng)} ng in` : `${fv(ir.vol)} µL in`; }
+            if (yl) { sub = `${fv(q * yl.calc.eluate)} ng total`; bad = yl.calc.minNg != null && q * yl.calc.eluate < yl.calc.minNg; }
             if (rec) {
               const inR = normAny ? normaliseRow(normAny.calc, sm) : null, inNg = inR && !inR.missing ? inR.ng : prm('inputNg');
               const pct = inNg ? q * rec.calc.eluate / inNg * 100 : null;
@@ -1143,7 +1287,7 @@
             return { v: `${fv(q)} ${r.unit}`, sub, bad };
           } });
         });
-        if (s.calc && s.calc.type === 'barcodes') cols.push({ label: 'Barcode', cell: (sm) => ({ v: sm.barcode, sub: '' }) });
+        if (s.calc && s.calc.type === 'barcodes') cols.push({ label: P().barcodeLabel || 'Barcode', cell: (sm) => ({ v: sm.barcode, sub: '' }) });
         if (s.calc && s.calc.type === 'loading') {
           const d = rd(s.calc.readingKey, 'pool') != null ? calcData(s) : null;
           pool.push({ label: 'Loaded', v: d ? `${fv(d.loaded)} fmol` : null, sub: d ? `${fv(d.lib)} µL library + ${fv(d.eb)} µL EB` : '' });
@@ -1155,9 +1299,9 @@
         .concat(state.redos.map((r) => ({ no: stepNo(r.from), skipped: true, text: (r.kind === 'added' ? '' : '↺ ') + redoText(r) })))
         .sort((a, b) => a.no - b.no);
       const meta = [p.name + ' (' + p.kit + ')', state.operator ? 'operator ' + state.operator : '', 'started ' + when(Date.parse(state.started)),
-        ...(p.choices || []).map((c) => 'keeping ' + choiceOpt(c.key).label.toLowerCase()), `${done}/${all.length} steps done`].filter(Boolean).join(' · ');
+        ...(p.choices || []).map((c) => (c.label || 'choice').toLowerCase() + ' ' + choiceOpt(c.key).label.toLowerCase()), `${done}/${all.length} steps done`].filter(Boolean).join(' · ');
       const legend = flat().filter((x) => x.tube).map((x) => `${x.tube.suffix} = ${fillBc(x.tube.what, null)} (step ${stepNo(x.id)})`).join(' · ');
-      const chain = (sid) => state.tubeLog.filter((x) => x.sid === sid).sort((a, b) => a.at - b.at || a.stepNo - b.stepNo).map((x) => ({ label: x.label, what: x.what, step: x.stepNo, keep: x.keep, redone: x.status === 'redone', at: x.at }));
+      const chain = (sid) => state.tubeLog.filter((x) => x.sid === sid).sort((a, b) => a.at - b.at || a.stepNo - b.stepNo).map((x) => ({ label: x.label, what: x.what, step: x.stepNo, keep: x.keep, side: x.side || !!((flat().find((st) => st.id === x.step) || {}).tube || {}).side, redone: x.status === 'redone', at: x.at }));
       const tubes = { legend, rows: samples().map((sm) => ({ name: sm.name, chain: [{ label: codeOf(sm), what: 'original sample', step: 0 }, ...chain(sm.id)] })), pool: chain('pool') };
       return { title: state.runName, meta, cols, pool, notes, tubes, rows: samples().map((sm) => ({ name: sm.name, cells: cols.map((c) => c.cell(sm)) })) };
     }
@@ -1173,7 +1317,7 @@
           <p class="dim" style="font-size:12px;margin:8px 0 0">Under each reading: ng used for the input, or ng recovered and % of the input after a clean-up. Red = under 40% recovered or short of the input mass.</p></div>
         <div class="card"><h3>Pool → library</h3><div class="strip">${d.pool.map((n, i) => `${i ? '<span class="arrow">→</span>' : ''}<div class="node"><div class="js">${esc(n.label)}</div><div class="jv">${n.v == null ? '–' : esc(n.v)}</div>${n.sub ? `<div class="js">${esc(n.sub)}</div>` : ''}</div>`).join('')}</div></div>
         <div class="card"><h3>Tubes</h3>
-          <div class="tbl-wrap"><table class="jt tubes">${d.tubes.rows.map((r) => `<tr><td><b>${esc(r.name)}</b></td><td>${r.chain.map((t) => `<span class="tcode${t.keep ? ' keep' : ''}${t.redone ? ' redone' : ''}" title="${esc(t.what)}${t.step ? ' · step ' + t.step : ''}${t.at ? ' · ' + esc(when(t.at)) : ''}${t.redone ? ' · redone' : ''}">${esc(t.label)}</span>`).join('<span class="arrow">→</span>')}</td></tr>`).join('')}
+          <div class="tbl-wrap"><table class="jt tubes">${d.tubes.rows.map((r) => `<tr><td><b>${esc(r.name)}</b></td><td>${r.chain.filter((t) => !t.side).map((t) => `<span class="tcode${t.keep ? ' keep' : ''}${t.redone ? ' redone' : ''}" title="${esc(t.what)}${t.step ? ' · step ' + t.step : ''}${t.at ? ' · ' + esc(when(t.at)) : ''}${t.redone ? ' · redone' : ''}">${esc(t.label)}</span>`).join('<span class="arrow">→</span>')}${r.chain.some((t) => t.side) ? `<span class="dim" style="margin-left:10px">side:</span> ${r.chain.filter((t) => t.side).map((t) => `<span class="tcode${t.keep ? ' keep' : ''}${t.redone ? ' redone' : ''}" title="${esc(t.what)} · step ${t.step}">${esc(t.label)}</span>`).join(' ')}` : ''}</td></tr>`).join('')}
             <tr><td><b>Pool</b></td><td>${d.tubes.pool.length ? d.tubes.pool.map((t) => `<span class="tcode${t.keep ? ' keep' : ''}${t.redone ? ' redone' : ''}" title="${esc(t.what)}${t.step ? ' · step ' + t.step : ''}${t.at ? ' · ' + esc(when(t.at)) : ''}${t.redone ? ' · redone' : ''}">${esc(t.label)}</span>`).join('<span class="arrow">→</span>') : '<span class="dim">not pooled yet</span>'}</td></tr></table></div>
           <p class="dim" style="font-size:12px;margin:8px 0 0">${esc(d.tubes.legend)}. Outlined = a tube you keep. Crossed out = redone (first try).</p></div>
         <div class="card"><h3>Notes &amp; deviations</h3>${d.notes.length ? `<ul class="jnotes">${d.notes.map((n) => `<li><b>Step ${n.no}</b> · ${esc(n.text)}</li>`).join('')}</ul>` : '<p class="muted" style="margin:0">None recorded.</p>'}</div>
@@ -1221,7 +1365,7 @@
         x += nodeW + gap;
       });
       y += nodeH + 30; o.push(T(pad, y, 'Tubes', 14, C('text'), 800)); y += 6;
-      const tl = (ch) => ch.map((t) => t.label + (t.redone ? ' (redone)' : '')).join(' → ') || '–';
+      const tl = (ch) => (ch.filter((t) => !t.side).map((t) => t.label + (t.redone ? ' (redone)' : '')).join(' → ') || '–') + (ch.some((t) => t.side) ? '   · side: ' + ch.filter((t) => t.side).map((t) => t.label).join(', ') : '');
       [...d.tubes.rows.map((r) => [r.name, tl(r.chain)]), ['Pool', tl(d.tubes.pool)]].forEach(([n, t]) => {
         y += 18; o.push(T(pad + 6, y, fit(n, nameW - 12, 11), 11, C('text'), 700)); o.push(T(pad + nameW, y, fit(t, W - 2 * pad - nameW, 11), 11, C('muted')));
       });
@@ -1303,7 +1447,13 @@
         case 'expand': openDone.has(id) ? openDone.delete(id) : openDone.add(id); renderRun(); break;
         case 'note': openNotes.add(id); renderRun(); { const t = document.querySelector(`[data-note="${id}"]`); if (t) t.focus(); } break;
         case 'jump': { const n = nextStep(); if (n) scrollToStep(n.id); break; }
-        case 'pick': draft.protocolId = el.dataset.pid; draft.choices = defaultChoices(P()); renderSetup(); break;
+        case 'pick': {
+          draft.protocolId = el.dataset.pid; draft.choices = defaultChoices(P()); draft.params = {};
+          if (draft.runName === draft.autoName) draft.runName = draft.autoName = defaultRunName(P());   // follow the protocol unless renamed
+          draft.samples.forEach((sm, i) => { sm.barcode = P().barcodes ? P().barcodes[i] || '' : ''; });
+          if (P().maxSamples && draft.samples.length > P().maxSamples) draft.samples.length = P().maxSamples;
+          renderSetup(); break;
+        }
         case 'choose': {
           const tgt = state || draft; tgt.choices = Object.assign({}, tgt.choices, { [el.dataset.key]: el.dataset.val });
           if (state) { save(); renderRun(); settingsDialog(); } else renderSetup();
@@ -1401,6 +1551,7 @@
       } else if (t.dataset.note) { state.notes[t.dataset.note] = t.value; if (!t.value) delete state.notes[t.dataset.note]; save(); }
       else if (t.dataset.tubeq) $('tubeRes').innerHTML = findHTML(t.value);
       else if (t.dataset.df) draft[t.dataset.df] = t.value;
+      else if (t.dataset.dp) { draft.params = draft.params || {}; draft.params[t.dataset.dp] = t.value; }
       else if (t.dataset.sf) {
         const s = list().find((x) => x.id === t.dataset.sid); if (!s) return;
         s[t.dataset.sf] = t.value;
