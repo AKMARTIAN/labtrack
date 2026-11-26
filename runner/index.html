@@ -716,7 +716,7 @@
         const n = nS(), V = c.finalVol, mode = c.mode;
         let rows = '', total = 0, missing = 0, short = [];
         if (mode === 'mass') {
-          const tgt = prm(c.massParam);
+          const tgt = c.totalParam ? prm(c.totalParam) / Math.max(1, n) : prm(c.massParam);   // totalParam: one total mass split evenly
           rows = samples().map((s) => {
             const q = rd(c.readingKey, s.id);
             if (q == null || q <= 0) { missing++; return `<tr><td>${esc(s.name)}</td><td colspan="2" class="flag">enter the library Qubit</td></tr>`; }
@@ -728,12 +728,14 @@
           const each = n === 1 ? c.single : c.each; total = each * n;
           rows = `<tr><th>Library</th><th></th><th>µL</th></tr>` + samples().map((s) => `<tr><td>${esc(s.name)}</td><td></td><td class="v">${fv(each)}</td></tr>`).join('');
         }
-        const rsb = Math.max(0, V - total), over = total > V;
-        let msg = missing ? `<p class="why">${missing} librar${missing > 1 ? 'ies' : 'y'} still need a Qubit.</p>`
+        const rsb = Math.max(0, V - total), over = !c.dry && total > V;
+        let msg = c.dry && !missing ? (() => { const tot = prm(c.totalParam);
+            return `<div class="big">${fv(total)} µL pooled</div><p class="why">${n} × ${fv(tot / Math.max(1, n))} ng = ${fv(tot)} ng in total. Dry the pool down in the vacuum concentrator (SOP SM19).</p>${c.maxTotal && tot > c.maxTotal ? `<p class="flag bad">Over ${fv(c.maxTotal)} ng in total: enrichment may not work as well. Lower the total in settings.</p>` : ''}`; })()
+          : missing ? `<p class="why">${missing} librar${missing > 1 ? 'ies' : 'y'} still need a Qubit.</p>`
           : over ? `<p class="flag bad">Pool is ${fv(total)} µL, over ${fv(V)} µL: turn on <b>“Concentrate the pool”</b> in settings and add <b>${fv(total * c.concFactor)} µL IPB</b> (${c.concFactor} × ${fv(total)} µL).</p>`
           : `<div class="big">${fv(total)} µL libraries + ${fv(rsb)} µL ${esc(c.diluent)}</div><p class="why">= ${fv(V)} µL pool.</p>`;
         if (short.length) msg += `<p class="flag bad">Not enough library for ${esc(short.join(', '))} (over ${fv(c.maxVol)} µL needed): lower the target mass in settings.</p>`;
-        return { title: 'Pool', sub: mode === 'mass' ? `by mass · ${fv(prm(c.massParam))} ng each` : 'by volume', data: { total },
+        return { title: 'Pool', sub: mode === 'mass' ? `by mass · ${fv(c.totalParam ? prm(c.totalParam) / Math.max(1, n) : prm(c.massParam))} ng each` : 'by volume', data: { total },
           html: `<div class="tbl-wrap"><table>${rows}</table></div>${msg}${c.note ? `<p class="why">${esc(c.note)}</p>` : ''}` };
       },
       dilute(c) {

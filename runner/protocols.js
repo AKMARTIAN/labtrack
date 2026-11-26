@@ -1762,6 +1762,209 @@ window.BENCH_PROTOCOLS = [
       }
     ]
   }
+  ,
+  {
+    id: 'sm14-minion-load',
+    name: 'MinION Loading',
+    short: 'SM14 MinION load',
+    kit: 'MinION flow cell on GridION · FCF / FCT / SB / LIB',
+    vendor: 'Oxford Nanopore · SOP FSD 75-GN-SM14',
+    source: 'From the lab SOP FSD 75 - GN - SM14 (30-12-2025) and the ONT SQK-LSK114 / SQK-NBD114.24 protocols. One sample here = one library on its own flow cell (e.g. the 12 µL library from SM06 or SM07).',
+    params: [
+      { key: 'overage', label: 'Extra reagent', unit: '%', value: 0 }
+    ],
+    stages: [
+      {
+        id: 'ml-fc', title: 'Flow cell prep', time: '~25 min',
+        summary: 'Flow cell out of the fridge for 20 min, then a flow cell check on the GridION.',
+        steps: [
+          { id: 'ml-fc-out', text: 'Take the <b>flow cell</b> out of the fridge and let it warm up.', timers: [{ min: 20, label: 'flow cell to room temp' }],
+            tip: 'Thaw the reagents (next stage) during this wait.' },
+          { id: 'ml-check', critical: true, text: 'Run the GridION <b>software and hardware check</b>. Take the flow cell out of its packaging, put it in its slot on the GridION and run the <b>flow cell check</b>. If the result is good, leave it in place.',
+            reading: { key: 'pores', label: 'Available pores (flow cell check)', short: 'Pores', unit: 'pores', per: 'sample', type: 'General', section: 'Flow cell check', chain: false, noTube: true } }
+        ]
+      },
+      {
+        id: 'ml-reag', title: 'Reagents & priming mix', time: '~15 min',
+        summary: 'SB, LIB, LIS, FCT and FCF at room temperature; vortex, spin, on ice. Priming mix: 1175 µL FCF + 30 µL FCT per flow cell.',
+        steps: [
+          { id: 'ml-thaw', text: 'Thaw <b>Sequencing Buffer (SB)</b>, <b>Library Beads (LIB)</b>, <b>Library Solution (LIS)</b>, <b>Flow Cell Tether (FCT)</b> and <b>Flow Cell Flush (FCF)</b> at room temperature. Vortex, spin and keep on ice.' },
+          { id: 'ml-prime-mix', critical: true, text: 'Make the <b>priming mix</b> for each flow cell: <b>1175 µL FCF + 30 µL FCT</b> (1205 µL). Mix by pipetting.',
+            calc: { type: 'mix', title: 'Priming mix', noMaster: true, perTube: [{ name: 'Flow Cell Flush (FCF)', vol: 1175 }, { name: 'Flow Cell Tether (FCT)', vol: 30 }],
+              totals: [{ name: 'FCF', vol: 1175 }, { name: 'FCT', vol: 30 }] },
+            tip: '800 µL now and 200 µL later go into each flow cell; the rest is spare.' }
+        ]
+      },
+      {
+        id: 'ml-prime', title: 'Prime the flow cell', time: '~10 min',
+        summary: 'Open the priming port, draw back any bubble, then 800 µL of priming mix and a 5 min wait.',
+        steps: [
+          { id: 'ml-open', text: 'Press the flow cell down under the clip, then <b>slide the priming port cover clockwise</b> to open it (see the figures in the SOP).' },
+          { id: 'ml-bubble', critical: true, text: 'Set a P1000 to <b>200 µL</b>, put the tip in the priming port (move it gently to check it is seated), and turn the wheel <b>anticlockwise to 220–230 µL</b>. A little <b>yellow buffer</b> should come up into the tip: that means there is no bubble. Take the tip out carefully.' },
+          { id: 'ml-prime1', critical: true, text: 'Load <b>800 µL of priming mix</b> into the priming port by slowly turning the wheel clockwise. No bubbles, and no air in the tip. Incubate the flow cell.',
+            timers: [{ min: 5, label: 'after 800 µL priming' }] }
+        ]
+      },
+      {
+        id: 'ml-lib', title: 'Prepare the library', time: '~5 min',
+        summary: '37.5 µL SB + 25.5 µL LIB + 12 µL library = 75 µL. Pipette-mix LIB right before use.',
+        steps: [
+          { id: 'ml-lib-mix', critical: true, tube: { per: 'sample', suffix: 'FC1', what: 'library + SB + LIB, ready to load (75 µL)', vessel: '1.5 mL tube' },
+            text: 'During the 5 min, <b>pipette-mix the LIB</b> (it must be mixed right before use). In a new tube: <b>37.5 µL SB</b>, <b>25.5 µL LIB</b>, <b>12 µL library</b>.',
+            calc: { type: 'mix', title: 'Library for loading', noMaster: true, perTube: [{ name: 'Sequencing Buffer (SB)', vol: 37.5 }, { name: 'Library Beads (LIB)', vol: 25.5 }, { name: 'Library', vol: 12 }],
+              totals: [{ name: 'SB', vol: 37.5 }, { name: 'LIB', vol: 25.5 }] } }
+        ]
+      },
+      {
+        id: 'ml-load', title: 'Load and start', time: '~10 min',
+        summary: '200 µL priming mix through the priming port, then 75 µL library dropwise through the SpotON port.',
+        steps: [
+          { id: 'ml-spoton', text: 'Gently lift the <b>SpotON sample port</b> cover to the side.' },
+          { id: 'ml-prime2', critical: true, text: 'Load <b>200 µL of priming mix</b> into the <b>priming port</b> (not the SpotON port), avoiding bubbles.' },
+          { id: 'ml-load-lib', critical: true, text: 'Pipette-mix the library, then add <b>75 µL</b> through the <b>SpotON port</b>: hold the pipette just above the port (close, not touching) and turn the wheel slowly so <b>one drop at a time</b> goes in. Let each drop be fully absorbed before the next.' },
+          { id: 'ml-close', text: 'Gently put back the <b>SpotON port cover</b>, close the <b>priming port</b>, and put on the <b>light shield</b>.' },
+          { id: 'ml-start', text: 'Start sequencing with the parameters you need.' }
+        ]
+      }
+    ]
+  }
+  ,
+  {
+    id: 'sm15-twist-snp',
+    name: 'Twist SNP Capture',
+    short: 'SM15 Twist capture',
+    kit: 'Twist Ancient Human DNA panel (1.4M SNPs) · Hybridization and Wash Kit',
+    vendor: 'Twist Bioscience · SOP FSD 75-GN-SM15',
+    source: 'From the lab SOP FSD 75 - GN - SM15 (30-12-2025) and the Twist Ancient Human DNA Target Enrichment Standard Hybridization Protocol. Two days, 16 h hybridisation. One capture per run: enter the indexed libraries in the pool as samples.',
+    choices: [
+      { key: 'mito', label: 'Mito panel', question: 'Add the Twist High Concentration Mitochondrial Panel?', default: 'no',
+        options: [
+          { value: 'no', label: 'No', short: '0.04 µL water', detail: 'Probe solution: 5 µL Hybridization Mix + 1 µL Ancient Human DNA Panel + 0.04 µL water.', add: '<b>0.04 µL water</b>', thaw: '' },
+          { value: 'yes', label: 'Yes', short: '0.04 µL Mito panel', detail: 'Probe solution: 5 µL Hybridization Mix + 1 µL Ancient Human DNA Panel + 0.04 µL Mitochondrial Panel.', add: '<b>0.04 µL High Concentration Mitochondrial Panel</b>', thaw: ', <b>High Concentration Mitochondrial Panel</b>' }
+        ] }
+    ],
+    params: [
+      { key: 'totalNg', label: 'Total library DNA in the capture', unit: 'ng', value: 1000, ask: true, hint: '1000 ng (1 µg) is standard; more can be used, but never over 4000 ng' },
+      { key: 'overage', label: 'Extra reagent', unit: '%', value: 0 }
+    ],
+    stages: [
+      {
+        id: 'tw-pool', title: 'Pool and dry the indexed libraries', time: '~1 h',
+        summary: 'Equal mass of each library, ~1 µg in total (never over 4 µg). Then dry the pool down.',
+        steps: [
+          { id: 'tw-pool-mix', critical: true, tube: { per: 'pool', suffix: 'PL1', what: 'indexed library pool, dried then resuspended for the hybridisation', vessel: '0.2 mL PCR strip tube' },
+            text: 'Enter each indexed library\'s <b>concentration</b>, then pool the volume shown for each.',
+            reading: { key: 'qLib', label: 'Indexed library Qubit', short: 'Library Qubit', unit: 'ng/µL', per: 'sample', type: 'Qubit', section: 'Pooling' },
+            calc: { type: 'poolmix', mode: 'mass', readingKey: 'qLib', totalParam: 'totalNg', maxTotal: 4000, dry: true, finalVol: 0, concFactor: 0 },
+            tip: 'Not enough library? You can use less, but library complexity may drop.' },
+          { id: 'tw-pool-spin', text: 'Pulse-spin the pool tube to get rid of bubbles.' },
+          { id: 'tw-pool-dry', critical: true, text: '<b>Dry the pool</b> in the vacuum concentrator (SOP SM19).' }
+        ]
+      },
+      {
+        id: 'tw-hybprep', title: 'Before the hybridisation', time: '~20 min',
+        summary: 'Reagents on ice, heat block at 65 °C, thermal cycler at 95 °C with the lid at 105 °C.',
+        steps: [
+          { id: 'tw-thaw', text: 'Thaw on ice: <b>Ancient Human DNA Panel</b>{mito.thaw}, <b>Hybridization Mix</b>, <b>Hybridization Enhancer</b>, <b>Universal Blockers</b>, <b>Blocker Solution</b>. Pulse-vortex 2 s and pulse-spin.' },
+          { id: 'tw-heat-set', text: 'Set a heat block to <b>65 °C</b>, and program the thermal cycler to <b>95 °C with the lid at 105 °C</b>.' },
+          { id: 'tw-hybmix', critical: true, text: 'Heat the <b>Hybridization Mix at 65 °C for 10 min</b> (until any precipitate dissolves), then let it cool on the bench for 5 min.',
+            timers: [{ min: 10, label: 'Hyb Mix at 65 °C' }, { min: 5, label: 'cool on the bench' }] }
+        ]
+      },
+      {
+        id: 'tw-probe', title: 'Probe solution & library resuspension', time: '~10 min',
+        summary: 'Probe: 5 + 1 + 0.04 µL = 6.04 µL. Library: dried pool + 5 µL Blocker Solution + 7 µL Universal Blockers = 12 µL.',
+        steps: [
+          { id: 'tw-probe-mix', critical: true, text: 'In a clean 0.2 mL PCR strip tube: <b>5 µL Hybridization Mix</b>, <b>1 µL Twist Ancient Human DNA Panel</b>, {mito.add} (6.04 µL). Mix by flicking, then pulse-spin.',
+            calc: { type: 'mix', title: 'Probe solution', per: 'pool', noMaster: true,
+              perTube: [{ name: 'Hybridization Mix', vol: 5 }, { name: 'Twist Ancient Human DNA Panel', vol: 1 }, { name: 'Mitochondrial Panel', vol: { by: 'mito', yes: 0.04, no: 0 } }, { name: 'Water', vol: { by: 'mito', yes: 0, no: 0.04 } }] },
+            tip: 'The Hybridization Mix is very viscous: pipette slowly. White particles in the panel tube are fine. A secondary (spike-in) panel goes in as 0.04 µL instead of the water.' },
+          { id: 'tw-resus', critical: true, text: 'Resuspend the <b>dried library pool</b> in <b>5 µL Blocker Solution + 7 µL Universal Blockers</b> (12 µL). Mix by flicking, then pulse-spin.',
+            calc: { type: 'mix', title: 'Library resuspension', per: 'pool', noMaster: true, perTube: [{ name: 'Blocker Solution', vol: 5 }, { name: 'Universal Blockers', vol: 7 }] } }
+        ]
+      },
+      {
+        id: 'tw-hyb', title: 'Hybridisation (overnight)', time: '16 h',
+        summary: 'Probe 95 °C 2 min then ice; library 95 °C 5 min; both 5 min at room temperature; combine, 30 µL Enhancer on top, 62 °C for 16 h.',
+        steps: [
+          { id: 'tw-probe-heat', critical: true, text: 'Heat the <b>probe solution at 95 °C for 2 min</b> (lid 105 °C), then put it <b>straight on ice for 5 min</b>.',
+            timers: [{ min: 2, label: 'probe at 95 °C' }, { min: 5, label: 'probe on ice' }] },
+          { id: 'tw-lib-heat', critical: true, text: 'While the probe is on ice, heat the <b>resuspended library at 95 °C for 5 min</b> (lid 105 °C). Then let <b>both tubes sit at room temperature for 5 min</b> so they reach the same temperature.',
+            timers: [{ min: 5, label: 'library at 95 °C' }, { min: 5, label: 'both at room temp' }] },
+          { id: 'tw-combine', text: 'Flick and pulse-spin the probe solution, then transfer <b>all of it</b> into the library tube. Mix well by vortexing and pulse-spin.' },
+          { id: 'tw-enh', critical: true, text: 'Add <b>30 µL Hybridization Enhancer</b> on top of the reaction. Pulse-spin (no bubbles) and <b>seal the tube tightly</b> so it does not evaporate over 16 h.' },
+          { id: 'tw-hyb-run', critical: true, text: 'Incubate at <b>62 °C for 16 hours</b>, lid at <b>65 °C</b>.', timers: [{ min: 960, label: 'hybridisation 62 °C' }],
+            stop: 'Continue tomorrow: anything from 15 to 17 h of hybridisation is fine.' }
+        ]
+      },
+      {
+        id: 'tw-d2prep', title: 'Day 2: get the capture ready', time: '~45 min',
+        summary: 'Buffers at 48 °C, beads to room temperature for 30 min, streptavidin beads washed 3× in Binding Buffer. Before the hybridisation ends.',
+        steps: [
+          { id: 'tw-buffers', text: 'Preheat <b>Binding Buffer</b>, <b>Wash Buffer 1</b> and <b>Wash Buffer 2</b> at <b>48 °C</b> until any precipitate dissolves. Then per capture: <b>200 µL Wash Buffer 1</b> to room temperature, <b>700 µL Wash Buffer 2</b> kept at 48 °C.' },
+          { id: 'tw-beads-rt', text: 'Bring the <b>Streptavidin Binding Beads</b> and the <b>DNA Purification Beads</b> to room temperature for <b>at least 30 min</b>. Thaw the <b>Equinox Library Amp Mix</b> and <b>Amplification Primers</b> on ice, then pulse-vortex 2 s.',
+            timers: [{ min: 30, label: 'beads to room temp' }] },
+          { id: 'tw-sb', critical: true, tube: { per: 'pool', suffix: 'SB1', what: 'washed streptavidin beads, then the capture', vessel: '1.5 mL tube' },
+            text: 'Vortex the Streptavidin Binding Beads and put <b>300 µL</b> in a 1.5 mL tube. Add <b>600 µL Binding Buffer</b>, mix by pipetting, magnet 1 min, discard the clear supernatant. Off the magnet and <b>repeat for 3 washes</b> in total.',
+            calc: { type: 'mix', title: 'Binding Buffer', per: 'pool', noMaster: true, noTotal: true, perTube: [{ name: 'Wash 1–3', vol: 1800 }, { name: 'Final resuspension', vol: 200 }],
+              totals: [{ name: 'Binding Buffer', vol: 2000 }] } },
+          { id: 'tw-sb-final', text: 'After the third wash, add a final <b>200 µL Binding Buffer</b> and vortex until even.' }
+        ]
+      },
+      {
+        id: 'tw-bind', title: 'Bind and wash', time: '~1 h',
+        summary: 'Hot transfer onto the beads, 30 min binding, Wash Buffer 1 with a tube change, three Wash Buffer 2 washes at 48 °C.',
+        steps: [
+          { id: 'tw-hot', critical: true, text: 'Open the thermal cycler and transfer the hybridisation reaction <b>straight from 62 °C</b> into the washed streptavidin beads. Mix by pipetting and flicking.',
+            warn: 'Do not take the tube out or let it cool below 62 °C before the transfer: cooling for even under 5 min can raise off-target binding by 10–20%.' },
+          { id: 'tw-bind-mix', text: 'Mix for <b>30 min at room temperature</b> on a shaker, rocker or rotator (fast enough to keep it mixed). Then pulse-spin.', timers: [{ min: 30, label: 'binding' }] },
+          { id: 'tw-bind-sup', text: 'Magnet 1 min, then remove and discard the clear supernatant, including the Hybridization Enhancer.', tip: 'Some Enhancer may stay visible through the washes; it does not affect the result.' },
+          { id: 'tw-wb1', critical: true, tube: { per: 'pool', suffix: 'SB2', what: 'capture beads after Wash Buffer 1 (later the bead slurry)', vessel: '1.5 mL tube' },
+            text: 'Off the magnet: <b>200 µL Wash Buffer 1</b>, mix by pipetting, pulse-spin, and transfer the <b>whole ~200 µL into a new 1.5 mL tube</b>. Magnet 1 min, discard the supernatant.' },
+          { id: 'tw-wb2-1', critical: true, text: 'Off the magnet: <b>200 µL Wash Buffer 2 at 48 °C</b>, mix by pipetting, pulse-spin, incubate <b>5 min at 48 °C</b>. Magnet 1 min, discard.', timers: [{ min: 5, label: 'Wash Buffer 2 #1 at 48 °C' }] },
+          { id: 'tw-wb2-2', text: 'Wash Buffer 2 again: 200 µL at 48 °C, 5 min at 48 °C, magnet, discard.', timers: [{ min: 5, label: 'Wash Buffer 2 #2 at 48 °C' }] },
+          { id: 'tw-wb2-3', text: 'Third Wash Buffer 2: 200 µL at 48 °C, 5 min at 48 °C, magnet, discard. Then take off <b>every trace</b> of liquid with a P10.', timers: [{ min: 5, label: 'Wash Buffer 2 #3 at 48 °C' }],
+            warn: 'Go straight on: do not let the beads dry.' },
+          { id: 'tw-slurry', text: 'Off the magnet, add <b>45 µL water</b> and mix until even. This is the <b>Streptavidin Binding Bead slurry</b>: keep it on ice.' }
+        ]
+      },
+      {
+        id: 'tw-pcr', title: 'Post-capture PCR', time: '~45 min',
+        summary: '22.5 µL slurry + 2.5 µL Amplification Primers + 25 µL Equinox (or KAPA HiFi HotStart ReadyMix) = 50 µL. Lid 105 °C.',
+        steps: [
+          { id: 'tw-split', critical: true, tube: { per: 'pool', suffix: 'PC1', what: 'post-capture PCR', vessel: '0.2 mL PCR strip tube' },
+            text: 'Mix the slurry if it has settled. Transfer <b>22.5 µL</b> into a 0.2 mL PCR strip tube and keep on ice.',
+            tip: 'Store the other 22.5 µL of slurry (in the SB2 tube) at −20 °C for later.' },
+          { id: 'tw-pcr-mix', critical: true, text: 'Add <b>2.5 µL Amplification Primers (ILMN)</b> and <b>25 µL Equinox Library Amp Mix (2×)</b> (or KAPA HiFi HotStart ReadyMix). Mix by pipetting and pulse-spin.',
+            calc: { type: 'mix', title: 'Post-capture PCR', per: 'pool', noMaster: true, perTube: [{ name: 'Streptavidin Binding Bead slurry', vol: 22.5 }, { name: 'Amplification Primers, ILMN', vol: 2.5 }, { name: 'Equinox Library Amp Mix (2×) or KAPA HiFi', vol: 25 }] } },
+          { id: 'tw-pcr-run', critical: true, text: 'Thermal cycler, lid 105 °C: <b>98 °C 45 s</b> → <b>23 × [98 °C 15 s, 60 °C 30 s, 72 °C 30 s]</b> → <b>72 °C 1 min</b> → 4 °C hold.',
+            tip: 'The number of cycles can be lowered depending on the library complexity.',
+            reading: { key: 'pcrCycles', label: 'Cycles run', short: 'Cycles', unit: 'cycles', per: 'pool', type: 'General', section: 'Index PCR', chain: false } }
+        ]
+      },
+      {
+        id: 'tw-purify', title: 'Purify', time: '~30 min',
+        summary: 'Straight after the PCR: 90 µL DNA Purification Beads (1.8×), two 200 µL ethanol washes, elute in 32 µL, keep 30 µL.',
+        steps: [
+          { id: 'tw-etoh', text: 'Make <b>80% ethanol</b>: 500 µL per capture.', calc: { type: 'wash', per: 'pool', perWash: 200, washes: 2, ethanol: 0.8 } },
+          { id: 'tw-beads', critical: true, text: '<b>As soon as the PCR finishes</b>: vortex the DNA Purification Beads and add <b>90 µL (1.8×)</b>. Vortex to mix and incubate at room temperature.',
+            timers: [{ min: 5, label: 'bead binding' }],
+            calc: { type: 'beads', ratio: 1.8, volume: 50, per: 'pool', what: 'PCR', beadName: 'DNA Purification Beads' } },
+          { id: 'tw-mag', text: 'Magnet for 1 min (until clear), then remove and discard the supernatant without taking the tube off the magnet.' },
+          { id: 'tw-wash1', text: 'Gently add <b>200 µL 80% ethanol</b> without disturbing the pellet. 1 min, then remove and discard.', timers: [{ min: 1, label: 'ethanol wash' }] },
+          { id: 'tw-wash2', text: 'Repeat: <b>200 µL 80% ethanol</b>, 1 min, remove.', timers: [{ min: 1, label: 'ethanol wash' }] },
+          { id: 'tw-dry', critical: true, text: 'Take off all the ethanol with a P10, then air-dry on the magnet for <b>5–10 min</b>, until dry.', timers: [{ min: 5, label: 'drying (5–10 min)' }],
+            warn: 'Do not over-dry the pellet.' },
+          { id: 'tw-elute', text: 'Off the magnet, add <b>32 µL water, 10 mM Tris-HCl pH 8, or Buffer EB</b> and mix until even. 2 min at room temperature, then magnet for 3 min (until the beads pellet).',
+            timers: [{ min: 2, label: 'elution' }] },
+          { id: 'tw-final', tube: { per: 'pool', suffix: 'ENR', what: 'SNP-enriched library', vessel: '0.2 mL PCR strip tube or plate well', keep: true },
+            text: 'Transfer <b>30 µL</b> of clear supernatant (the enriched library) to a clean 0.2 mL PCR strip tube or plate well.' },
+          { id: 'tw-qc', text: 'Measure the enriched library with <b>Qubit</b> (SOP SM09).',
+            reading: { key: 'qEnr', label: 'Enriched library Qubit', short: 'Enriched Qubit', unit: 'ng/µL', per: 'pool', type: 'Qubit', section: 'QC' } }
+        ]
+      }
+    ]
+  }
 ];
 
 // Show the protocols in SOP order (SM01, SM02, …).
