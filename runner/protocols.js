@@ -44,6 +44,8 @@
  *                                     capOnly = write the code on the cap only (e.g. Qubit tubes).
  *   critical: true                  – highlights the step as one people often get wrong
  */
+(function () {   // own scope: LabTrack loads this file too, so its helpers must not leak into the page
+
 /*
  * Shared step blocks, used by several SOPs.
  *
@@ -1419,7 +1421,7 @@ window.BENCH_PROTOCOLS = [
         steps: [
           { id: 'nx-serial', critical: true, tube: { per: 'pool', suffix: '2NM', what: 'pool at 2 nM (RSB + Tween 20)', vessel: '1.5 mL tube' },
             text: 'Dilute with <b>RSB with Tween 20</b> (C₁V₁ = C₂V₂, <b>20 µL</b> final each time). After each dilution, <b>Qubit it and enter the reading</b> here; repeat until <b>2 nM ± 0.1</b>.',
-            reading: { key: 'qDil', label: 'Qubit of your latest dilution', short: 'Diluted Qubit', unit: 'ng/µL', per: 'pool', type: 'Qubit', section: 'Quantification', chain: false, optional: true },
+            reading: { key: 'qDil', label: 'Qubit of your latest dilution', short: 'Diluted Qubit', unit: 'ng/µL', per: 'pool', type: 'Qubit', section: 'Dilution to 2 nM', optional: true },
             calc: { type: 'serial', readingKey: 'qPool', dilKey: 'qDil', lengthKey: 'tsPool', target: 2, tol: 0.1, finalVol: 20, maxFold: 2.5, diluent: 'RSB with Tween 20' },
             tip: 'The steps depend on where you start (e.g. 68 → 34 → 14 → 7 → 2 nM). Smaller steps give more control. Label each tube with its nM.' }
         ]
@@ -1658,8 +1660,8 @@ window.BENCH_PROTOCOLS = [
         steps: [
           { id: 'en-qc-read', text: 'Measure the enriched pool with <b>Qubit</b>, and run a <b>TapeStation</b> for the fragment size and adaptor dimers.',
             readings: [
-              { key: 'qEnr', label: 'Enriched pool Qubit', short: 'Enriched Qubit', unit: 'ng/µL', per: 'pool', type: 'Qubit', section: 'QC' },
-              { key: 'tsEnr', label: 'Enriched pool size (TapeStation)', short: 'Enriched size', unit: 'bp', per: 'pool', type: 'TapeStation', section: 'QC', chain: false }
+              { key: 'qEnr', label: 'Enriched pool Qubit', short: 'Enriched Qubit', unit: 'ng/µL', per: 'pool', type: 'Qubit', section: 'Enriched pool QC' },
+              { key: 'tsEnr', label: 'Enriched pool size (TapeStation)', short: 'Enriched size', unit: 'bp', per: 'pool', type: 'TapeStation', section: 'Enriched pool QC', chain: false }
             ] },
           { id: 'en-next', text: 'Go on to loading with the <b>Loading Illumina Flowcell</b> SOP (SM13).' }
         ]
@@ -1970,3 +1972,62 @@ window.BENCH_PROTOCOLS = [
 // Show the protocols in SOP order (SM01, SM02, …).
 const sopNo = (p) => { const m = /SM(\d+)/.exec(p.vendor || ''); return m ? +m[1] : 999; };
 window.BENCH_PROTOCOLS.sort((a, b) => sopNo(a) - sopNo(b));
+
+/*
+ * LabTrack presets, generated from the protocols above, so there is one list to keep up to date.
+ * Each reading becomes a quantification checkpoint, grouped by its LabTrack section (the same sections the bench CSV
+ * export uses), in protocol order. A barcode step adds a barcode record; a loading step adds an "fmol loaded" record.
+ * from: one or more protocols joined into one preset. replaces: the generic LabTrack preset it stands in for.
+ * Protocols not listed here (single measurements, clean-ups, …) are left out of the preset list.
+ */
+const LABTRACK_PRESETS = [
+  { from: ['sm01-ez12-dna'] },
+  { from: ['sm02-bone', 'sm16-minelute'], name: 'SM02 + SM16 · Bone extraction', runName: 'Bone sampling, lysis and MinElute purification', kit: 'Bone / tooth powder · MinElute' },
+  { from: ['sm03-ultra2'], replaces: 'neb-ultra2' },
+  { from: ['sm04-ultra2fs'] },
+  { from: ['sm05-exome-lib', 'sm18-exome-enrich'], name: 'SM05 + SM18 · Illumina Exome 2.5', runName: 'Illumina exome library prep and enrichment', kit: 'Illumina DNA Prep with Exome 2.5 Enrichment' },
+  { from: ['sm06-lsk114', 'sm14-minion-load'], replaces: 'ont-lsk114', name: 'SM06 + SM14 · ONT Ligation Sequencing V14', runName: 'ONT ligation sequencing', kit: 'SQK-LSK114 · MinION flow cell' },
+  { from: ['ont-nbd114-24'], replaces: 'ont-nbd114' },
+  { from: ['ont-nbd114-96'] },
+  { from: ['sm13-nextseq'] },
+  { from: ['sm15-twist-snp'] }
+];
+function labtrackPreset(spec, all) {
+  const parts = spec.from.map((id) => all.find((p) => p.id === id)).filter(Boolean);
+  if (!parts.length) return null;
+  const TYPE = { qubit: 'qubit', tapestation: 'tapestation', general: 'general' };
+  const steps = [], byKey = new Map();
+  const add = (section, pool, read, rkey, label, stageTitle) => {
+    const k = section + '|' + (pool ? 'pool' : 'sample');
+    let st = byKey.get(k);
+    if (!st) {
+      const clash = steps.some((x) => x.name === section);
+      st = { name: clash ? `${section} (pool)` : section, reads: [], pool: !!pool, _keys: new Set(), _labels: [], _stages: [] };
+      byKey.set(k, st); steps.push(st);
+    }
+    if (rkey && st._keys.has(rkey)) return;
+    if (rkey) st._keys.add(rkey);
+    st.reads.push(read); st._labels.push(label);
+    if (!st._stages.includes(stageTitle)) st._stages.push(stageTitle);
+  };
+  parts.forEach((p) => p.stages.forEach((stg) => stg.steps.forEach((s) => {
+    (s.readings || (s.reading ? [s.reading] : [])).filter((r) => !r.noExport).forEach((r) =>
+      add(r.section || r.label, r.per === 'pool', [TYPE[(r.type || 'General').toLowerCase()] || 'general', r.unit || ''], r.key, r.label, stg.title));
+    if (s.calc && s.calc.type === 'barcodes' && s.exportSection) add(s.exportSection, false, ['general', ''], 'barcode', `${p.barcodeLabel || 'Barcode'} used for each sample`, stg.title);
+    if (s.calc && s.calc.type === 'loading' && s.exportSection) add(s.exportSection, true, ['general', 'fmol'], 'loaded', 'Amount loaded', stg.title);
+  })));
+  const clean = (t) => t.replace(/\s*\{[^}]+\}×?/g, '').replace(/\s*\(.*?\)\s*$/, '').trim();   // drop setup placeholders and (notes)
+  const first = parts[0], sop = (/SM\d+/.exec(first.vendor || '') || [''])[0];
+  return {
+    id: 'bench-' + spec.from.join('+'),
+    name: spec.name || `${sop} · ${first.name}`,
+    kit: spec.kit || first.kit,
+    runName: spec.runName || first.name,
+    flow: parts.flatMap((p) => p.stages.map((s) => clean(s.title))).filter((t, i, a) => t && !/^(before you start|day before)/i.test(t) && a.indexOf(t) === i).join(' → '),
+    replaces: spec.replaces || null,
+    fromBench: true,
+    steps: steps.map((st) => ({ name: st.name, reads: st.reads, pool: st.pool || undefined, note: `${st._stages.map(clean).join(' / ')}: ${st._labels.join(', ')}.` }))
+  };
+}
+window.BENCH_LABTRACK_PRESETS = LABTRACK_PRESETS.map((spec) => labtrackPreset(spec, window.BENCH_PROTOCOLS)).filter(Boolean);
+})();

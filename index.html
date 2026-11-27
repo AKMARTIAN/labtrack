@@ -1011,6 +1011,8 @@
 
   <div id="toast" class="toast hidden no-print"><span aria-hidden="true">✓</span><span id="toastText"></span></div>
 
+  <!-- The lab's SOP protocols from LabTrack Bench: the protocol presets are generated from them (if this file is missing, the built-in presets are used). -->
+  <script src="runner/protocols.js"></script>
   <script>
     (function () {
       const STORAGE_KEY = 'labtrack_v1_state';
@@ -2956,7 +2958,7 @@
       // Each step becomes a section. Steps with readings get an empty record per sample
       // (linked step to step); steps without get a short note so the flow is still visible.
       // pool: true = after the samples are combined, one "Pool" record instead.
-      const PROTOCOLS = [
+      const BUILTIN_PROTOCOLS = [
         {
           id: 'neb-ultra2', name: 'Illumina · NEBNext Ultra II DNA', kit: 'NEB E7645 / E7103', runName: 'NEBNext Ultra II DNA library prep',
           flow: 'fragmentation → end prep → adaptor ligation → index PCR → library QC → pooling',
@@ -3027,6 +3029,10 @@
           ]
         }
       ];
+      // The lab's own presets come first, generated from the Bench SOP protocols (runner/protocols.js), and replace
+      // the generic presets they cover; the rest of the generic ones stay after them.
+      const BENCH_PRESETS = Array.isArray(window.BENCH_LABTRACK_PRESETS) ? window.BENCH_LABTRACK_PRESETS : [];
+      const PROTOCOLS = BENCH_PRESETS.concat(BUILTIN_PROTOCOLS.filter((p) => !BENCH_PRESETS.some((b) => b.replaces === p.id)));
       let protoId = PROTOCOLS[0].id;
       const protoOf = () => PROTOCOLS.find((p) => p.id === protoId) || PROTOCOLS[0];
       // Working copy of the chosen protocol's steps: tick off skipped steps, rename, reorder or repeat one.
@@ -3082,7 +3088,7 @@
         $('protoList').innerHTML = PROTOCOLS.map((p) => `
           <label class="proto-opt">
             <input type="radio" name="proto" value="${p.id}" ${p.id === protoId ? 'checked' : ''} />
-            <span><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.kit)} · ${p.steps.length} steps</small><small class="flow">${escapeHtml(p.flow)}</small></span>
+            <span><strong>${escapeHtml(p.name)}</strong><small>${escapeHtml(p.kit)} · ${p.steps.length} step${p.steps.length === 1 ? '' : 's'}${p.fromBench ? ' · from your SOP' : ''}</small><small class="flow">${escapeHtml(p.flow)}</small></span>
           </label>`).join('');
         if (!$('protoTube').value) $('protoTube').value = '1';
         resetProtoSteps();
